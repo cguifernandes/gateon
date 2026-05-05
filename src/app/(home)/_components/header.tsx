@@ -34,7 +34,7 @@ export function Header() {
           </nav>
           <div className="flex items-center gap-2">
             <Link
-              href="#start"
+              href="/login"
               className={cn(
                 buttonVariants({ variant: "outline", size: "sm" }),
                 "hidden h-9 w-24 sm:inline-flex",
@@ -43,7 +43,7 @@ export function Header() {
               Entrar
             </Link>
             <Link
-              href="#start"
+              href="/register"
               className={cn(buttonVariants({ size: "sm" }), "h-9 w-24")}
             >
               Registrar

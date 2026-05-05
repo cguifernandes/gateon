@@ -23,7 +23,7 @@ export function GatewayCard({ gateway, logo }: GatewayCardProps) {
 
       <div className="flex flex-1 flex-col gap-4 p-5">
         <div className="flex flex-col gap-1">
-          <p className="font-bold text-sm uppercase tracking-tight text-foreground">
+          <p className="font-bold font-heading text-sm text-foreground">
             {gateway.name}
           </p>
           <p className="text-xs font-light leading-snug text-muted-foreground">

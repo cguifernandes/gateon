@@ -1,3 +1,4 @@
+import { GeistSans } from "geist/font/sans";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -23,7 +24,12 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html
       lang="pt-BR"
-      className={cn("h-full antialiased", fontInter.variable, "font-sans")}
+      className={cn(
+        "h-full antialiased",
+        fontInter.variable,
+        GeistSans.variable,
+        "font-sans",
+      )}
     >
       <body className="min-h-full flex flex-col text-foreground">
         <TooltipProvider>{children}</TooltipProvider>

@@ -18,6 +18,12 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **Comments in code** : prefer **English** for consistency.
 - **User-facing copy** (UI strings) may be **localized** (e.g. `pt-BR` for a Brazilian product) when the product requires it; still keep **identifier names in English** and use constants or i18n keys as needed.
 
+## Gateon: Zod schemas location
+
+- Always create Zod schema files in `src/lib/zod/`.
+- Do not create Zod schema files inside page `_components`.
+- For auth flows, keep the canonical schema file at `src/lib/zod/auth-schemas.ts`.
+
 ---
 
 # 📌 Visão Geral do Projeto
@@ -174,5 +180,22 @@ O sistema poderá exibir:
 - Frontend apenas consome API
 - Todas as ações críticas devem ter log
 - Evitar dependência de serviços instáveis
+
+---
+
+# 🧾 Padrão de Formulários (Zod + React Hook Form)
+
+Use este padrão em novas telas com formulário:
+
+- Componentes de formulário interativos devem ser **Client Components** (`"use client"`).
+- Validação deve ser declarada com **Zod** e conectada ao formulário com `zodResolver`.
+- O schema deve ficar próximo do formulário quando for específico daquela tela/route group.
+- Para formulários compartilhados entre várias áreas, extraia schema/tipos para um arquivo dedicado.
+- Use `useForm<FormValues>({ resolver: zodResolver(schema), defaultValues })`.
+- Tipos do formulário devem vir do schema quando possível (`z.infer<typeof schema>`). Quando o schema depender de modo/variação, declare um `FormValues` explícito e mantenha o schema em uma factory (`createSchema(mode)`).
+- Campos devem exibir mensagens vindas de `formState.errors`.
+- A tela frontend-only não deve simular backend; deixe o `onSubmit` preparado para integração futura e mostre apenas feedback local quando necessário.
+- Não armazenar dados sensíveis em estado global/localStorage.
+- Inputs devem seguir tokens do tema (`border-input`, `bg-background`, `text-foreground`, `text-muted-foreground`, `ring-primary/*`) e os componentes base do shadcn quando existirem.
 
 ---
