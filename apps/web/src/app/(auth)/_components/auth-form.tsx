@@ -21,7 +21,7 @@ type AuthFormProps = {
 export function AuthForm({ title, description, mode }: AuthFormProps) {
   return (
     <Card className="w-full rounded-3xl border-border bg-card py-0 shadow-xl shadow-primary/10 ring-0">
-      <CardHeader className="gap-2 px-6 pt-6">
+      <CardHeader className="px-6 pt-6">
         <CardTitle className="text-2xl font-bold tracking-tight text-foreground">
           {title}
         </CardTitle>
