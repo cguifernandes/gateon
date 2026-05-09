@@ -1,15 +1,15 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
   Injectable,
   UnauthorizedException,
-} from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import type { Sessions, Users } from "@prisma/client";
-import * as argon2 from "argon2";
-import type { Request, Response } from "express";
-import { PrismaService } from "../prisma/prisma.service";
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import type { Sessions, Users } from '@prisma/client';
+import * as argon2 from 'argon2';
+import type { Request, Response } from 'express';
+import { PrismaService } from '../prisma/prisma.service';
 import {
   DEFAULT_SESSION_TTL_DAYS,
   OAUTH_STATE_COOKIE_NAME,
@@ -19,8 +19,8 @@ import {
   PublicUser,
   SESSION_COOKIE_NAME,
   toPublicUser,
-} from "../utils/utils";
-import type { LoginInput, RegisterInput } from "./schemas/auth.schemas";
+} from '../utils/utils';
+import type { LoginInput, RegisterInput } from './schemas/auth.schemas';
 
 type GoogleUserProfile = {
   sub: string;
@@ -38,7 +38,7 @@ export class AuthService {
   ) {}
 
   getWebBaseUrl(): string {
-    return this.config.get<string>("WEB_BASE_URL") ?? "http://localhost:3000";
+    return this.config.get<string>('WEB_BASE_URL') ?? 'http://localhost:3000';
   }
 
   private async hashPassword(plain: string): Promise<string> {
@@ -63,7 +63,7 @@ export class AuthService {
   }
 
   private newToken(): string {
-    return randomBytes(32).toString("base64url");
+    return randomBytes(32).toString('base64url');
   }
 
   private async createSession(
@@ -78,11 +78,11 @@ export class AuthService {
         expiresAt,
         userId,
         ipAddress:
-          typeof req.headers["x-forwarded-for"] === "string" &&
-          req.headers["x-forwarded-for"].length > 0
-            ? (req.headers["x-forwarded-for"].split(",")[0]?.trim() ?? null)
+          typeof req.headers['x-forwarded-for'] === 'string' &&
+          req.headers['x-forwarded-for'].length > 0
+            ? (req.headers['x-forwarded-for'].split(',')[0]?.trim() ?? null)
             : (req.ip ?? req.socket.remoteAddress ?? null),
-        userAgent: req.get("user-agent") ?? null,
+        userAgent: req.get('user-agent') ?? null,
       },
       include: { user: true },
     });
@@ -126,11 +126,11 @@ export class AuthService {
         token: newTok,
         expiresAt,
         ipAddress:
-          typeof req.headers["x-forwarded-for"] === "string" &&
-          req.headers["x-forwarded-for"].length > 0
-            ? (req.headers["x-forwarded-for"].split(",")[0]?.trim() ?? null)
+          typeof req.headers['x-forwarded-for'] === 'string' &&
+          req.headers['x-forwarded-for'].length > 0
+            ? (req.headers['x-forwarded-for'].split(',')[0]?.trim() ?? null)
             : (req.ip ?? req.socket.remoteAddress ?? null),
-        userAgent: req.get("user-agent") ?? null,
+        userAgent: req.get('user-agent') ?? null,
       },
       include: { user: true },
     });
@@ -144,21 +144,21 @@ export class AuthService {
   }
 
   buildGoogleAuthorizationUrl(state: string): string {
-    const clientId = this.config.get<string>("GOOGLE_CLIENT_ID");
-    const redirectUri = this.config.get<string>("GOOGLE_REDIRECT_URI");
+    const clientId = this.config.get<string>('GOOGLE_CLIENT_ID');
+    const redirectUri = this.config.get<string>('GOOGLE_REDIRECT_URI');
     if (!clientId || !redirectUri) {
       throw new BadRequestException(
-        "Google OAuth is not configured (GOOGLE_CLIENT_ID / GOOGLE_REDIRECT_URI).",
+        'Google OAuth is not configured (GOOGLE_CLIENT_ID / GOOGLE_REDIRECT_URI).',
       );
     }
     const params = new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirectUri,
-      response_type: "code",
-      scope: "openid email profile",
+      response_type: 'code',
+      scope: 'openid email profile',
       state,
-      access_type: "offline",
-      prompt: "consent",
+      access_type: 'offline',
+      prompt: 'consent',
     });
     return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
   }
@@ -168,12 +168,12 @@ export class AuthService {
   }
 
   private async exchangeCodeForAccessToken(code: string): Promise<string> {
-    const clientId = this.config.get<string>("GOOGLE_CLIENT_ID");
-    const clientSecret = this.config.get<string>("GOOGLE_CLIENT_SECRET");
-    const redirectUri = this.config.get<string>("GOOGLE_REDIRECT_URI");
+    const clientId = this.config.get<string>('GOOGLE_CLIENT_ID');
+    const clientSecret = this.config.get<string>('GOOGLE_CLIENT_SECRET');
+    const redirectUri = this.config.get<string>('GOOGLE_REDIRECT_URI');
     if (!clientId || !clientSecret || !redirectUri) {
       throw new BadRequestException(
-        "Google OAuth is not configured (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_REDIRECT_URI).",
+        'Google OAuth is not configured (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_REDIRECT_URI).',
       );
     }
     const body = new URLSearchParams({
@@ -181,11 +181,11 @@ export class AuthService {
       client_id: clientId,
       client_secret: clientSecret,
       redirect_uri: redirectUri,
-      grant_type: "authorization_code",
+      grant_type: 'authorization_code',
     });
-    const res = await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body,
     });
     if (!res.ok) {
@@ -197,7 +197,7 @@ export class AuthService {
     const json = (await res.json()) as { access_token?: string };
     if (!json.access_token) {
       throw new UnauthorizedException(
-        "OAuth token exchange returned no token.",
+        'OAuth token exchange returned no token.',
       );
     }
     return json.access_token;
@@ -206,7 +206,7 @@ export class AuthService {
   private async fetchGoogleUserProfile(
     accessToken: string,
   ): Promise<GoogleUserProfile> {
-    const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+    const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     if (!res.ok) {
@@ -217,7 +217,7 @@ export class AuthService {
     }
     const json = (await res.json()) as GoogleUserProfile;
     if (!json.sub || !json.email) {
-      throw new UnauthorizedException("Google profile missing sub or email.");
+      throw new UnauthorizedException('Google profile missing sub or email.');
     }
     return json;
   }
@@ -230,7 +230,7 @@ export class AuthService {
     const email = dto.email.trim().toLowerCase();
     const existing = await this.prisma.users.findUnique({ where: { email } });
     if (existing) {
-      throw new ConflictException("Email already registered");
+      throw new ConflictException('Email already registered');
     }
     const hash = await this.hashPassword(dto.password);
     const user = await this.prisma.users.create({
@@ -249,9 +249,9 @@ export class AuthService {
     const session = await this.createSession(user.id, req);
     res.cookie(SESSION_COOKIE_NAME, session.token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
       expires: session.expiresAt,
       domain: process.env.COOKIE_DOMAIN || undefined,
     });
@@ -274,18 +274,18 @@ export class AuthService {
       include: { user: true },
     });
     if (!account?.password) {
-      throw new UnauthorizedException("Invalid credentials");
+      throw new UnauthorizedException('Invalid credentials');
     }
     const ok = await this.verifyPassword(account.password, dto.password);
     if (!ok) {
-      throw new UnauthorizedException("Invalid credentials");
+      throw new UnauthorizedException('Invalid credentials');
     }
     const session = await this.createSession(account.userId, req);
     res.cookie(SESSION_COOKIE_NAME, session.token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
       expires: session.expiresAt,
       domain: process.env.COOKIE_DOMAIN || undefined,
     });
@@ -297,9 +297,9 @@ export class AuthService {
     await this.revokeByToken(token);
     res.clearCookie(SESSION_COOKIE_NAME, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
       domain: process.env.COOKIE_DOMAIN || undefined,
     });
     return { ok: true };
@@ -311,18 +311,18 @@ export class AuthService {
     if (!rotated) {
       res.clearCookie(SESSION_COOKIE_NAME, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
         domain: process.env.COOKIE_DOMAIN || undefined,
       });
-      throw new UnauthorizedException("Session expired");
+      throw new UnauthorizedException('Session expired');
     }
     res.cookie(SESSION_COOKIE_NAME, rotated.token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
       expires: rotated.expiresAt,
       domain: process.env.COOKIE_DOMAIN || undefined,
     });
@@ -341,18 +341,18 @@ export class AuthService {
     if (!cookieState || cookieState !== state) {
       res.clearCookie(OAUTH_STATE_COOKIE_NAME, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
         domain: process.env.COOKIE_DOMAIN || undefined,
       });
-      throw new BadRequestException("Invalid OAuth state");
+      throw new BadRequestException('Invalid OAuth state');
     }
     res.clearCookie(OAUTH_STATE_COOKIE_NAME, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
       domain: process.env.COOKIE_DOMAIN || undefined,
     });
     const accessToken = await this.exchangeCodeForAccessToken(code);
@@ -361,9 +361,9 @@ export class AuthService {
     const session = await this.createSession(user.id, req);
     res.cookie(SESSION_COOKIE_NAME, session.token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
       expires: session.expiresAt,
       domain: process.env.COOKIE_DOMAIN || undefined,
     });

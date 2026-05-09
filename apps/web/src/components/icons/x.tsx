@@ -7,47 +7,37 @@ import { forwardRef } from "react";
 import { useIconAnimation } from "@/hooks/use-icon-animation";
 import { cn } from "@/lib/utils";
 
-export interface CircleCheckIconHandle {
+export interface XIconHandle {
   startAnimation: () => void;
   stopAnimation: () => void;
 }
 
-interface CircleCheckIconProps extends HTMLAttributes<HTMLDivElement> {
+interface XIconProps extends HTMLAttributes<HTMLDivElement> {
   size?: number;
-  strokeWidth?: number;
   isAnimateOnView?: boolean;
-  animateOnHover?: boolean;
+  strokeWidth?: number;
 }
 
 const PATH_VARIANTS: Variants = {
   normal: {
     opacity: 1,
     pathLength: 1,
-    transition: {
-      duration: 0.3,
-      opacity: { duration: 0.1 },
-    },
   },
   animate: {
     opacity: [0, 1],
     pathLength: [0, 1],
-    transition: {
-      duration: 0.4,
-      opacity: { duration: 0.1 },
-    },
   },
 };
 
-const CircleCheckIcon = forwardRef<CircleCheckIconHandle, CircleCheckIconProps>(
+const XIcon = forwardRef<XIconHandle, XIconProps>(
   (
     {
       onMouseEnter,
       onMouseLeave,
-      isAnimateOnView = true,
       className,
       size = 28,
+      isAnimateOnView = true,
       strokeWidth = 2,
-      animateOnHover = true,
       ...props
     },
     ref,
@@ -56,19 +46,20 @@ const CircleCheckIcon = forwardRef<CircleCheckIconHandle, CircleCheckIconProps>(
       isAnimateOnView,
       onMouseEnter,
       onMouseLeave,
-      animateOnHover,
     });
 
     return (
       <div
         className={cn(className)}
-        ref={refElement}
         {...eventHandlers}
-        {...props}
+        ref={refElement}
         role="presentation"
         aria-hidden="true"
+        {...props}
       >
         <svg
+          aria-label="X icon"
+          aria-hidden="true"
           fill="none"
           height={size}
           stroke="currentColor"
@@ -78,14 +69,16 @@ const CircleCheckIcon = forwardRef<CircleCheckIconHandle, CircleCheckIconProps>(
           viewBox="0 0 24 24"
           width={size}
           xmlns="http://www.w3.org/2000/svg"
-          role="presentation"
-          aria-hidden="true"
         >
-          <circle cx="12" cy="12" r="10" />
           <motion.path
             animate={controls}
-            d="m9 12 2 2 4-4"
-            initial="normal"
+            d="M18 6 6 18"
+            variants={PATH_VARIANTS}
+          />
+          <motion.path
+            animate={controls}
+            d="m6 6 12 12"
+            transition={{ delay: 0.2 }}
             variants={PATH_VARIANTS}
           />
         </svg>
@@ -94,6 +87,6 @@ const CircleCheckIcon = forwardRef<CircleCheckIconHandle, CircleCheckIconProps>(
   },
 );
 
-CircleCheckIcon.displayName = "CircleCheckIcon";
+XIcon.displayName = "XIcon";
 
-export { CircleCheckIcon };
+export { XIcon };

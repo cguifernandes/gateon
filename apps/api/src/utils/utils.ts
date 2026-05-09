@@ -1,16 +1,16 @@
-import type { Users } from "@prisma/client";
+import type { Users } from '@prisma/client';
 
 /** Cookie storing opaque session token (DB-backed session). */
-export const SESSION_COOKIE_NAME = "gateon.session";
+export const SESSION_COOKIE_NAME = 'gateon.session';
 
 /** Short-lived cookie for OAuth CSRF `state` validation. */
-export const OAUTH_STATE_COOKIE_NAME = "gateon.oauth.state";
+export const OAUTH_STATE_COOKIE_NAME = 'gateon.oauth.state';
 
 /** Credentials provider id stored in `Accounts.providerId`. */
-export const PROVIDER_CREDENTIALS = "credentials";
+export const PROVIDER_CREDENTIALS = 'credentials';
 
 /** Google OAuth provider id. */
-export const PROVIDER_GOOGLE = "google";
+export const PROVIDER_GOOGLE = 'google';
 
 /** Default session lifetime when `SESSION_TTL_DAYS` is unset. */
 export const DEFAULT_SESSION_TTL_DAYS = 7;

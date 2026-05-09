@@ -1,5 +1,20 @@
 import { z } from "zod";
 
+export const publicUserDtoSchema = z.object({
+  id: z.string(),
+  email: z.string(),
+  name: z.string().nullable(),
+  emailVerified: z.boolean(),
+  image: z.string().nullable(),
+  createdAt: z.union([z.string(), z.coerce.date()]),
+});
+
+export type PublicUserDto = z.infer<typeof publicUserDtoSchema>;
+
+export const registerSuccessBodySchema = z.object({
+  user: publicUserDtoSchema,
+});
+
 export type AuthMode = "login" | "register";
 
 export type AuthFormValues = {

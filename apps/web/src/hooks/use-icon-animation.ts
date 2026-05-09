@@ -17,6 +17,7 @@ export interface IconAnimationHandle {
 
 interface UseIconAnimationProps {
   isAnimateOnView?: boolean;
+  animateOnHover?: boolean;
   onMouseEnter?: (e: MouseEvent<HTMLDivElement>) => void;
   onMouseLeave?: (e: MouseEvent<HTMLDivElement>) => void;
 }
@@ -25,6 +26,7 @@ export function useIconAnimation<T extends IconAnimationHandle>(
   ref: Ref<T>,
   {
     isAnimateOnView = true,
+    animateOnHover = true,
     onMouseEnter,
     onMouseLeave,
   }: UseIconAnimationProps = {},
@@ -60,22 +62,26 @@ export function useIconAnimation<T extends IconAnimationHandle>(
     (e: MouseEvent<HTMLDivElement>) => {
       if (isControlledRef.current) {
         onMouseEnter?.(e);
+      } else if (animateOnHover) {
+        void controls.start("animate");
       } else {
-        controls.start("animate");
+        onMouseEnter?.(e);
       }
     },
-    [controls, onMouseEnter],
+    [animateOnHover, controls, onMouseEnter],
   );
 
   const handleMouseLeave = useCallback(
     (e: MouseEvent<HTMLDivElement>) => {
       if (isControlledRef.current) {
         onMouseLeave?.(e);
+      } else if (animateOnHover) {
+        void controls.start("normal");
       } else {
-        controls.start("normal");
+        onMouseLeave?.(e);
       }
     },
-    [controls, onMouseLeave],
+    [animateOnHover, controls, onMouseLeave],
   );
 
   return {

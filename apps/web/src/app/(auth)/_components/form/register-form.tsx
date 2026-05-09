@@ -2,17 +2,19 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { FormField } from "@/components/form-field";
 import { Button } from "@/components/ui/button";
-import {
-  type AuthFormValues,
-  createAuthSchema,
-} from "../../../../lib/zod/auth-schemas";
+import { registerAction } from "@/lib/server/register-user.action";
+import { type AuthFormValues, createAuthSchema } from "@/lib/zod/auth-schemas";
 
 export function RegisterForm() {
+  const router = useRouter();
+
   const {
-    formState: { errors },
+    formState: { errors, isSubmitting },
     handleSubmit,
     register,
   } = useForm<AuthFormValues>({
@@ -25,8 +27,18 @@ export function RegisterForm() {
     },
   });
 
-  function handleRegisterSubmit(_values: AuthFormValues) {
-    // Frontend-only screen: connect this handler to the auth API when available.
+  async function handleRegisterSubmit(values: AuthFormValues) {
+    const result = await registerAction(values);
+    if (!result.ok) {
+      toast.error("Erro ao registrar usuário.", {
+        description: result.message,
+        duration: 5000,
+      });
+      return;
+    }
+
+    router.refresh();
+    router.push("/");
   }
 
   return (
@@ -40,6 +52,7 @@ export function RegisterForm() {
           label="Nome"
           placeholder="Seu nome"
           registration={register("name")}
+          autoComplete="name"
         />
 
         <FormField
@@ -48,6 +61,8 @@ export function RegisterForm() {
           placeholder="exemplo@exemplo.com"
           registration={register("email")}
           type="email"
+          autoComplete="email"
+          autoCorrect="off"
         />
 
         <FormField
@@ -56,6 +71,7 @@ export function RegisterForm() {
           placeholder="Digite sua senha"
           registration={register("password")}
           type="password"
+          autoComplete="new-password"
         />
 
         <FormField
@@ -64,9 +80,12 @@ export function RegisterForm() {
           placeholder="Digite novamente sua senha"
           registration={register("confirmPassword")}
           type="password"
+          autoComplete="new-password"
         />
 
-        <Button type="submit">Registrar</Button>
+        <Button loading={isSubmitting} disabled={isSubmitting} type="submit">
+          Registrar
+        </Button>
       </form>
 
       <p className="mt-5 text-center text-sm text-muted-foreground">
