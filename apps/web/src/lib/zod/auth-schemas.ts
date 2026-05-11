@@ -5,8 +5,6 @@ export const publicUserDtoSchema = z.object({
   email: z.string(),
   name: z.string().nullable(),
   emailVerified: z.boolean(),
-  image: z.string().nullable(),
-  createdAt: z.union([z.string(), z.coerce.date()]),
 });
 
 export type PublicUserDto = z.infer<typeof publicUserDtoSchema>;

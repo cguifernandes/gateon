@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import type { Users } from '@prisma/client';
 
 /** Cookie storing opaque session token (DB-backed session). */
@@ -23,8 +24,6 @@ export type PublicUser = {
   email: string;
   name: string | null;
   emailVerified: boolean;
-  image: string | null;
-  createdAt: Date;
 };
 
 export function toPublicUser(user: Users): PublicUser {
@@ -33,7 +32,20 @@ export function toPublicUser(user: Users): PublicUser {
     email: user.email,
     name: user.name,
     emailVerified: user.emailVerified,
-    image: user.image,
-    createdAt: user.createdAt,
   };
+}
+
+function getDataHashSecret(): string {
+  const secret = process.env.DATA_HASH_SECRET?.trim();
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('DATA_HASH_SECRET is required in production');
+    }
+    return 'dev-only-data-hash-secret';
+  }
+  return secret;
+}
+
+export function hashSensitiveValue(value: string): string {
+  return createHmac('sha256', getDataHashSecret()).update(value).digest('hex');
 }

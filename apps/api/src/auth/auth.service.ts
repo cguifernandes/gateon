@@ -18,6 +18,7 @@ import {
   PROVIDER_GOOGLE,
   PublicUser,
   SESSION_COOKIE_NAME,
+  hashSensitiveValue,
   toPublicUser,
 } from '../utils/utils';
 import type { LoginInput, RegisterInput } from './schemas/auth.schemas';
@@ -66,26 +67,94 @@ export class AuthService {
     return randomBytes(32).toString('base64url');
   }
 
+  private sessionMetadataTtlMs(): number {
+    const defaultDays = 7;
+    const raw = process.env.SESSION_METADATA_TTL_DAYS;
+    const days = raw ? Number(raw) : defaultDays;
+    if (Number.isNaN(days) || days <= 0) {
+      return defaultDays * 24 * 60 * 60 * 1000;
+    }
+    return days * 24 * 60 * 60 * 1000;
+  }
+
+  private normalizeSessionIp(req: Request): string | null {
+    const forwarded =
+      typeof req.headers['x-forwarded-for'] === 'string'
+        ? req.headers['x-forwarded-for'].split(',')[0]
+        : null;
+    const raw = forwarded ?? req.ip ?? req.socket.remoteAddress ?? null;
+    if (!raw) {
+      return null;
+    }
+    const normalized = raw.trim().toLowerCase();
+    return normalized.length > 0 ? normalized : null;
+  }
+
+  private normalizeSessionUserAgent(req: Request): string | null {
+    const raw = req.get('user-agent');
+    if (!raw) {
+      return null;
+    }
+    const normalized = raw.trim().toLowerCase();
+    return normalized.length > 0 ? normalized : null;
+  }
+
+  private hashSessionToken(token: string): string {
+    return hashSensitiveValue(`session:${token}`);
+  }
+
+  private buildHashedSessionMetadata(req: Request): {
+    ipHash: string | null;
+    userAgentHash: string | null;
+    metadataExpiresAt: Date;
+  } {
+    const ip = this.normalizeSessionIp(req);
+    const userAgent = this.normalizeSessionUserAgent(req);
+
+    return {
+      ipHash: ip ? hashSensitiveValue(`ip:${ip}`) : null,
+      userAgentHash: userAgent ? hashSensitiveValue(`ua:${userAgent}`) : null,
+      metadataExpiresAt: new Date(Date.now() + this.sessionMetadataTtlMs()),
+    };
+  }
+
+  private async cleanupExpiredSessionData(): Promise<void> {
+    await this.prisma.sessions.deleteMany({
+      where: { expiresAt: { lte: new Date() } },
+    });
+    await this.prisma.sessions.updateMany({
+      where: {
+        metadataExpiresAt: { lte: new Date() },
+        OR: [{ ipHash: { not: null } }, { userAgentHash: { not: null } }],
+      },
+      data: {
+        ipHash: null,
+        userAgentHash: null,
+      },
+    });
+  }
+
   private async createSession(
     userId: string,
     req: Request,
-  ): Promise<Sessions & { user: Users }> {
+  ): Promise<{ session: Sessions & { user: Users }; rawToken: string }> {
+    void this.cleanupExpiredSessionData().catch(() => undefined);
     const token = this.newToken();
+    const tokenHash = this.hashSessionToken(token);
     const expiresAt = new Date(Date.now() + this.sessionTtlMs());
-    return this.prisma.sessions.create({
+    const metadata = this.buildHashedSessionMetadata(req);
+    const session = await this.prisma.sessions.create({
       data: {
-        token,
+        tokenHash,
         expiresAt,
         userId,
-        ipAddress:
-          typeof req.headers['x-forwarded-for'] === 'string' &&
-          req.headers['x-forwarded-for'].length > 0
-            ? (req.headers['x-forwarded-for'].split(',')[0]?.trim() ?? null)
-            : (req.ip ?? req.socket.remoteAddress ?? null),
-        userAgent: req.get('user-agent') ?? null,
+        ipHash: metadata.ipHash,
+        userAgentHash: metadata.userAgentHash,
+        metadataExpiresAt: metadata.metadataExpiresAt,
       },
       include: { user: true },
     });
+    return { session, rawToken: token };
   }
 
   async findValidSessionByToken(
@@ -95,7 +164,7 @@ export class AuthService {
       return null;
     }
     const session = await this.prisma.sessions.findUnique({
-      where: { token },
+      where: { tokenHash: this.hashSessionToken(token) },
       include: { user: true },
     });
     if (!session) {
@@ -113,34 +182,37 @@ export class AuthService {
   private async rotateSession(
     token: string | undefined,
     req: Request,
-  ): Promise<(Sessions & { user: Users }) | null> {
+  ): Promise<{ session: Sessions & { user: Users }; rawToken: string } | null> {
     const current = await this.findValidSessionByToken(token);
     if (!current) {
       return null;
     }
+    void this.cleanupExpiredSessionData().catch(() => undefined);
     const newTok = this.newToken();
+    const newTokHash = this.hashSessionToken(newTok);
     const expiresAt = new Date(Date.now() + this.sessionTtlMs());
-    return this.prisma.sessions.update({
+    const metadata = this.buildHashedSessionMetadata(req);
+    const session = await this.prisma.sessions.update({
       where: { id: current.id },
       data: {
-        token: newTok,
+        tokenHash: newTokHash,
         expiresAt,
-        ipAddress:
-          typeof req.headers['x-forwarded-for'] === 'string' &&
-          req.headers['x-forwarded-for'].length > 0
-            ? (req.headers['x-forwarded-for'].split(',')[0]?.trim() ?? null)
-            : (req.ip ?? req.socket.remoteAddress ?? null),
-        userAgent: req.get('user-agent') ?? null,
+        ipHash: metadata.ipHash,
+        userAgentHash: metadata.userAgentHash,
+        metadataExpiresAt: metadata.metadataExpiresAt,
       },
       include: { user: true },
     });
+    return { session, rawToken: newTok };
   }
 
   private async revokeByToken(token: string | undefined): Promise<void> {
     if (!token) {
       return;
     }
-    await this.prisma.sessions.deleteMany({ where: { token } });
+    await this.prisma.sessions.deleteMany({
+      where: { tokenHash: this.hashSessionToken(token) },
+    });
   }
 
   buildGoogleAuthorizationUrl(state: string): string {
@@ -189,9 +261,8 @@ export class AuthService {
       body,
     });
     if (!res.ok) {
-      const text = await res.text();
       throw new UnauthorizedException(
-        `OAuth token exchange failed: ${res.status} ${text}`,
+        `OAuth token exchange failed (${res.status}).`,
       );
     }
     const json = (await res.json()) as { access_token?: string };
@@ -210,9 +281,8 @@ export class AuthService {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     if (!res.ok) {
-      const text = await res.text();
       throw new UnauthorizedException(
-        `Google userinfo failed: ${res.status} ${text}`,
+        `Google userinfo failed (${res.status}).`,
       );
     }
     const json = (await res.json()) as GoogleUserProfile;
@@ -246,8 +316,8 @@ export class AuthService {
         },
       },
     });
-    const session = await this.createSession(user.id, req);
-    res.cookie(SESSION_COOKIE_NAME, session.token, {
+    const { session, rawToken } = await this.createSession(user.id, req);
+    res.cookie(SESSION_COOKIE_NAME, rawToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -280,8 +350,8 @@ export class AuthService {
     if (!ok) {
       throw new UnauthorizedException('Invalid credentials');
     }
-    const session = await this.createSession(account.userId, req);
-    res.cookie(SESSION_COOKIE_NAME, session.token, {
+    const { session, rawToken } = await this.createSession(account.userId, req);
+    res.cookie(SESSION_COOKIE_NAME, rawToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -318,15 +388,15 @@ export class AuthService {
       });
       throw new UnauthorizedException('Session expired');
     }
-    res.cookie(SESSION_COOKIE_NAME, rotated.token, {
+    res.cookie(SESSION_COOKIE_NAME, rotated.rawToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      expires: rotated.expiresAt,
+      expires: rotated.session.expiresAt,
       domain: process.env.COOKIE_DOMAIN || undefined,
     });
-    return { user: toPublicUser(rotated.user) };
+    return { user: toPublicUser(rotated.session.user) };
   }
 
   async signInWithGoogle(
@@ -358,8 +428,8 @@ export class AuthService {
     const accessToken = await this.exchangeCodeForAccessToken(code);
     const profile = await this.fetchGoogleUserProfile(accessToken);
     const user = await this.linkOrCreateGoogleUser(profile);
-    const session = await this.createSession(user.id, req);
-    res.cookie(SESSION_COOKIE_NAME, session.token, {
+    const { session, rawToken } = await this.createSession(user.id, req);
+    res.cookie(SESSION_COOKIE_NAME, rawToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

@@ -43,7 +43,7 @@ export async function registerAction(
   const { name, email, password } = parsedForm.data;
   const base = getApiBaseUrl();
   if (!base) {
-    console.error("[registerAction] API_URL is not set");
+    console.error("[registerAction] missing API_URL");
     return {
       ok: false,
       code: "unknown",
@@ -72,8 +72,8 @@ export async function registerAction(
       signal: AbortSignal.timeout(15_000),
       cache: "no-store",
     });
-  } catch (e) {
-    console.error("[registerUserAction] upstream fetch failed", e);
+  } catch {
+    console.error("[registerUserAction] upstream fetch failed");
     return {
       ok: false,
       code: "unknown",
@@ -143,11 +143,7 @@ export async function registerAction(
     };
   }
 
-  console.error(
-    "[registerUserAction] unexpected status",
-    res.status,
-    messageFromApi ?? errBody,
-  );
+  console.error("[registerUserAction] unexpected status", res.status);
 
   return {
     ok: false,

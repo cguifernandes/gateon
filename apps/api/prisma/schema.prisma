@@ -47,12 +47,16 @@ model Accounts {
 model Sessions {
   id        String   @id @default(cuid())
   expiresAt DateTime
-  token     String   @unique
-  ipAddress String?
-  userAgent String?
+  tokenHash String   @unique
+  ipHash    String?
+  userAgentHash String?
+  metadataExpiresAt DateTime?
   userId    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@index([metadataExpiresAt])
 }
