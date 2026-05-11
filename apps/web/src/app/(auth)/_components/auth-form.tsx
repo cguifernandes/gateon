@@ -16,6 +16,7 @@ type AuthFormProps = {
   title: string;
   description: string;
   mode: AuthMode;
+  oauthErrorMessage?: string | null;
 };
 
 export function AuthForm({ title, description, mode }: AuthFormProps) {

@@ -239,6 +239,41 @@ export class AuthService {
     return OAUTH_STATE_TTL_MS;
   }
 
+  private getFetchErrorDetail(error: unknown): string | null {
+    if (!(error instanceof Error)) {
+      return null;
+    }
+
+    const cause = error.cause;
+    if (cause instanceof Error) {
+      const code = (cause as { code?: unknown }).code;
+      const suffix = typeof code === 'string' ? ` (${code})` : '';
+      return `${cause.message}${suffix}`;
+    }
+
+    return error.message || null;
+  }
+
+  private async fetchGoogleOAuth(
+    url: string,
+    init: RequestInit,
+    context: string,
+  ): Promise<globalThis.Response> {
+    try {
+      return await fetch(url, {
+        ...init,
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch (error: unknown) {
+      const detail = this.getFetchErrorDetail(error);
+      throw new UnauthorizedException(
+        `Google OAuth ${context} request failed before receiving a response${
+          detail ? `: ${detail}` : ''
+        }.`,
+      );
+    }
+  }
+
   private async exchangeCodeForAccessToken(code: string): Promise<string> {
     const clientId = this.config.get<string>('GOOGLE_CLIENT_ID');
     const clientSecret = this.config.get<string>('GOOGLE_CLIENT_SECRET');
@@ -255,11 +290,15 @@ export class AuthService {
       redirect_uri: redirectUri,
       grant_type: 'authorization_code',
     });
-    const res = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body,
-    });
+    const res = await this.fetchGoogleOAuth(
+      'https://oauth2.googleapis.com/token',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body,
+      },
+      'token exchange',
+    );
     if (!res.ok) {
       throw new UnauthorizedException(
         `OAuth token exchange failed (${res.status}).`,
@@ -277,9 +316,13 @@ export class AuthService {
   private async fetchGoogleUserProfile(
     accessToken: string,
   ): Promise<GoogleUserProfile> {
-    const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
+    const res = await this.fetchGoogleOAuth(
+      'https://www.googleapis.com/oauth2/v3/userinfo',
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      },
+      'userinfo',
+    );
     if (!res.ok) {
       throw new UnauthorizedException(
         `Google userinfo failed (${res.status}).`,

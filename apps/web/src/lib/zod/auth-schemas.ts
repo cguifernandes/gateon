@@ -9,7 +9,7 @@ export const publicUserDtoSchema = z.object({
 
 export type PublicUserDto = z.infer<typeof publicUserDtoSchema>;
 
-export const registerSuccessBodySchema = z.object({
+export const authSuccessBodySchema = z.object({
   user: publicUserDtoSchema,
 });
 

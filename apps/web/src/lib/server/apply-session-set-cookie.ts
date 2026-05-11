@@ -1,4 +1,4 @@
-import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
+import { SESSION_COOKIE_NAME } from "@/lib/utils";
 
 /** Mirrors Next.js `cookies().set` options used for session forwarding. */
 type CookieStoreSetOptions = {

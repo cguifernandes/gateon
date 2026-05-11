@@ -1,13 +1,16 @@
 import { randomBytes } from 'node:crypto';
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
   InternalServerErrorException,
+  Logger,
   Post,
   Query,
   Req,
   Res,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
@@ -18,6 +21,8 @@ import { loginSchema, registerSchema } from './schemas/auth.schemas';
 
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(private readonly auth: AuthService) {}
 
   @Post('register')
@@ -95,9 +100,23 @@ export class AuthController {
     }
     try {
       await this.auth.signInWithGoogle(req, res, code, state);
-      return res.redirect(`${base}/`);
-    } catch {
-      return res.redirect(`${base}/login?error=oauth_failed`);
+      return res.redirect(`${base}/dashboard`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : undefined;
+      this.logger.error(
+        `[auth/google/callback] OAuth sign-in failed: ${message}`,
+        stack,
+      );
+
+      let errorCode = 'oauth_failed';
+      if (err instanceof BadRequestException) {
+        errorCode = 'oauth_bad_request';
+      } else if (err instanceof UnauthorizedException) {
+        errorCode = 'oauth_unauthorized';
+      }
+
+      return res.redirect(`${base}/login?error=${errorCode}`);
     }
   }
 }

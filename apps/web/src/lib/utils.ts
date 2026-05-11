@@ -7,12 +7,23 @@ export function cn(...inputs: ClassValue[]) {
 
 export type GatewayId = "stripe" | "pagarme" | "pagseguro";
 
+export const SESSION_COOKIE_NAME = "gateon.session";
+
 export type Gateway = {
   id: GatewayId;
   name: string;
   description: string;
   points: string[];
 };
+
+export function getServerApiBaseUrl(): string | null {
+  const raw =
+    process.env.API_URL?.trim() || process.env.INTERNAL_API_URL?.trim();
+  if (!raw) {
+    return null;
+  }
+  return raw.replace(/\/$/, "");
+}
 
 export const PAYMENT_GATEWAYS: Gateway[] = [
   {

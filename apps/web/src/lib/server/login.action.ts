@@ -2,35 +2,26 @@
 
 import { cookies, headers } from "next/headers";
 import {
+  authSuccessBodySchema,
   createAuthSchema,
   type PublicUserDto,
-  registerSuccessBodySchema,
 } from "@/lib/zod/auth-schemas";
+import { getServerApiBaseUrl } from "../utils";
 import {
   applySessionSetCookieFromUpstream,
   getSetCookieLines,
 } from "./apply-session-set-cookie";
 
-export type RegisterUserResult =
+export type LoginUserResult =
   | { ok: true; user: PublicUserDto }
   | {
       ok: false;
-      code: "validation" | "conflict" | "unknown";
+      code: "validation" | "unauthorized" | "unknown";
       message: string;
     };
 
-function getApiBaseUrl(): string | null {
-  const raw = process.env.API_URL?.trim();
-  if (!raw) {
-    return null;
-  }
-  return raw.replace(/\/$/, "");
-}
-
-export async function registerAction(
-  raw: unknown,
-): Promise<RegisterUserResult> {
-  const parsedForm = createAuthSchema("register").safeParse(raw);
+export async function loginAction(raw: unknown): Promise<LoginUserResult> {
+  const parsedForm = createAuthSchema("login").safeParse(raw);
   if (!parsedForm.success) {
     const first = parsedForm.error.issues[0];
     return {
@@ -40,10 +31,10 @@ export async function registerAction(
     };
   }
 
-  const { name, email, password } = parsedForm.data;
-  const base = getApiBaseUrl();
+  const { email, password } = parsedForm.data;
+  const base = getServerApiBaseUrl();
   if (!base) {
-    console.error("[registerAction] missing API_URL");
+    console.error("[loginAction] missing API_URL or INTERNAL_API_URL");
     return {
       ok: false,
       code: "unknown",
@@ -57,23 +48,19 @@ export async function registerAction(
 
   let res: Response;
   try {
-    res = await fetch(`${base}/auth/register`, {
+    res = await fetch(`${base}/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(xfwd ? { "x-forwarded-for": xfwd } : {}),
         ...(!xfwd && realIp ? { "x-forwarded-for": realIp } : {}),
       },
-      body: JSON.stringify({
-        name: name?.trim(),
-        email,
-        password,
-      }),
+      body: JSON.stringify({ email, password }),
       signal: AbortSignal.timeout(15_000),
       cache: "no-store",
     });
   } catch {
-    console.error("[registerUserAction] upstream fetch failed");
+    console.error("[loginAction] upstream fetch failed");
     return {
       ok: false,
       code: "unknown",
@@ -95,7 +82,7 @@ export async function registerAction(
       };
     }
 
-    const bodyParsed = registerSuccessBodySchema.safeParse(json);
+    const bodyParsed = authSuccessBodySchema.safeParse(json);
     if (!bodyParsed.success) {
       return {
         ok: false,
@@ -127,11 +114,11 @@ export async function registerAction(
       ? (errBody as { message: string }).message
       : null;
 
-  if (res.status === 409) {
+  if (res.status === 401) {
     return {
       ok: false,
-      code: "conflict",
-      message: "Este e-mail já está cadastrado.",
+      code: "unauthorized",
+      message: "E-mail ou senha incorretos.",
     };
   }
 
@@ -143,11 +130,11 @@ export async function registerAction(
     };
   }
 
-  console.error("[registerUserAction] unexpected status", res.status);
+  console.error("[loginAction] unexpected status", res.status);
 
   return {
     ok: false,
     code: "unknown",
-    message: "Não foi possível concluir o cadastro.",
+    message: "Não foi possível entrar. Tente novamente.",
   };
 }

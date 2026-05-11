@@ -2,14 +2,19 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import { FormField } from "@/components/form-field";
 import { Button } from "@/components/ui/button";
+import { loginAction } from "@/lib/server/login.action";
 import { type AuthFormValues, createAuthSchema } from "@/lib/zod/auth-schemas";
 
 export function LoginForm() {
+  const router = useRouter();
+
   const {
-    formState: { errors },
+    formState: { errors, isSubmitting },
     handleSubmit,
     register,
   } = useForm<AuthFormValues>({
@@ -20,8 +25,17 @@ export function LoginForm() {
     },
   });
 
-  function handleLoginSubmit(_values: AuthFormValues) {
-    // Frontend-only screen: connect this handler to the auth API when available.
+  async function handleLoginSubmit(values: AuthFormValues) {
+    const result = await loginAction(values);
+    if (!result.ok) {
+      toast.error("Não foi possível entrar.", {
+        description: result.message,
+      });
+      return;
+    }
+
+    router.refresh();
+    router.push("/dashboard");
   }
 
   return (
@@ -36,6 +50,8 @@ export function LoginForm() {
           placeholder="exemplo@exemplo.com"
           registration={register("email")}
           type="email"
+          autoComplete="email"
+          autoCorrect="off"
         />
 
         <FormField
@@ -44,9 +60,12 @@ export function LoginForm() {
           placeholder="Digite sua senha"
           registration={register("password")}
           type="password"
+          autoComplete="current-password"
         />
 
-        <Button type="submit">Entrar</Button>
+        <Button loading={isSubmitting} disabled={isSubmitting} type="submit">
+          Entrar
+        </Button>
       </form>
 
       <p className="mt-5 text-center text-sm text-muted-foreground">

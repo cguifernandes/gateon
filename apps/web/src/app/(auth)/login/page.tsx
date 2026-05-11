@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description: "Acesse sua conta Gateon para gerenciar grupos e assinaturas.",
 };
 
-export default function LoginPage() {
+export default async function LoginPage() {
   return (
     <AuthForm
       title="Entrar na conta"

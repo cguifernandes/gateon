@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { FormField } from "@/components/form-field";
 import { Button } from "@/components/ui/button";
-import { registerAction } from "@/lib/server/register-user.action";
+import { registerAction } from "@/lib/server/register.action";
 import { type AuthFormValues, createAuthSchema } from "@/lib/zod/auth-schemas";
 
 export function RegisterForm() {
@@ -32,13 +32,12 @@ export function RegisterForm() {
     if (!result.ok) {
       toast.error("Erro ao registrar usuário.", {
         description: result.message,
-        duration: 5000,
       });
       return;
     }
 
     router.refresh();
-    router.push("/");
+    router.push("/dashboard");
   }
 
   return (
