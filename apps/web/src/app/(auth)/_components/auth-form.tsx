@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { GoogleLoginButton } from "@/components/google-login-button";
 import {
   Card,
   CardContent,
@@ -31,23 +31,12 @@ export function AuthForm({ title, description, mode }: AuthFormProps) {
       </CardHeader>
 
       <CardContent className="px-6 pb-6">
-        {mode === "login" && (
-          <>
-            <Button
-              className="w-full"
-              type="button"
-              variant="outline"
-              onClick={() => {}}
-            >
-              Continuar com Google
-            </Button>
-            <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
-              <span className="h-px flex-1 bg-border" />
-              <span>ou</span>
-              <span className="h-px flex-1 bg-border" />
-            </div>
-          </>
-        )}
+        <GoogleLoginButton />
+        <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+          <span className="h-px flex-1 bg-border" />
+          <span>ou</span>
+          <span className="h-px flex-1 bg-border" />
+        </div>
 
         {mode === "login" ? <LoginForm /> : <RegisterForm />}
       </CardContent>
