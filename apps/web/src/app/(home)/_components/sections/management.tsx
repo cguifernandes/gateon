@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Container } from "../container";
+import { Container } from "../../../../components/container";
 
 const blocks = [
   {

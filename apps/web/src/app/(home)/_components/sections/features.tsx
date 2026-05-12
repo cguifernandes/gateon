@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import { Container } from "../../../../components/container";
 import {
   FeatureCardArtMembersFlow,
   FeatureCardArtReliability,
@@ -6,7 +7,6 @@ import {
   FeatureCardArtSetup,
 } from "../arts";
 import { FeatureCardArtSalesGrowth } from "../charts/art-sales-growth";
-import { Container } from "../container";
 import { FeatureCard } from "../feature-card";
 
 type FeatureItem = {

@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/accordion";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Container } from "../container";
+import { Container } from "../../../../components/container";
 
 const faqs = [
   {

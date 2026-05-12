@@ -32,5 +32,5 @@ export async function logoutAction(): Promise<void> {
   }
 
   cookieStore.delete(SESSION_COOKIE_NAME);
-  redirect("/login");
+  redirect("/");
 }

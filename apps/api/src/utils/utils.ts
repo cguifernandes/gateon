@@ -23,6 +23,7 @@ export type PublicUser = {
   id: string;
   email: string;
   name: string | null;
+  image: string | null;
   emailVerified: boolean;
 };
 
@@ -31,6 +32,7 @@ export function toPublicUser(user: Users): PublicUser {
     id: user.id,
     email: user.email,
     name: user.name,
+    image: user.image,
     emailVerified: user.emailVerified,
   };
 }

@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import type { PublicUserDto } from "./zod/auth-schemas";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -63,3 +64,19 @@ export const PAYMENT_GATEWAYS: Gateway[] = [
     ],
   },
 ];
+
+export function getUserInitials(user: PublicUserDto) {
+  const name = user.name?.trim();
+  if (name) {
+    const parts = name.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      const a = parts[0]?.[0];
+      const b = parts[parts.length - 1]?.[0];
+      if (a && b) {
+        return `${a}${b}`.toUpperCase();
+      }
+    }
+    return name.slice(0, 2).toUpperCase();
+  }
+  return user.email.slice(0, 2).toUpperCase();
+}

@@ -4,6 +4,7 @@ export const publicUserDtoSchema = z.object({
   id: z.string(),
   email: z.string(),
   name: z.string().nullable(),
+  image: z.string().nullable(),
   emailVerified: z.boolean(),
 });
 

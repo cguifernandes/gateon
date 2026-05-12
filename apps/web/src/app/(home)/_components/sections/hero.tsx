@@ -15,7 +15,7 @@ import { UsersIcon } from "@/components/icons/users";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import ImageTelegram from "../../../../../public/hero-telegram-iphone.png";
-import { Container } from "../container";
+import { Container } from "../../../../components/container";
 
 const floatTransition = {
   duration: 4.5,
