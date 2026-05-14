@@ -7,12 +7,12 @@ import { forwardRef } from "react";
 import { useIconAnimation } from "@/hooks/use-icon-animation";
 import { cn } from "@/lib/utils";
 
-export interface XIconHandle {
+export interface CheckIconHandle {
   startAnimation: () => void;
   stopAnimation: () => void;
 }
 
-interface XIconProps extends HTMLAttributes<HTMLDivElement> {
+interface CheckIconProps extends HTMLAttributes<HTMLDivElement> {
   size?: number;
   isAnimateOnView?: boolean;
   strokeWidth?: number;
@@ -22,14 +22,24 @@ const PATH_VARIANTS: Variants = {
   normal: {
     opacity: 1,
     pathLength: 1,
+    scale: 1,
+    transition: {
+      duration: 0.3,
+      opacity: { duration: 0.1 },
+    },
   },
   animate: {
     opacity: [0, 1],
     pathLength: [0, 1],
+    scale: [0.5, 1],
+    transition: {
+      duration: 0.4,
+      opacity: { duration: 0.1 },
+    },
   },
 };
 
-const XIcon = forwardRef<XIconHandle, XIconProps>(
+const CheckIcon = forwardRef<CheckIconHandle, CheckIconProps>(
   (
     {
       onMouseEnter,
@@ -50,16 +60,17 @@ const XIcon = forwardRef<XIconHandle, XIconProps>(
 
     return (
       <div
-        ref={refElement}
         className={cn(className)}
-        {...props}
         {...eventHandlers}
+        {...props}
+        ref={refElement}
         role="presentation"
         aria-hidden="true"
       >
         <svg
           fill="none"
           height={size}
+          aria-hidden="true"
           stroke="currentColor"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -67,18 +78,11 @@ const XIcon = forwardRef<XIconHandle, XIconProps>(
           viewBox="0 0 24 24"
           width={size}
           xmlns="http://www.w3.org/2000/svg"
-          role="presentation"
-          aria-hidden="true"
         >
           <motion.path
             animate={controls}
-            d="M18 6 6 18"
-            variants={PATH_VARIANTS}
-          />
-          <motion.path
-            animate={controls}
-            d="m6 6 12 12"
-            transition={{ delay: 0.2 }}
+            d="M4 12 9 17L20 6"
+            initial="normal"
             variants={PATH_VARIANTS}
           />
         </svg>
@@ -87,6 +91,6 @@ const XIcon = forwardRef<XIconHandle, XIconProps>(
   },
 );
 
-XIcon.displayName = "XIcon";
+CheckIcon.displayName = "CheckIcon";
 
-export { XIcon };
+export { CheckIcon };

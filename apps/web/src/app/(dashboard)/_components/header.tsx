@@ -1,10 +1,8 @@
 "use client";
 
-import { PlusIcon } from "@/components/icons/plus";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import type { PublicUserDto } from "@/lib/zod/auth-schemas";
+import { AddGroupBotDialog } from "./add-group-bot-dialog";
 import { ProfileDropdown } from "./profile-dropdown";
 
 type HeaderProps = {
@@ -19,6 +17,7 @@ export function Header({ user }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-6">
+        <AddGroupBotDialog />
         <ProfileDropdown user={user} />
       </div>
     </header>

@@ -65,6 +65,82 @@ export const PAYMENT_GATEWAYS: Gateway[] = [
   },
 ];
 
+export type BotPermissionItem = {
+  id: string;
+  title: string;
+  description: string;
+};
+
+export type BotPermissionSubgroup = {
+  id: string;
+  items: BotPermissionItem[];
+};
+
+export type BotPermissionGroup = {
+  id: string;
+  title: string;
+  subtitle: string;
+  subgroups: BotPermissionSubgroup[];
+};
+
+export const TELEGRAM_BOT_PERMISSION_GROUPS: BotPermissionGroup[] = [
+  {
+    id: "required",
+    title: "Obrigatórias",
+    subtitle:
+      "Permissões essenciais para o funcionamento correto do controle de acesso:",
+    subgroups: [
+      {
+        id: "required-core",
+        items: [
+          {
+            id: "send-messages",
+            title: "Enviar mensagens",
+            description:
+              "Permite ao bot notificar os usuários sobre alterações de acesso, como liberações, bloqueios e avisos importantes.",
+          },
+          {
+            id: "ban-users",
+            title: "Banir usuários",
+            description:
+              "Necessária para remover automaticamente usuários que perderam acesso, como em casos de cancelamento ou inadimplência.",
+          },
+          {
+            id: "manage-invite-links",
+            title: "Gerenciar links de convite",
+            description:
+              "Permite criar e gerenciar links de acesso controlados, garantindo que apenas usuários autorizados entrem no grupo.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "optional",
+    title: "Opcionais",
+    subtitle: "Permissões adicionais que aumentam a segurança e automação:",
+    subgroups: [
+      {
+        id: "optional-automation",
+        items: [
+          {
+            id: "read-messages",
+            title: "Ler mensagens",
+            description:
+              "Permite processar comandos e validar interações dos usuários, como confirmações via código.",
+          },
+          {
+            id: "restrict-users",
+            title: "Restringir usuários",
+            description:
+              "Permite limitar temporariamente as permissões de usuários (ex: silenciar), oferecendo uma alternativa ao banimento imediato.",
+          },
+        ],
+      },
+    ],
+  },
+];
+
 export function getUserInitials(user: PublicUserDto) {
   const name = user.name?.trim();
   if (name) {
