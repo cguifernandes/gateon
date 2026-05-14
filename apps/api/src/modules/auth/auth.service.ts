@@ -20,7 +20,7 @@ import {
   SESSION_COOKIE_NAME,
   hashSensitiveValue,
   toPublicUser,
-} from '../utils/utils';
+} from '../../utils/utils';
 import type { LoginInput, RegisterInput } from './schemas/auth.schemas';
 
 type GoogleUserProfile = {

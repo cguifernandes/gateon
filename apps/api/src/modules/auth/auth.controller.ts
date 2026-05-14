@@ -14,7 +14,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { OAUTH_STATE_COOKIE_NAME, toPublicUser } from '../utils/utils';
+import { OAUTH_STATE_COOKIE_NAME, toPublicUser } from '../../utils/utils';
 import { AuthService } from './auth.service';
 import { AuthGuard } from './guards/auth.guard';
 import { loginSchema, registerSchema } from './schemas/auth.schemas';

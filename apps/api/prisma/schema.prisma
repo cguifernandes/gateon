@@ -20,8 +20,11 @@ model Users {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  accounts Accounts[]
-  sessions Sessions[]
+  accounts                       Accounts[]
+  sessions                       Sessions[]
+  telegramAccounts               TelegramAccounts[]
+  telegramGroupConnectionIntents TelegramGroupConnectionIntents[]
+  telegramGroups                 TelegramGroups[]
 }
 
 model Accounts {
@@ -45,18 +48,81 @@ model Accounts {
 }
 
 model Sessions {
-  id        String   @id @default(cuid())
-  expiresAt DateTime
-  tokenHash String   @unique
-  ipHash    String?
-  userAgentHash String?
+  id                String    @id @default(cuid())
+  expiresAt         DateTime
+  tokenHash         String    @unique
+  ipHash            String?
+  userAgentHash     String?
   metadataExpiresAt DateTime?
-  userId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  userId            String
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([expiresAt])
   @@index([metadataExpiresAt])
+}
+
+enum TelegramConnectionStatus {
+  PENDING
+  TELEGRAM_USER_CONFIRMED
+  WAITING_FOR_PERMISSIONS
+  CONNECTED
+  EXPIRED
+  FAILED
+}
+
+model TelegramAccounts {
+  id             String   @id @default(cuid())
+  userId         String
+  telegramUserId String   @unique
+  username       String?
+  firstName      String?
+  lastName       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model TelegramGroupConnectionIntents {
+  id                String                   @id @default(cuid())
+  userId            String
+  tokenHash         String                   @unique
+  status            TelegramConnectionStatus @default(PENDING)
+  telegramUserId    String?
+  telegramChatId    String?
+  telegramChatTitle String?
+  telegramChatType  String?
+  expiresAt         DateTime
+  consumedAt        DateTime?
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+
+  user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([telegramUserId, status])
+  @@index([expiresAt])
+}
+
+model TelegramGroups {
+  id                    String   @id @default(cuid())
+  userId                String
+  telegramChatId        String   @unique
+  title                 String?
+  type                  String
+  addedByTelegramUserId String
+  botStatus             String
+  connectedAt           DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([addedByTelegramUserId])
 }

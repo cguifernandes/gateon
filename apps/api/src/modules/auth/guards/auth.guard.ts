@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { AuthService } from '../auth.service';
-import { SESSION_COOKIE_NAME } from '../../utils/utils';
+import { SESSION_COOKIE_NAME } from '../../../utils/utils';
 
 @Injectable()
 export class AuthGuard implements CanActivate {

@@ -24,6 +24,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - Do not create Zod schema files inside page `_components`.
 - For auth flows, keep the canonical schema file at `src/lib/zod/auth-schemas.ts`.
 
+## Gateon: Nest API feature modules (`apps/api`)
+
+- Put each NestJS **feature module** under `apps/api/src/modules/<name>/` (e.g. `modules/auth/`, `modules/telegram/`), with its `*.module.ts`, controllers, services, and module-local guards/schemas beside it.
+- Keep **shared API code** (helpers, global types, cross-module Zod) under `apps/api/src/lib/`, `apps/api/src/utils/`, and `apps/api/src/types/`.
+- API-wide Zod schemas stay in `apps/api/src/lib/zod/` (not inside a feature `modules/<name>/` folder).
+- Register new modules in `apps/api/src/app.module.ts` via imports from `./modules/...`.
+
 ---
 
 # 📌 Visão Geral do Projeto

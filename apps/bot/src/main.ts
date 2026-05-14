@@ -1,13 +1,15 @@
 import "./load-env.js";
 import { Bot } from "grammy";
 import { loadConfig } from "./config.js";
+import { registerMyChatMemberHandler } from "./handlers/my-chat-member.js";
 import { registerStartCommand } from "./handlers/start.js";
 
 async function bootstrap() {
   const config = loadConfig();
   const bot = new Bot(config.TELEGRAM_BOT_TOKEN);
 
-  registerStartCommand(bot);
+  registerStartCommand(bot, config);
+  registerMyChatMemberHandler(bot, config);
 
   bot.catch((err) => {
     console.error("[gateon/bot]", err);

@@ -6,6 +6,7 @@
 2. **Shared across routes** → `src/components/` (or the project’s shared folder), not page `_components`.
 3. **English** for filenames, components, types, variables, and comments; product UI text may be localized, identifiers stay English.
 4. **Zod schemas** → always create in `src/lib/zod/` (auth schemas must stay in `src/lib/zod/auth-schemas.ts`).
+5. **Nest API (`apps/api`)** → new feature modules under `apps/api/src/modules/<name>/`; register in `app.module.ts` (see `AGENTS.md`).
 
 ## Contexto do produto
 

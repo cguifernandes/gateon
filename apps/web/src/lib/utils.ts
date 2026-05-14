@@ -83,6 +83,39 @@ export type BotPermissionGroup = {
   subgroups: BotPermissionSubgroup[];
 };
 
+export const REQUIRED_TELEGRAM_BOT_ADMIN_PERMISSION_IDS = [
+  "send-messages",
+  "ban-users",
+  "manage-invite-links",
+] as const;
+
+const REQUIRED_TELEGRAM_BOT_ADMIN_PERMISSION_DETAILS: Record<
+  (typeof REQUIRED_TELEGRAM_BOT_ADMIN_PERMISSION_IDS)[number],
+  Pick<BotPermissionItem, "title" | "description">
+> = {
+  "send-messages": {
+    title: "Enviar mensagens",
+    description:
+      "Permite ao bot notificar os usuários sobre alterações de acesso, como liberações, bloqueios e avisos importantes.",
+  },
+  "ban-users": {
+    title: "Banir usuários",
+    description:
+      "Necessária para remover automaticamente usuários que perderam acesso, como em casos de cancelamento ou inadimplência.",
+  },
+  "manage-invite-links": {
+    title: "Gerenciar links de convite",
+    description:
+      "Permite criar e gerenciar links de acesso controlados, garantindo que apenas usuários autorizados entrem no grupo.",
+  },
+};
+
+const REQUIRED_TELEGRAM_BOT_ADMIN_PERMISSION_ITEMS: BotPermissionItem[] =
+  REQUIRED_TELEGRAM_BOT_ADMIN_PERMISSION_IDS.map((id) => ({
+    id,
+    ...REQUIRED_TELEGRAM_BOT_ADMIN_PERMISSION_DETAILS[id],
+  }));
+
 export const TELEGRAM_BOT_PERMISSION_GROUPS: BotPermissionGroup[] = [
   {
     id: "required",
@@ -92,26 +125,7 @@ export const TELEGRAM_BOT_PERMISSION_GROUPS: BotPermissionGroup[] = [
     subgroups: [
       {
         id: "required-core",
-        items: [
-          {
-            id: "send-messages",
-            title: "Enviar mensagens",
-            description:
-              "Permite ao bot notificar os usuários sobre alterações de acesso, como liberações, bloqueios e avisos importantes.",
-          },
-          {
-            id: "ban-users",
-            title: "Banir usuários",
-            description:
-              "Necessária para remover automaticamente usuários que perderam acesso, como em casos de cancelamento ou inadimplência.",
-          },
-          {
-            id: "manage-invite-links",
-            title: "Gerenciar links de convite",
-            description:
-              "Permite criar e gerenciar links de acesso controlados, garantindo que apenas usuários autorizados entrem no grupo.",
-          },
-        ],
+        items: REQUIRED_TELEGRAM_BOT_ADMIN_PERMISSION_ITEMS,
       },
     ],
   },
@@ -157,5 +171,5 @@ export function getUserInitials(user: PublicUserDto) {
   return user.email.slice(0, 2).toUpperCase();
 }
 
-export const BOT_TELEGRAM_LINK = "https://t.me/@GateonBot";
+export const BOT_TELEGRAM_LINK = "https://t.me/GateonBot";
 export const BOT_TELEGRAM_USERNAME = "@GateonBot";
