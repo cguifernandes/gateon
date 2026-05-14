@@ -13,7 +13,7 @@ function isAuthPath(pathname: string): boolean {
  * - `/login`, `/register`: session cookie present → `/dashboard` (before paint).
  * Validity of the token is still checked in RSC via `getSessionUser()` on dashboard.
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const session = request.cookies.get(SESSION_COOKIE_NAME)?.value;
 

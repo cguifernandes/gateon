@@ -156,3 +156,6 @@ export function getUserInitials(user: PublicUserDto) {
   }
   return user.email.slice(0, 2).toUpperCase();
 }
+
+export const BOT_TELEGRAM_LINK = "https://t.me/@GateonBot";
+export const BOT_TELEGRAM_USERNAME = "@GateonBot";

@@ -4,21 +4,27 @@
   "private": true,
   "packageManager": "npm@11.6.2",
   "workspaces": [
-    "apps/*"
+    "apps/api",
+    "apps/web",
+    "apps/bot"
   ],
   "scripts": {
-    "dev": "turbo dev",
+    "dev": "turbo dev --filter=@gateon/web --filter=@gateon/api",
     "build": "turbo build",
-    "lint": "npm run lint:web && npm run lint:api",
+    "lint": "npm run lint:web && npm run lint:api && npm run lint:bot",
     "lint:web": "biome check apps/web",
     "lint:api": "npm run lint -w @gateon/api",
-    "format": "npm run format:web && npm run format:api",
+    "lint:bot": "npm run lint -w @gateon/bot",
+    "format": "npm run format:web && npm run format:api && npm run format:bot",
     "format:web": "biome format --write apps/web",
     "format:api": "npm run format -w @gateon/api",
+    "format:bot": "npm run format -w @gateon/bot",
     "dev:web": "turbo dev --filter=@gateon/web",
     "dev:api": "turbo dev --filter=@gateon/api",
+    "dev:bot": "npm run dev -w @gateon/bot",
     "build:web": "turbo build --filter=@gateon/web",
-    "build:api": "turbo build --filter=@gateon/api"
+    "build:api": "turbo build --filter=@gateon/api",
+    "build:bot": "turbo build --filter=@gateon/bot"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
