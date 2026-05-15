@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
+import { removeTelegramGroupAction } from "@/lib/server/remove-telegram-group.action";
 import { getServerApiBaseUrl, SESSION_COOKIE_NAME } from "@/lib/utils";
 import {
   type TelegramGroupSummaryDto,
@@ -130,15 +131,26 @@ export default async function GroupsPage() {
                   </code>
                 </p>
               </div>
-              <div className="rounded-lg bg-primary/10 px-3 py-2 text-primary">
-                <p className="font-semibold text-xl">
-                  {group.memberCount ?? "--"}
-                </p>
-                <p className="text-xs">
-                  {group.memberCount === null
-                    ? "membros indisponível"
-                    : "membros"}
-                </p>
+              <div className="flex flex-col gap-2 sm:items-end">
+                <div className="rounded-lg bg-primary/10 px-3 py-2 text-primary">
+                  <p className="font-semibold text-xl">
+                    {group.memberCount ?? "--"}
+                  </p>
+                  <p className="text-xs">
+                    {group.memberCount === null
+                      ? "membros indisponível"
+                      : "membros"}
+                  </p>
+                </div>
+                <form action={removeTelegramGroupAction}>
+                  <input name="groupId" type="hidden" value={group.id} />
+                  <button
+                    className="rounded-lg border border-destructive/30 px-3 py-1.5 font-medium text-destructive text-xs transition-colors hover:bg-destructive/10"
+                    type="submit"
+                  >
+                    Remover conexão
+                  </button>
+                </form>
               </div>
             </div>
 

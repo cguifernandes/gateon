@@ -1,0 +1,6 @@
+# Local trust material — never commit keys or org-specific roots
+*.pem
+*.crt
+*.key
+*.p12
+*.pfx

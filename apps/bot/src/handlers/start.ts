@@ -7,6 +7,7 @@ import {
   tryConsumeGateonGroupNotifySlot,
 } from "../gateon-group-notify.js";
 import { extractAdministratorRightsPayload } from "../telegram-admin-rights.js";
+import { buildStartWithoutTokenMessage } from "../telegram-bot-messages.js";
 
 type TelegramUserPayload = {
   id: string;
@@ -67,9 +68,7 @@ export function registerStartCommand(bot: Bot<Context>, config: AppConfig): void
     const telegramUser = getTelegramUser(ctx);
 
     if (!token || !telegramUser) {
-      await ctx.reply(
-        "Ola! O Gateon esta no ar. Use o painel web para cadastrar grupos e permissoes.",
-      );
+      await ctx.reply(buildStartWithoutTokenMessage());
       return;
     }
 

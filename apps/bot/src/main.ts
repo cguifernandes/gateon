@@ -1,6 +1,7 @@
 import "./load-env.js";
 import { Bot } from "grammy";
 import { loadConfig } from "./config.js";
+import { registerHelpCommand } from "./handlers/help.js";
 import { registerMyChatMemberHandler } from "./handlers/my-chat-member.js";
 import { registerStartCommand } from "./handlers/start.js";
 
@@ -9,6 +10,7 @@ async function bootstrap() {
   const bot = new Bot(config.TELEGRAM_BOT_TOKEN);
 
   registerStartCommand(bot, config);
+  registerHelpCommand(bot);
   registerMyChatMemberHandler(bot, config);
 
   bot.catch((err) => {

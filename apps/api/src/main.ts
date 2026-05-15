@@ -1,3 +1,9 @@
+import { join } from 'node:path';
+
+// Runs before TLS; `__dirname` is `dist/src` when compiled (not `dist/scripts`).
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+require(join(__dirname, '../../scripts/load-env.cjs'));
+
 import { setDefaultResultOrder } from 'node:dns';
 import { NestFactory } from '@nestjs/core';
 import cookieParser from 'cookie-parser';

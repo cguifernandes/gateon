@@ -3,6 +3,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -162,21 +163,57 @@ export class TelegramService {
     );
 
     return Promise.all(
-      groups.map(async (group) => ({
-        id: group.id,
-        telegramChatId: group.telegramChatId,
-        title: group.title,
-        type: group.type,
-        botStatus: group.botStatus,
-        connectedAt: group.connectedAt,
-        updatedAt: group.updatedAt,
-        memberCount: await this.getTelegramChatMemberCount(
-          group.telegramChatId,
-        ),
-        connectedBy:
-          accountsByTelegramId.get(group.addedByTelegramUserId) ?? null,
-      })),
+      groups.map(async (group) => {
+        const telegramChatId = group.telegramChatId.trim();
+
+        return {
+          id: group.id,
+          telegramChatId,
+          title: group.title,
+          type: group.type,
+          botStatus: group.botStatus,
+          connectedAt: group.connectedAt,
+          updatedAt: group.updatedAt,
+          memberCount: await this.getTelegramChatMemberCount(telegramChatId),
+          connectedBy:
+            accountsByTelegramId.get(group.addedByTelegramUserId) ?? null,
+        };
+      }),
     );
+  }
+
+  async removeGroupConnection(userId: string, groupId: string) {
+    const group = await this.prisma.telegramGroups.findFirst({
+      where: { id: groupId, userId },
+      select: {
+        id: true,
+        telegramChatId: true,
+      },
+    });
+
+    if (!group) {
+      throw new NotFoundException('Telegram group connection not found.');
+    }
+
+    const telegramChatId = group.telegramChatId.trim();
+    const botLeft = await this.leaveTelegramChat(telegramChatId);
+
+    await this.prisma.$transaction([
+      this.prisma.telegramGroupConnectionIntents.deleteMany({
+        where: {
+          userId,
+          telegramChatId: { in: [group.telegramChatId, telegramChatId] },
+        },
+      }),
+      this.prisma.telegramGroups.delete({
+        where: { id: group.id },
+      }),
+    ]);
+
+    return {
+      deleted: true,
+      botLeft,
+    };
   }
 
   async handleBotEvent(event: TelegramBotEventInput) {
@@ -238,7 +275,8 @@ export class TelegramService {
     telegramChatId: string,
   ): Promise<number | null> {
     const token = this.getTelegramBotToken();
-    if (!token) {
+    const chatId = telegramChatId.trim();
+    if (!token || !chatId) {
       return null;
     }
 
@@ -246,7 +284,7 @@ export class TelegramService {
       const url = new URL(
         `https://api.telegram.org/bot${token}/getChatMemberCount`,
       );
-      url.searchParams.set('chat_id', telegramChatId);
+      url.searchParams.set('chat_id', chatId);
 
       const response = await fetch(url, {
         signal: AbortSignal.timeout(10_000),
@@ -259,6 +297,34 @@ export class TelegramService {
       return data.ok && typeof data.result === 'number' ? data.result : null;
     } catch {
       return null;
+    }
+  }
+
+  private async leaveTelegramChat(
+    telegramChatId: string,
+  ): Promise<boolean | null> {
+    const token = this.getTelegramBotToken();
+    const chatId = telegramChatId.trim();
+    if (!token || !chatId) {
+      return null;
+    }
+
+    try {
+      const url = new URL(`https://api.telegram.org/bot${token}/leaveChat`);
+      url.searchParams.set('chat_id', chatId);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!response.ok) {
+        return false;
+      }
+
+      const data = (await response.json()) as TelegramApiResponse<unknown>;
+      return data.ok && data.result === true;
+    } catch {
+      return false;
     }
   }
 

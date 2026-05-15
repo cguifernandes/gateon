@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Headers,
   Param,
@@ -27,6 +28,17 @@ export class TelegramController {
     }
 
     return this.telegram.listGroups(userId);
+  }
+
+  @Delete('groups/:groupId')
+  @UseGuards(AuthGuard)
+  removeGroup(@Req() req: Request, @Param('groupId') groupId: string) {
+    const userId = req.authSession?.userId;
+    if (!userId) {
+      throw new UnauthorizedException();
+    }
+
+    return this.telegram.removeGroupConnection(userId, groupId);
   }
 
   @Post('group-connections/start')
