@@ -6,14 +6,14 @@
 
 @theme {
   --color-primary: #3b82f6;
-  --color-surface: #f8f9ff;
-  --color-surface-dim: #cbdbf5;
-  --color-surface-bright: #f8f9ff;
-  --color-surface-container-lowest: #ffffff;
-  --color-surface-container-low: #eff4ff;
-  --color-surface-container: #f0f4f8;
-  --color-surface-container-high: #e1e8f0;
-  --color-surface-container-highest: #d1d9e6;
+  --color-surface: var(--surface);
+  --color-surface-dim: var(--surface-dim);
+  --color-surface-bright: var(--surface-bright);
+  --color-surface-container-lowest: var(--surface-container-lowest);
+  --color-surface-container-low: var(--surface-container-low);
+  --color-surface-container: var(--surface-container);
+  --color-surface-container-high: var(--surface-container-high);
+  --color-surface-container-highest: var(--surface-container-highest);
 
   --color-slate-50: #f8fafc;
   --color-slate-100: #f1f5f9;
@@ -96,6 +96,15 @@ body {
 }
 
 :root {
+  --surface: #f8f9ff;
+  --surface-dim: #cbdbf5;
+  --surface-bright: #f8f9ff;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #eff4ff;
+  --surface-container: #f0f4f8;
+  --surface-container-high: #e1e8f0;
+  --surface-container-highest: #d1d9e6;
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -131,6 +140,15 @@ body {
 }
 
 .dark {
+  --surface: #0f141c;
+  --surface-dim: #1e2d45;
+  --surface-bright: #151b26;
+  --surface-container-lowest: #080b12;
+  --surface-container-low: #0c1219;
+  --surface-container: #111827;
+  --surface-container-high: #182130;
+  --surface-container-highest: #1f2a3d;
+
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);

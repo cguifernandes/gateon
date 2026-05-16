@@ -111,7 +111,7 @@ function Sidebar({
           sheetTitle="Navegação"
           showClose
           className={cn(
-            "w-[min(100%,var(--sidebar-width-mobile))] max-w-[min(100%,var(--sidebar-width-mobile))] border-border bg-white p-0 text-sidebar-foreground",
+            "w-[min(100%,var(--sidebar-width-mobile))] max-w-[min(100%,var(--sidebar-width-mobile))] border-border bg-background p-0 text-sidebar-foreground",
             className,
           )}
         >
@@ -126,7 +126,7 @@ function Sidebar({
       data-slot="sidebar"
       data-side={side}
       className={cn(
-        "hidden h-full min-h-0 w-(--sidebar-width) shrink-0 flex-col overflow-hidden bg-white text-sidebar-foreground md:flex",
+        "hidden h-full min-h-0 w-(--sidebar-width) shrink-0 flex-col overflow-hidden bg-background text-sidebar-foreground md:flex",
         className,
       )}
       {...props}
