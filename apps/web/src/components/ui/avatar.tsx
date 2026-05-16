@@ -23,11 +23,13 @@ function Avatar({
 
 function AvatarImage({
   className,
+  referrerPolicy = "no-referrer",
   ...props
 }: ComponentProps<typeof AvatarPrimitive.Image>) {
   return (
     <AvatarPrimitive.Image
       data-slot="avatar-image"
+      referrerPolicy={referrerPolicy}
       className={cn("aspect-square size-full object-cover", className)}
       {...props}
     />

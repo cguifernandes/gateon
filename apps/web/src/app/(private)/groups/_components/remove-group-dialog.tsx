@@ -12,7 +12,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { removeTelegramGroupAction } from "@/lib/server/remove-telegram-group.action";
 
@@ -41,18 +40,18 @@ export function RemoveGroupDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-          onMouseEnter={() => xIconRef.current?.startAnimation()}
-          onMouseLeave={() => xIconRef.current?.stopAnimation()}
-        >
-          <XIcon ref={xIconRef} size={15} />
-          <span className="sr-only">Remover grupo</span>
-        </Button>
-      </DialogTrigger>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="size-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+        onClick={() => setOpen(true)}
+        onMouseEnter={() => xIconRef.current?.startAnimation()}
+        onMouseLeave={() => xIconRef.current?.stopAnimation()}
+      >
+        <XIcon ref={xIconRef} size={15} />
+        <span className="sr-only">Remover grupo</span>
+      </Button>
 
       <DialogContent className="sm:max-w-md">
         <DialogHeader>

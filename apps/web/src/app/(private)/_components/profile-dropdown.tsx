@@ -1,6 +1,5 @@
 "use client";
 
-import { LogOut } from "lucide-react";
 import Link from "next/link";
 import { useRef } from "react";
 import { LogoutIcon, type LogoutIconHandle } from "@/components/icons/logout";
