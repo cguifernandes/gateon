@@ -2,6 +2,7 @@ import { GeistSans } from "geist/font/sans";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -34,8 +35,10 @@ export default function RootLayout({ children }: RootLayoutProps) {
       )}
     >
       <body className="min-h-full flex flex-col text-foreground">
-        <TooltipProvider>{children}</TooltipProvider>
-        <Toaster />
+        <ThemeProvider>
+          <TooltipProvider>{children}</TooltipProvider>
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );

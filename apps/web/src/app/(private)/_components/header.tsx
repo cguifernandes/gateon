@@ -1,8 +1,8 @@
 "use client";
 
+import { ThemeSwitcher } from "@/components/kibo-ui/theme-switcher";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import type { PublicUserDto } from "@/lib/zod/auth-schemas";
-import { AddGroupBotDialog } from "./add-group-bot-dialog";
 import { ProfileDropdown } from "./profile-dropdown";
 
 type HeaderProps = {
@@ -16,8 +16,8 @@ export function Header({ user }: HeaderProps) {
         <SidebarTrigger />
       </div>
 
-      <div className="flex items-center gap-6">
-        <AddGroupBotDialog />
+      <div className="flex items-center gap-4">
+        <ThemeSwitcher />
         <ProfileDropdown user={user} />
       </div>
     </header>
