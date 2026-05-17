@@ -14,12 +14,13 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
+      duration={5000}
       icons={{
         success: (
           <CircleCheckIcon
             isAnimateOnView
             animateOnHover={false}
-            size={20}
+            size={24}
             className="mt-1 text-green-500"
           />
         ),
@@ -29,7 +30,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
           <CircleErrorIcon
             isAnimateOnView
             animateOnHover={false}
-            size={20}
+            size={24}
             className="mt-1 text-destructive"
           />
         ),
@@ -45,7 +46,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }
       toastOptions={{
         classNames: {
-          toast: "cn-toast",
+          toast: "cn-toast !gap-x-4 !w-96",
           title:
             "font-semibold font-heading text-sm leading-snug text-foreground",
           description:

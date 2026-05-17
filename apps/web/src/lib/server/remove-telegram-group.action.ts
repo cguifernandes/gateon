@@ -1,8 +1,11 @@
 "use server";
 
+import { revalidateTag } from "next/cache";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { telegramGroupsCacheTag } from "@/lib/cache-tags";
 import { getServerApiBaseUrl, SESSION_COOKIE_NAME } from "@/lib/utils";
+import { getSessionUser } from "./get-session";
 
 export async function removeTelegramGroupAction(formData: FormData) {
   const groupId = String(formData.get("groupId") ?? "").trim();
@@ -32,6 +35,11 @@ export async function removeTelegramGroupAction(formData: FormData) {
     });
   } catch {
     /* Keep this test action simple: the next render still shows current data. */
+  }
+
+  const user = await getSessionUser();
+  if (user) {
+    revalidateTag(telegramGroupsCacheTag(user.id), "max");
   }
 
   redirect("/groups");

@@ -41,12 +41,24 @@ export async function POST(request: NextRequest) {
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
 
-    if (upstream.status === 401 || upstream.status === 403) {
+    if (upstream.status === 401) {
       return unauthorizedResponse();
     }
 
     if (!upstream.ok) {
-      const text = await upstream.text().catch(() => "");
+      const body: unknown = await upstream.json().catch(() => null);
+      if (
+        body &&
+        typeof body === "object" &&
+        "message" in body &&
+        typeof (body as { message?: unknown }).message === "string"
+      ) {
+        return NextResponse.json(body, { status: upstream.status });
+      }
+      const text =
+        typeof body === "string"
+          ? body
+          : await upstream.text().catch(() => "");
       return NextResponse.json(
         { error: text || "Upstream request failed" },
         { status: upstream.status >= 400 ? upstream.status : 502 },

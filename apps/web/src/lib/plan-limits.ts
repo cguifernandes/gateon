@@ -1,0 +1,43 @@
+import type { PlanId } from "@/lib/zod/plan-schemas";
+
+export const DEFAULT_PLAN_ID: PlanId = "free";
+
+export const PLAN_GROUP_LIMITS: Record<PlanId, number> = {
+  free: 5,
+  starter: 15,
+  pro: 100,
+};
+
+export const PLAN_LABELS: Record<PlanId, string> = {
+  free: "Gratuito",
+  starter: "Starter",
+  pro: "Pro",
+};
+
+export function getMaxGroupsForPlan(planId: PlanId): number {
+  return PLAN_GROUP_LIMITS[planId];
+}
+
+export type GroupLimitSnapshot = {
+  connectedCount: number;
+  maxGroups: number;
+  remaining: number;
+  isAtLimit: boolean;
+  canAddGroup: boolean;
+};
+
+export function buildGroupLimitSnapshot(
+  connectedCount: number,
+  maxGroups: number,
+): GroupLimitSnapshot {
+  const remaining = Math.max(0, maxGroups - connectedCount);
+  const isAtLimit = connectedCount >= maxGroups;
+
+  return {
+    connectedCount,
+    maxGroups,
+    remaining,
+    isAtLimit,
+    canAddGroup: !isAtLimit,
+  };
+}

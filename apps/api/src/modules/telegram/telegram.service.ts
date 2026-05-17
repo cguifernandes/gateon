@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TelegramConnectionStatus } from '@prisma/client';
+import { GroupLimitService } from '../../lib/group-limit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { hashSensitiveValue } from '../../utils/utils';
 import type { TelegramBotEventInput } from './schemas/telegram-schemas';
@@ -45,6 +46,7 @@ export class TelegramService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly groupLimit: GroupLimitService,
   ) {}
 
   isInternalSecretValid(candidate: string | undefined): boolean {
@@ -64,6 +66,7 @@ export class TelegramService {
   }
 
   async startGroupConnection(userId: string) {
+    await this.groupLimit.assertCanConnectNewGroup(userId);
     await this.expireOldIntents();
 
     const token = randomBytes(32).toString('base64url');
@@ -577,6 +580,10 @@ export class TelegramService {
       throw new ConflictException(
         'This Telegram group is already linked to another Gateon user.',
       );
+    }
+
+    if (!existingGroup) {
+      await this.groupLimit.assertCanConnectNewGroup(userId, chat.id);
     }
 
     const group = await this.prisma.telegramGroups.upsert({

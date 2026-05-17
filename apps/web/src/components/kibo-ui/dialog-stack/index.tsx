@@ -13,6 +13,7 @@ import type {
   ReactNode,
   SetStateAction,
 } from "react";
+import { usePathname } from "next/navigation";
 import {
   Children,
   cloneElement,
@@ -20,6 +21,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { CheckIcon } from "@/components/icons/check";
@@ -65,12 +67,34 @@ export const DialogStack = ({
   clickable = false,
   ...props
 }: DialogStackProps) => {
+  const pathname = usePathname();
   const [activeIndex, setActiveIndex] = useState(0);
   const [isOpen, setIsOpen] = useControllableState({
     defaultProp: defaultOpen,
     prop: open,
     onChange: onOpenChange,
   });
+
+  const previousPathnameRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (previousPathnameRef.current === null) {
+      previousPathnameRef.current = pathname;
+      return;
+    }
+    if (previousPathnameRef.current === pathname) {
+      return;
+    }
+    previousPathnameRef.current = pathname;
+    setIsOpen(false);
+    setActiveIndex(0);
+  }, [pathname, setIsOpen]);
+
+  useEffect(() => {
+    return () => {
+      setIsOpen(false);
+    };
+  }, [setIsOpen]);
 
   useEffect(() => {
     if (onOpenChange && isOpen !== undefined) {

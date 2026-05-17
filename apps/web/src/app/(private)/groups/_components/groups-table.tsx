@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import { SettingsIcon, UsersIcon } from "lucide-react";
+import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,9 +15,8 @@ import {
 } from "@/components/ui/table";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
 import { GroupStatusBadge } from "./group-status-badge";
+import { LimitGroups } from "./limit-groups";
 import { RemoveGroupDialog } from "./remove-group-dialog";
-
-const MAX_GROUPS = 5;
 
 type StatusFilter = "all" | "active" | "inactive" | "error";
 
@@ -28,10 +27,7 @@ const STATUS_FILTER_LABELS: Record<StatusFilter, string> = {
   error: "Com erro",
 };
 
-function matchesStatusFilter(
-  botStatus: string,
-  filter: StatusFilter,
-): boolean {
+function matchesStatusFilter(botStatus: string, filter: StatusFilter): boolean {
   if (filter === "all") return true;
   const s = botStatus.toLowerCase().replace(/_/g, "");
   if (filter === "active") {
@@ -71,14 +67,11 @@ function formatDate(value: string) {
 
 type GroupsTableProps = {
   groups: TelegramGroupSummaryDto[];
-  addGroupButton: React.ReactNode;
 };
 
-export function GroupsTable({ groups, addGroupButton }: GroupsTableProps) {
+export function GroupsTable({ groups }: GroupsTableProps) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-
-  const isAtLimit = groups.length >= MAX_GROUPS;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -94,40 +87,6 @@ export function GroupsTable({ groups, addGroupButton }: GroupsTableProps) {
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Limit banner */}
-      <div
-        className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm ${
-          isAtLimit
-            ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
-            : "border-border bg-muted/40 text-muted-foreground"
-        }`}
-      >
-        <div className="flex items-center gap-2">
-          <UsersIcon size={15} className="shrink-0" />
-          <span>
-            {isAtLimit ? (
-              <>
-                Você atingiu o limite de{" "}
-                <strong className="font-semibold">{MAX_GROUPS} grupos</strong>{" "}
-                do seu plano.{" "}
-                <span className="underline underline-offset-2 cursor-pointer hover:opacity-80">
-                  Faça upgrade para adicionar mais.
-                </span>
-              </>
-            ) : (
-              <>
-                <strong className="font-semibold text-foreground">
-                  {groups.length}/{MAX_GROUPS}
-                </strong>{" "}
-                grupos conectados no plano atual.
-              </>
-            )}
-          </span>
-        </div>
-        {isAtLimit ? null : addGroupButton}
-      </div>
-
-      {/* Search + filters */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative max-w-sm flex-1">
           <svg
@@ -179,10 +138,10 @@ export function GroupsTable({ groups, addGroupButton }: GroupsTableProps) {
                 <TableHead className="w-[220px] pl-4">Grupo</TableHead>
                 <TableHead>Status do bot</TableHead>
                 <TableHead>Membros</TableHead>
-                <TableHead className="hidden lg:table-cell">
-                  Gateway
+                <TableHead className="hidden lg:table-cell">Gateway</TableHead>
+                <TableHead className="hidden md:table-cell">
+                  Conectado
                 </TableHead>
-                <TableHead className="hidden md:table-cell">Conectado</TableHead>
                 <TableHead className="hidden md:table-cell">
                   Conectado por
                 </TableHead>
@@ -271,7 +230,10 @@ export function GroupsTable({ groups, addGroupButton }: GroupsTableProps) {
           </Table>
         </div>
       ) : (
-        <EmptyState hasGroups={groups.length > 0} isFiltered={!!search || statusFilter !== "all"} />
+        <EmptyState
+          hasGroups={groups.length > 0}
+          isFiltered={!!search || statusFilter !== "all"}
+        />
       )}
 
       {/* Results count */}
@@ -319,9 +281,7 @@ function EmptyState({
           </svg>
         </div>
         <div>
-          <p className="font-medium text-foreground">
-            Nenhum grupo encontrado
-          </p>
+          <p className="font-medium text-foreground">Nenhum grupo encontrado</p>
           <p className="mt-1 text-sm text-muted-foreground">
             Tente ajustar os filtros ou o termo de busca.
           </p>

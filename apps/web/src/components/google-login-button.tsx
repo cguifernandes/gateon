@@ -13,9 +13,10 @@ export function GoogleLoginButton() {
         const base = process.env.NEXT_PUBLIC_API_URL;
 
         if (!base) {
-          toast.error(
-            "Configuração incompleta: defina NEXT_PUBLIC_API_URL (URL da API acessível no navegador).",
-          );
+          toast.error("Configuração incompleta", {
+            description:
+              "Ocorreu um erro ao configurar a conexão com o Google. Tente novamente.",
+          });
           return;
         }
 

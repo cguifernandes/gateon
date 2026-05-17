@@ -20,7 +20,7 @@ import {
   type ExternalLinkIconHandle,
 } from "@/components/icons/external-link";
 import { LoaderIcon } from "@/components/icons/loader";
-import { PlusIcon } from "@/components/icons/plus";
+import { PlusIcon, type PlusIconHandle } from "@/components/icons/plus";
 import {
   ShieldCheckIcon,
   type ShieldCheckIconHandle,
@@ -47,6 +47,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useGroupLimit } from "@/contexts/group-limit-context";
+import { revalidateTelegramGroupsAction } from "@/lib/server/revalidate-telegram-groups.action";
 import { cn, TELEGRAM_BOT_PERMISSION_GROUPS } from "@/lib/utils";
 import type {
   TelegramConnectionStatusFromApi,
@@ -100,30 +102,70 @@ function Step1({
         signal: AbortSignal.timeout(20_000),
       });
 
-      if (res.status === 401 || res.status === 403) {
-        toast.error(
-          "Sua sessão expirou ou é inválida. Entre novamente para conectar o bot.",
-        );
+      const bodyUnknown: unknown = await res.json().catch(() => null);
+
+      if (res.status === 401) {
+        toast.error("Sessão expirada", {
+          description:
+            "Sua sessão é inválida ou expirou. Entre novamente para conectar o bot.",
+        });
+        return;
+      }
+
+      if (res.status === 403) {
+        const isGroupLimit =
+          bodyUnknown &&
+          typeof bodyUnknown === "object" &&
+          "error" in bodyUnknown &&
+          (bodyUnknown as { error?: unknown }).error === "GROUP_LIMIT_REACHED";
+        const maxGroups =
+          bodyUnknown &&
+          typeof bodyUnknown === "object" &&
+          "maxGroups" in bodyUnknown &&
+          typeof (bodyUnknown as { maxGroups?: unknown }).maxGroups === "number"
+            ? (bodyUnknown as { maxGroups: number }).maxGroups
+            : null;
+
+        if (isGroupLimit) {
+          toast.error("Limite de grupos atingido", {
+            description: maxGroups
+              ? `Seu plano permite até ${maxGroups} grupos. Faça upgrade para adicionar mais.`
+              : "Você atingiu o limite de grupos do seu plano atual.",
+          });
+        } else {
+          toast.error("Não foi possível iniciar a conexão", {
+            description:
+              "Esta ação não é permitida no momento. Tente novamente.",
+          });
+        }
         return;
       }
 
       if (!res.ok) {
-        const bodyUnknown: unknown = await res.json().catch(() => null);
         const msg =
           bodyUnknown &&
           typeof bodyUnknown === "object" &&
-          "error" in bodyUnknown &&
-          typeof (bodyUnknown as { error?: unknown }).error === "string"
-            ? (bodyUnknown as { error: string }).error
-            : "Não foi possível iniciar a conexão. Tente de novo.";
-        toast.error(msg);
+          "message" in bodyUnknown &&
+          typeof (bodyUnknown as { message?: unknown }).message === "string"
+            ? (bodyUnknown as { message: string }).message
+            : bodyUnknown &&
+                typeof bodyUnknown === "object" &&
+                "error" in bodyUnknown &&
+                typeof (bodyUnknown as { error?: unknown }).error === "string"
+              ? (bodyUnknown as { error: string }).error
+              : "Tente novamente em instantes.";
+        toast.error("Falha ao iniciar a conexão", {
+          description: msg,
+        });
         return;
       }
 
-      const raw: unknown = await res.json();
-      const parsed = startTelegramGroupConnectionResponseSchema.safeParse(raw);
+      const parsed =
+        startTelegramGroupConnectionResponseSchema.safeParse(bodyUnknown);
       if (!parsed.success) {
-        toast.error("Resposta inválida do servidor.");
+        toast.error("Erro no servidor", {
+          description: "A resposta recebida está em um formato inválido.",
+        });
         return;
       }
 
@@ -131,9 +173,10 @@ function Step1({
       openTelegramPrivateStart(parsed.data.privateStartUrl);
       goNext();
     } catch {
-      toast.error(
-        "Não foi possível falar com o servidor. Confira sua conexão e tente novamente.",
-      );
+      toast.error("Erro de conexão", {
+        description:
+          "Não foi possível falar com o servidor. Confira sua internet e tente novamente.",
+      });
     } finally {
       setIsStarting(false);
     }
@@ -250,7 +293,13 @@ function Step2() {
   );
 }
 
-function Step3({ intentId }: { intentId: string | null }) {
+type Step3Props = {
+  intentId: string | null;
+  onConnectionCompleted: () => void;
+};
+
+function Step3({ intentId, onConnectionCompleted }: Step3Props) {
+  const groupsRefreshedRef = useRef(false);
   const [latest, setLatest] =
     useState<TelegramGroupConnectionIntentStatusDto | null>(null);
   const [pollError, setPollError] = useState<string | null>(null);
@@ -259,9 +308,11 @@ function Step3({ intentId }: { intentId: string | null }) {
     if (!intentId) {
       setLatest(null);
       setPollError(null);
+      groupsRefreshedRef.current = false;
       return;
     }
 
+    groupsRefreshedRef.current = false;
     let cancelled = false;
     const id = intentId;
 
@@ -302,6 +353,12 @@ function Step3({ intentId }: { intentId: string | null }) {
 
         setPollError(null);
         setLatest(parsed.data);
+
+        if (parsed.data.status === "CONNECTED" && !groupsRefreshedRef.current) {
+          groupsRefreshedRef.current = true;
+          onConnectionCompleted();
+        }
+
         return TERMINAL_INTENT_STATUSES.has(parsed.data.status);
       } catch {
         return false;
@@ -326,7 +383,7 @@ function Step3({ intentId }: { intentId: string | null }) {
       cancelled = true;
       clearInterval(intervalId);
     };
-  }, [intentId]);
+  }, [intentId, onConnectionCompleted]);
 
   if (!intentId) {
     return (
@@ -349,7 +406,7 @@ function Step3({ intentId }: { intentId: string | null }) {
 
   if (status === "CONNECTED") {
     return (
-      <div className="space-y-4 rounded-xl w-full border border-green-600 p-5 text-center">
+      <div className="space-y-4 rounded-xl w-full border border-border p-5 text-center">
         <div className="flex size-16 mx-auto items-center justify-center rounded-xl bg-green-600/10">
           <CircleCheckIcon size={40} className="mx-auto text-green-600" />
         </div>
@@ -375,7 +432,7 @@ function Step3({ intentId }: { intentId: string | null }) {
 
   if (status === "EXPIRED" || status === "FAILED") {
     return (
-      <div className="space-y-4 rounded-xl border w-full border-destructive/40 bg-card p-5 text-center">
+      <div className="space-y-4 rounded-xl border w-full border-border bg-card p-5 text-center">
         <div className="flex size-16 mx-auto items-center justify-center rounded-xl bg-destructive/10">
           <BadgeAlertIcon size={40} className="mx-auto text-destructive" />
         </div>
@@ -439,11 +496,16 @@ function Step3({ intentId }: { intentId: string | null }) {
 }
 
 export function AddGroupBotDialog() {
+  const { canAddGroup, isAtLimit, maxGroups } = useGroupLimit();
   const [open, setOpen] = useState(false);
   const [intentId, setIntentId] = useState<string | null>(null);
   const xIconRefs = useRef<(XIconHandle | null)[]>([]);
+  const plusIconRefs = useRef<PlusIconHandle | null>(null);
 
   function handleOpenChange(next: boolean) {
+    if (next && !canAddGroup) {
+      return;
+    }
     setOpen(next);
     if (!next) {
       setIntentId(null);
@@ -452,6 +514,15 @@ export function AddGroupBotDialog() {
 
   const handleIntentCreated = useCallback((id: string) => {
     setIntentId(id);
+  }, []);
+
+  const handleConnectionCompleted = useCallback(async () => {
+    toast.success("Grupo conectado ao Gateon", {
+      description: "A lista de grupos foi atualizada no painel.",
+    });
+    setOpen(false);
+    setIntentId(null);
+    await revalidateTelegramGroupsAction();
   }, []);
 
   const steps: AddGroupBotWizardStep[] = useMemo(
@@ -473,10 +544,15 @@ export function AddGroupBotDialog() {
         title: "Confirmar conexão",
         description:
           "Acompanhamos automaticamente até o bot confirmar como administrador com as permissões corretas.",
-        content: <Step3 intentId={intentId} />,
+        content: (
+          <Step3
+            intentId={intentId}
+            onConnectionCompleted={handleConnectionCompleted}
+          />
+        ),
       },
     ],
-    [handleIntentCreated, intentId],
+    [handleConnectionCompleted, handleIntentCreated, intentId],
   );
 
   return (
@@ -485,10 +561,21 @@ export function AddGroupBotDialog() {
         <Button
           type="button"
           variant="default"
-          size="sm"
-          onClick={() => setOpen(true)}
+          disabled={!canAddGroup}
+          title={
+            isAtLimit
+              ? `Limite de ${maxGroups} grupos atingido no plano atual`
+              : undefined
+          }
+          onClick={() => {
+            if (canAddGroup) {
+              setOpen(true);
+            }
+          }}
+          onMouseEnter={() => plusIconRefs.current?.startAnimation()}
+          onMouseLeave={() => plusIconRefs.current?.stopAnimation()}
         >
-          <PlusIcon size={16} /> Cadastrar um novo
+          <PlusIcon ref={plusIconRefs} size={16} /> Cadastrar um novo
         </Button>
       </DialogStackTrigger>
 
