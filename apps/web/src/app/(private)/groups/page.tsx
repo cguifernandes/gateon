@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { AddGroupBotDialog } from "@/components/add-group-bot-dialog";
+import { DEFAULT_PLAN_ID, getMaxGroupsForPlan } from "@/lib/plan-limits";
 import { getTelegramGroups } from "@/lib/server/get-telegram-groups";
 import { cn } from "@/lib/utils";
 import { GroupsTable } from "./_components/groups-table";
@@ -13,17 +15,19 @@ export const metadata: Metadata = {
 
 export default async function GroupsPage() {
   const { groups, error } = await getTelegramGroups();
+  const isAtLimit =
+    !error && groups.length >= getMaxGroupsForPlan(DEFAULT_PLAN_ID);
 
   return (
-    <>
+    <div className="relative flex flex-col gap-6">
       {!error ? <SyncGroupLimit connectedCount={groups.length} /> : null}
 
       <LimitGroups />
 
       <div
         className={cn(
-          "flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between",
-          "mt-[46px]",
+          "flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between",
+          isAtLimit && "mt-[46px]",
         )}
       >
         <div className="flex flex-col gap-1">
@@ -44,8 +48,14 @@ export default async function GroupsPage() {
           {error}
         </div>
       ) : (
-        <GroupsTable groups={groups} />
+        <Suspense
+          fallback={
+            <div className="h-48 animate-pulse rounded-xl border border-border bg-muted/30" />
+          }
+        >
+          <GroupsTable groups={groups} />
+        </Suspense>
       )}
-    </>
+    </div>
   );
 }

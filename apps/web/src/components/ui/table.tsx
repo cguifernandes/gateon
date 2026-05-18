@@ -1,4 +1,4 @@
-import * as React from "react";
+import type * as React from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -15,13 +15,19 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
 
 function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
-    <thead className={cn("[&_tr]:border-b", className)} {...props} />
+    <thead
+      className={cn("[&_tr]:border-b border-border", className)}
+      {...props}
+    />
   );
 }
 
 function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
   return (
-    <tbody className={cn("[&_tr:last-child]:border-0", className)} {...props} />
+    <tbody
+      className={cn("[&_tr:last-child]:border-0 border-border", className)}
+      {...props}
+    />
   );
 }
 
@@ -41,7 +47,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   return (
     <tr
       className={cn(
-        "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+        "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted border-border",
         className,
       )}
       {...props}

@@ -223,14 +223,9 @@ function Step2() {
     <div className="flex flex-col w-full gap-y-4">
       {TELEGRAM_BOT_PERMISSION_GROUPS.map((group) => (
         <div key={group.id} className="flex flex-col gap-y-2">
-          <div>
-            <h3 className="font-semibold text-foreground text-base leading-snug">
-              {group.title}
-            </h3>
-            <p className="text-muted-foreground leading-relaxed font-light text-xs">
-              {group.subtitle}
-            </p>
-          </div>
+          <h3 className="font-semibold text-foreground text-base leading-snug">
+            {group.title}
+          </h3>
           {group.subgroups.map((sub) => (
             <div key={sub.id} className="space-y-2">
               <ul className="grid grid-cols-1 gap-2 md:grid-cols-2">
@@ -276,6 +271,9 @@ function Step2() {
                           >
                             {permission.title}
                           </p>
+                          <span className="text-xs text-muted-foreground">
+                            {permission.description}
+                          </span>
                         </li>
                       )}
                     />
