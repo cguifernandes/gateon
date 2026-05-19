@@ -2,6 +2,7 @@
 
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import { AnimatePresence, type HTMLMotionProps, motion } from "motion/react";
+import { usePathname } from "next/navigation";
 import { Portal } from "radix-ui";
 import type {
   ButtonHTMLAttributes,
@@ -13,7 +14,6 @@ import type {
   ReactNode,
   SetStateAction,
 } from "react";
-import { usePathname } from "next/navigation";
 import {
   Children,
   cloneElement,
@@ -89,6 +89,12 @@ export const DialogStack = ({
     setIsOpen(false);
     setActiveIndex(0);
   }, [pathname, setIsOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setActiveIndex(0);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     return () => {
@@ -380,7 +386,7 @@ export const DialogStackHeader = ({
 }: DialogStackHeaderProps) => (
   <div
     className={cn(
-      "flex flex-col space-y-1.5 text-center sm:text-left p-6 border-b border-border",
+      "flex flex-col space-y-1.5 text-center sm:text-left px-6 py-4 border-b border-border",
       className,
     )}
     {...props}
@@ -580,7 +586,7 @@ export const DialogStackProgress = ({
   }
 
   return (
-    <div {...props} className={cn("pt-6 w-full space-y-4", className)}>
+    <div {...props} className={cn("pt-4 w-full space-y-4", className)}>
       <div className="relative flex w-full justify-between gap-1 px-2">
         <div
           className="pointer-events-none mx-10 absolute inset-x-0 top-[15px] z-0 h-px bg-border sm:top-4"

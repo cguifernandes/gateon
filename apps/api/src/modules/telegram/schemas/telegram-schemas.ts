@@ -79,6 +79,19 @@ const botChatMemberEventSchema = z
     }
   });
 
+const chatMemberEventSchema = z.object({
+  eventType: z.literal('chat_member'),
+  chat: telegramChatSchema,
+  subjectUser: z.object({
+    id: telegramIdSchema,
+    username: optionalTextSchema,
+    firstName: optionalTextSchema,
+    lastName: optionalTextSchema,
+    isBot: z.boolean().optional(),
+  }),
+  newMemberStatus: telegramBotStatusSchema,
+});
+
 export const telegramBotEventSchema = z.union([
   z.object({
     eventType: z.literal('private_start'),
@@ -87,6 +100,7 @@ export const telegramBotEventSchema = z.union([
   }),
   groupStartEventSchema,
   botChatMemberEventSchema,
+  chatMemberEventSchema,
 ]);
 
 export type TelegramBotEventInput = z.infer<typeof telegramBotEventSchema>;

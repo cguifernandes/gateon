@@ -3,6 +3,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -41,8 +42,13 @@ const ACTIVE_INTENT_STATUSES: TelegramConnectionStatus[] = [
   TelegramConnectionStatus.WAITING_FOR_PERMISSIONS,
 ];
 
+/** Max members returned in list groups (full count in trackedMemberCount). */
+const MEMBER_PREVIEW_LIMIT = 50;
+
 @Injectable()
 export class TelegramService {
+  private readonly logger = new Logger(TelegramService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
@@ -136,6 +142,9 @@ export class TelegramService {
   }
 
   async listGroups(userId: string) {
+    const trackedMemberLimitPerGroup =
+      await this.groupLimit.getMaxManagedMembersPerGroup(userId);
+
     const groups = await this.prisma.telegramGroups.findMany({
       where: { userId },
       orderBy: { connectedAt: 'desc' },
@@ -143,11 +152,31 @@ export class TelegramService {
         id: true,
         telegramChatId: true,
         title: true,
+        description: true,
+        chatPhotoFileId: true,
         type: true,
         botStatus: true,
         connectedAt: true,
         updatedAt: true,
         addedByTelegramUserId: true,
+        addedByProfilePhotoFileId: true,
+        members: {
+          where: { leftAt: null },
+          orderBy: { updatedAt: 'desc' },
+          take: MEMBER_PREVIEW_LIMIT,
+          select: {
+            telegramUserId: true,
+            username: true,
+            firstName: true,
+            lastName: true,
+            profilePhotoFileId: true,
+          },
+        },
+        _count: {
+          select: {
+            members: { where: { leftAt: null } },
+          },
+        },
       },
     });
 
@@ -173,16 +202,91 @@ export class TelegramService {
           id: group.id,
           telegramChatId,
           title: group.title,
+          description: group.description,
+          chatPhotoUrl: group.chatPhotoFileId
+            ? `/api/telegram/groups/${group.id}/chat-photo`
+            : null,
           type: group.type,
           botStatus: group.botStatus,
           connectedAt: group.connectedAt,
           updatedAt: group.updatedAt,
           memberCount: await this.getTelegramChatMemberCount(telegramChatId),
+          trackedMemberCount: group._count.members,
+          trackedMemberLimitPerGroup,
+          trackedMemberLimitReached:
+            group._count.members >= trackedMemberLimitPerGroup,
           connectedBy:
             accountsByTelegramId.get(group.addedByTelegramUserId) ?? null,
+          connectedByProfilePhotoUrl: group.addedByProfilePhotoFileId
+            ? `/api/telegram/groups/${group.id}/connector-profile-photo`
+            : null,
+          members: group.members.map((m) => ({
+            telegramUserId: m.telegramUserId,
+            username: m.username,
+            firstName: m.firstName,
+            lastName: m.lastName,
+            profilePhotoUrl: m.profilePhotoFileId
+              ? `/api/telegram/groups/${group.id}/members/${encodeURIComponent(m.telegramUserId)}/profile-photo`
+              : null,
+          })),
         };
       }),
     );
+  }
+
+  async listGroupMembers(userId: string, groupId: string) {
+    const group = await this.prisma.telegramGroups.findFirst({
+      where: { id: groupId, userId },
+      select: {
+        id: true,
+        title: true,
+        telegramChatId: true,
+      },
+    });
+
+    if (!group) {
+      throw new NotFoundException('Telegram group connection not found.');
+    }
+
+    const trackedMemberLimitPerGroup =
+      await this.groupLimit.getMaxManagedMembersPerGroup(userId);
+
+    const members = await this.prisma.telegramGroupMembers.findMany({
+      where: { telegramGroupId: groupId, leftAt: null },
+      orderBy: { updatedAt: 'desc' },
+      select: {
+        telegramUserId: true,
+        username: true,
+        firstName: true,
+        lastName: true,
+        profilePhotoFileId: true,
+        updatedAt: true,
+      },
+    });
+
+    const telegramChatId = group.telegramChatId.trim();
+    const trackedMemberCount = members.length;
+
+    return {
+      id: group.id,
+      title: group.title,
+      telegramChatId,
+      memberCount: await this.getTelegramChatMemberCount(telegramChatId),
+      trackedMemberCount,
+      trackedMemberLimitPerGroup,
+      trackedMemberLimitReached:
+        trackedMemberCount >= trackedMemberLimitPerGroup,
+      members: members.map((m) => ({
+        telegramUserId: m.telegramUserId,
+        username: m.username,
+        firstName: m.firstName,
+        lastName: m.lastName,
+        profilePhotoUrl: m.profilePhotoFileId
+          ? `/api/telegram/groups/${group.id}/members/${encodeURIComponent(m.telegramUserId)}/profile-photo`
+          : null,
+        updatedAt: m.updatedAt.toISOString(),
+      })),
+    };
   }
 
   async removeGroupConnection(userId: string, groupId: string) {
@@ -236,12 +340,155 @@ export class TelegramService {
       );
     }
 
+    if (event.eventType === 'chat_member') {
+      return this.syncChatMemberForGateonGroup(event);
+    }
+
     return this.connectGroupFromTelegramUser(
       event.telegramUser,
       event.chat,
       event.botStatus,
       event.administratorRights,
     );
+  }
+
+  private async syncChatMemberForGateonGroup(
+    event: Extract<TelegramBotEventInput, { eventType: 'chat_member' }>,
+  ): Promise<{ ok: true; applied: boolean }> {
+    const { chat, subjectUser, newMemberStatus } = event;
+    if (chat.type !== 'group' && chat.type !== 'supergroup') {
+      return { ok: true, applied: false };
+    }
+    if (subjectUser.isBot === true) {
+      return { ok: true, applied: false };
+    }
+
+    const group = await this.prisma.telegramGroups.findUnique({
+      where: { telegramChatId: chat.id },
+      select: { id: true, userId: true },
+    });
+    if (!group) {
+      return { ok: true, applied: false };
+    }
+
+    const telegramUserId = subjectUser.id;
+    const username = subjectUser.username ?? null;
+    const firstName = subjectUser.firstName ?? null;
+    const lastName = subjectUser.lastName ?? null;
+
+    const isGone = newMemberStatus === 'left' || newMemberStatus === 'kicked';
+
+    if (isGone) {
+      await this.prisma.telegramGroupMembers.updateMany({
+        where: {
+          telegramGroupId: group.id,
+          telegramUserId,
+          leftAt: null,
+        },
+        data: {
+          leftAt: new Date(),
+          username,
+          firstName,
+          lastName,
+        },
+      });
+      return { ok: true, applied: true };
+    }
+
+    const wasManaged = await this.upsertActiveGroupMember(
+      group.id,
+      group.userId,
+      {
+        telegramUserId,
+        username,
+        firstName,
+        lastName,
+        refreshProfilePhoto: true,
+      },
+    );
+    return { ok: true, applied: wasManaged };
+  }
+
+  private async upsertActiveGroupMember(
+    gateonGroupId: string,
+    ownerUserId: string,
+    fields: {
+      telegramUserId: string;
+      username: string | null;
+      firstName: string | null;
+      lastName: string | null;
+      refreshProfilePhoto: boolean;
+    },
+  ): Promise<boolean> {
+    const existingMember = await this.prisma.telegramGroupMembers.findUnique({
+      where: {
+        telegramGroupId_telegramUserId: {
+          telegramGroupId: gateonGroupId,
+          telegramUserId: fields.telegramUserId,
+        },
+      },
+      select: { leftAt: true },
+    });
+
+    const createsOrReactivates =
+      !existingMember || existingMember.leftAt !== null;
+    if (createsOrReactivates) {
+      const maxManagedMembersPerGroup =
+        await this.groupLimit.getMaxManagedMembersPerGroup(ownerUserId);
+      const activeTrackedMembers = await this.prisma.telegramGroupMembers.count(
+        {
+          where: {
+            telegramGroupId: gateonGroupId,
+            leftAt: null,
+          },
+        },
+      );
+
+      if (activeTrackedMembers >= maxManagedMembersPerGroup) {
+        this.logger.log(
+          `Member tracking limit reached for group ${gateonGroupId} (owner ${ownerUserId}).` +
+            ` Skipping member ${fields.telegramUserId}. Active=${activeTrackedMembers}, limit=${maxManagedMembersPerGroup}.`,
+        );
+        return false;
+      }
+    }
+
+    let profilePhotoFileId: string | null | undefined;
+    if (fields.refreshProfilePhoto) {
+      try {
+        profilePhotoFileId = await this.fetchTelegramUserProfilePhotos(
+          fields.telegramUserId,
+        );
+      } catch {
+        profilePhotoFileId = undefined;
+      }
+    }
+
+    await this.prisma.telegramGroupMembers.upsert({
+      where: {
+        telegramGroupId_telegramUserId: {
+          telegramGroupId: gateonGroupId,
+          telegramUserId: fields.telegramUserId,
+        },
+      },
+      create: {
+        telegramGroupId: gateonGroupId,
+        telegramUserId: fields.telegramUserId,
+        username: fields.username,
+        firstName: fields.firstName,
+        lastName: fields.lastName,
+        profilePhotoFileId: profilePhotoFileId ?? null,
+        leftAt: null,
+      },
+      update: {
+        username: fields.username,
+        firstName: fields.firstName,
+        lastName: fields.lastName,
+        leftAt: null,
+        ...(profilePhotoFileId !== undefined ? { profilePhotoFileId } : {}),
+      },
+    });
+    return true;
   }
 
   private intentTtlMs(): number {
@@ -610,6 +857,38 @@ export class TelegramService {
       },
     });
 
+    await this.syncTelegramGroupRichMetadata(group.id, chat.id).catch(
+      (err: unknown) => {
+        this.logger.warn(
+          `Telegram metadata sync failed for group ${group.id}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      },
+    );
+
+    await this.upsertActiveGroupMember(group.id, userId, {
+      telegramUserId: actor.id,
+      username: actor.username ?? null,
+      firstName: actor.firstName ?? null,
+      lastName: actor.lastName ?? null,
+      refreshProfilePhoto: true,
+    })
+      .then((managed) => {
+        if (!managed) {
+          this.logger.log(
+            `Group connector member was not tracked due to plan cap for group ${group.id}.`,
+          );
+        }
+      })
+      .catch((err: unknown) => {
+        this.logger.warn(
+          `Failed to seed group connector as member for ${group.id}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      });
+
     const updatedIntent =
       await this.prisma.telegramGroupConnectionIntents.update({
         where: { id: intentId },
@@ -630,5 +909,237 @@ export class TelegramService {
       consumedAt: updatedIntent.consumedAt,
       group,
     };
+  }
+
+  async getGroupChatPhotoFile(
+    userId: string,
+    groupId: string,
+  ): Promise<{ buffer: Buffer; contentType: string } | null> {
+    const group = await this.prisma.telegramGroups.findFirst({
+      where: { id: groupId, userId },
+      select: {
+        chatPhotoFileId: true,
+      },
+    });
+    if (!group) {
+      return null;
+    }
+
+    if (!group.chatPhotoFileId) {
+      return null;
+    }
+
+    return this.downloadTelegramFileById(group.chatPhotoFileId);
+  }
+
+  async getGroupConnectorProfilePhotoFile(
+    userId: string,
+    groupId: string,
+  ): Promise<{ buffer: Buffer; contentType: string } | null> {
+    const group = await this.prisma.telegramGroups.findFirst({
+      where: { id: groupId, userId },
+      select: { addedByProfilePhotoFileId: true },
+    });
+
+    if (!group?.addedByProfilePhotoFileId) {
+      return null;
+    }
+
+    return this.downloadTelegramFileById(group.addedByProfilePhotoFileId);
+  }
+
+  async getGroupMemberProfilePhotoFile(
+    userId: string,
+    groupId: string,
+    memberTelegramUserId: string,
+  ): Promise<{ buffer: Buffer; contentType: string } | null> {
+    const row = await this.prisma.telegramGroupMembers.findFirst({
+      where: {
+        telegramGroupId: groupId,
+        telegramUserId: memberTelegramUserId,
+        leftAt: null,
+        group: { userId },
+      },
+      select: { profilePhotoFileId: true },
+    });
+
+    if (!row?.profilePhotoFileId) {
+      return null;
+    }
+
+    return this.downloadTelegramFileById(row.profilePhotoFileId);
+  }
+
+  private async callTelegramBotMethod<T>(
+    method: string,
+    payload: Record<string, unknown>,
+  ): Promise<T | null> {
+    const token = this.getTelegramBotToken();
+    if (!token) {
+      return null;
+    }
+
+    try {
+      const response = await fetch(
+        `https://api.telegram.org/bot${token}/${method}`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(15_000),
+        },
+      );
+      if (!response.ok) {
+        return null;
+      }
+      const data = (await response.json()) as TelegramApiResponse<T>;
+      if (!data.ok) {
+        return null;
+      }
+      return data.result as T;
+    } catch {
+      return null;
+    }
+  }
+
+  private async downloadTelegramFileById(
+    fileId: string,
+  ): Promise<{ buffer: Buffer; contentType: string } | null> {
+    const token = this.getTelegramBotToken();
+    if (!token || !fileId.trim()) {
+      return null;
+    }
+
+    try {
+      const meta = await this.callTelegramBotMethod<{ file_path?: string }>(
+        'getFile',
+        { file_id: fileId.trim() },
+      );
+      const filePath = meta?.file_path;
+      if (!filePath || typeof filePath !== 'string') {
+        return null;
+      }
+
+      const downloadUrl = `https://api.telegram.org/file/bot${token}/${filePath}`;
+      const fileResponse = await fetch(downloadUrl, {
+        signal: AbortSignal.timeout(20_000),
+      });
+      if (!fileResponse.ok) {
+        return null;
+      }
+
+      const buffer = Buffer.from(await fileResponse.arrayBuffer());
+      const contentType =
+        fileResponse.headers.get('content-type') ?? 'application/octet-stream';
+      return { buffer, contentType };
+    } catch {
+      return null;
+    }
+  }
+
+  private async fetchTelegramGetChatDetails(telegramChatId: string): Promise<{
+    title?: string;
+    description?: string | null;
+    chatPhotoFileId?: string;
+  } | null> {
+    const result = await this.callTelegramBotMethod<Record<string, unknown>>(
+      'getChat',
+      { chat_id: telegramChatId.trim() },
+    );
+    if (!result || typeof result !== 'object') {
+      return null;
+    }
+
+    const title =
+      typeof result.title === 'string' && result.title.trim()
+        ? result.title.trim()
+        : undefined;
+    const description =
+      typeof result.description === 'string' ? result.description : null;
+
+    let smallFileId: string | undefined;
+    let bigFileId: string | undefined;
+    const photo = result.photo;
+    if (photo && typeof photo === 'object') {
+      const p = photo as Record<string, unknown>;
+      if (typeof p.small_file_id === 'string') {
+        smallFileId = p.small_file_id;
+      }
+      if (typeof p.big_file_id === 'string') {
+        bigFileId = p.big_file_id;
+      }
+    }
+
+    const chatPhotoFileId = smallFileId ?? bigFileId;
+
+    return { title, description, chatPhotoFileId };
+  }
+
+  private async fetchTelegramUserProfilePhotos(
+    telegramUserId: string,
+  ): Promise<string | null> {
+    const numericId = Number(telegramUserId);
+    if (!Number.isFinite(numericId)) {
+      return null;
+    }
+
+    const result = await this.callTelegramBotMethod<{
+      photos?: { file_id: string; width: number; height: number }[][];
+    }>('getUserProfilePhotos', {
+      user_id: numericId,
+      limit: 1,
+    });
+
+    const sizes = result?.photos?.[0];
+    if (!sizes?.length) {
+      return null;
+    }
+
+    const sorted = [...sizes].sort(
+      (a, b) => a.width * a.height - b.width * b.height,
+    );
+    return sorted[0]?.file_id ?? null;
+  }
+
+  private async syncTelegramGroupRichMetadata(
+    groupRecordId: string,
+    telegramChatId: string,
+  ): Promise<void> {
+    const chat = telegramChatId.trim();
+    if (!chat) {
+      return;
+    }
+
+    const groupRow = await this.prisma.telegramGroups.findUnique({
+      where: { id: groupRecordId },
+      select: { addedByTelegramUserId: true },
+    });
+    if (!groupRow) {
+      return;
+    }
+
+    let connectorProfilePhotoFileId: string | null = null;
+    try {
+      connectorProfilePhotoFileId = await this.fetchTelegramUserProfilePhotos(
+        groupRow.addedByTelegramUserId,
+      );
+    } catch {
+      connectorProfilePhotoFileId = null;
+    }
+
+    const details = await this.fetchTelegramGetChatDetails(chat);
+    await this.prisma.telegramGroups.update({
+      where: { id: groupRecordId },
+      data: {
+        ...(details
+          ? {
+              ...(details.title != null ? { title: details.title } : {}),
+              description: details.description ?? null,
+              chatPhotoFileId: details.chatPhotoFileId ?? null,
+            }
+          : {}),
+        addedByProfilePhotoFileId: connectorProfilePhotoFileId,
+      },
+    });
   }
 }

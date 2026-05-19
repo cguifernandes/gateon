@@ -130,8 +130,8 @@ export function FiltersPopover({
           </Button>
         )}
       />
-      <PopoverContent align="end" className={cn("w-80 p-0")}>
-        <div className="p-2 flex flex-col gap-3">
+      <PopoverContent align="end" className={cn("w-70 p-0")}>
+        <div className="p-3 flex flex-col gap-3">
           <PopoverHeader>
             <PopoverTitle>{title}</PopoverTitle>
             {description && (
@@ -193,7 +193,7 @@ export function FiltersPopover({
                     startMonth={new Date(2010, 0)}
                     endMonth={new Date()}
                     classNames={{
-                      root: "rounded-lg border-2 border-border",
+                      root: "rounded-lg border border-border",
                     }}
                   />
                 </>
@@ -211,7 +211,7 @@ export function FiltersPopover({
                     startMonth={new Date(2010, 0)}
                     endMonth={new Date()}
                     classNames={{
-                      root: "rounded-lg border-2 border-border",
+                      root: "rounded-lg border border-border",
                     }}
                   />
                 </>

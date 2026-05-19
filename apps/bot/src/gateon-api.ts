@@ -39,6 +39,12 @@ type TelegramBotEvent =
       chat: TelegramChatPayload;
       botStatus: string;
       administratorRights?: TelegramAdministratorRightsPayload;
+    }
+  | {
+      eventType: "chat_member";
+      chat: TelegramChatPayload;
+      subjectUser: TelegramUserPayload & { isBot?: boolean };
+      newMemberStatus: string;
     };
 
 export type TelegramBotEventResult = {

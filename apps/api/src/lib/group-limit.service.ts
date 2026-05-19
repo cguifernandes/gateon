@@ -1,6 +1,10 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../modules/prisma/prisma.service';
-import { DEFAULT_PLAN_ID, getMaxGroupsForPlan } from './plan-limits';
+import {
+  DEFAULT_PLAN_ID,
+  getMaxGroupsForPlan,
+  getMaxManagedMembersPerGroupForPlan,
+} from './plan-limits';
 import type { PlanId } from './zod/plan-schemas';
 
 export const GROUP_LIMIT_REACHED_CODE = 'GROUP_LIMIT_REACHED';
@@ -16,6 +20,11 @@ export class GroupLimitService {
 
   async getConnectedGroupCount(userId: string): Promise<number> {
     return this.prisma.telegramGroups.count({ where: { userId } });
+  }
+
+  async getMaxManagedMembersPerGroup(userId: string): Promise<number> {
+    const planId = await this.resolvePlanId(userId);
+    return getMaxManagedMembersPerGroupForPlan(planId);
   }
 
   /**

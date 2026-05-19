@@ -292,3 +292,7 @@ body {
     transform: scale(1.03);
   }
 }
+
+*::placeholder {
+  @apply text-gray-500;
+}

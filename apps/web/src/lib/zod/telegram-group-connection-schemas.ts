@@ -47,16 +47,51 @@ export const telegramGroupMemberSummarySchema = z.object({
   lastName: z.string().nullable(),
 });
 
+export const telegramGroupChatMemberSchema = z.object({
+  telegramUserId: z.string(),
+  username: z.string().nullable(),
+  firstName: z.string().nullable(),
+  lastName: z.string().nullable(),
+  profilePhotoUrl: z.string().nullable(),
+});
+
+export const telegramGroupChatMemberDetailSchema =
+  telegramGroupChatMemberSchema.extend({
+    updatedAt: z.string(),
+  });
+
+export const telegramGroupMembersListResponseSchema = z.object({
+  id: z.string(),
+  title: z.string().nullable(),
+  telegramChatId: z.string(),
+  memberCount: z.number().int().nonnegative().nullable(),
+  trackedMemberCount: z.number().int().nonnegative(),
+  trackedMemberLimitPerGroup: z.number().int().positive(),
+  trackedMemberLimitReached: z.boolean(),
+  members: z.array(telegramGroupChatMemberDetailSchema),
+});
+
+export type TelegramGroupMembersListResponseDto = z.infer<
+  typeof telegramGroupMembersListResponseSchema
+>;
+
 export const telegramGroupSummarySchema = z.object({
   id: z.string(),
   telegramChatId: z.string(),
   title: z.string().nullable(),
+  description: z.string().nullable(),
+  chatPhotoUrl: z.string().nullable(),
   type: z.string(),
   botStatus: z.string(),
   connectedAt: z.string(),
   updatedAt: z.string(),
   memberCount: z.number().int().nonnegative().nullable(),
+  trackedMemberCount: z.number().int().nonnegative(),
+  trackedMemberLimitPerGroup: z.number().int().positive(),
+  trackedMemberLimitReached: z.boolean(),
   connectedBy: telegramGroupMemberSummarySchema.nullable(),
+  connectedByProfilePhotoUrl: z.string().nullable(),
+  members: z.array(telegramGroupChatMemberSchema),
 });
 
 export const telegramGroupsResponseSchema = z.array(telegramGroupSummarySchema);

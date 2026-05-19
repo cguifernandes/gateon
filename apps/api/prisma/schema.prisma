@@ -110,19 +110,42 @@ model TelegramGroupConnectionIntents {
 }
 
 model TelegramGroups {
-  id                    String   @id @default(cuid())
-  userId                String
-  telegramChatId        String   @unique
-  title                 String?
-  type                  String
-  addedByTelegramUserId String
-  botStatus             String
-  connectedAt           DateTime @default(now())
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                             String   @id @default(cuid())
+  userId                         String
+  telegramChatId                 String   @unique
+  title                          String?
+  description                    String?  @db.Text
+  chatPhotoFileId                String?
+  type                           String
+  addedByTelegramUserId          String
+  botStatus                      String
+  addedByProfilePhotoFileId      String?
+  connectedAt                    DateTime @default(now())
+  createdAt                      DateTime @default(now())
+  updatedAt                      DateTime @updatedAt
 
-  user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    Users                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  members TelegramGroupMembers[]
 
   @@index([userId])
   @@index([addedByTelegramUserId])
+}
+
+model TelegramGroupMembers {
+  id                 String    @id @default(cuid())
+  telegramGroupId    String
+  telegramUserId     String
+  username           String?
+  firstName          String?
+  lastName           String?
+  profilePhotoFileId String?
+  leftAt             DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  group TelegramGroups @relation(fields: [telegramGroupId], references: [id], onDelete: Cascade)
+
+  @@unique([telegramGroupId, telegramUserId])
+  @@index([telegramGroupId])
+  @@index([telegramGroupId, leftAt])
 }

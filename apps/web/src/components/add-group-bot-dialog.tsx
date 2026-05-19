@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import type { MouseEvent, ReactElement, ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 import {
   Fragment,
   useCallback,
@@ -42,14 +42,9 @@ import {
   useDialogStackNavigation,
 } from "@/components/kibo-ui/dialog-stack";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useGroupLimit } from "@/contexts/group-limit-context";
 import { revalidateTelegramGroupsAction } from "@/lib/server/revalidate-telegram-groups.action";
-import { cn, TELEGRAM_BOT_PERMISSION_GROUPS } from "@/lib/utils";
+import { TELEGRAM_BOT_PERMISSION_GROUPS } from "@/lib/utils";
 import type {
   TelegramConnectionStatusFromApi,
   TelegramGroupConnectionIntentStatusDto,
@@ -69,8 +64,8 @@ type AddGroupBotWizardStep = {
 };
 
 const dialogProgressSteps = [
-  { id: "add-bot", label: "Conectar" },
   { id: "permissions", label: "Permissões" },
+  { id: "connect", label: "Conectar" },
   { id: "confirm", label: "Confirmar" },
 ] as const;
 
@@ -84,7 +79,66 @@ function openTelegramPrivateStart(url: string) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
-function Step1({
+function PermissionsStep() {
+  const shieldIconRefs = useRef<Record<string, ShieldCheckIconHandle | null>>(
+    {},
+  );
+
+  return (
+    <div className="flex w-full flex-col gap-6">
+      {TELEGRAM_BOT_PERMISSION_GROUPS.map((group) => (
+        <section key={group.id} className="space-y-3">
+          <div className="space-y-1">
+            <h3 className="font-semibold text-base text-foreground leading-snug">
+              {group.title}
+            </h3>
+            {"subtitle" in group && group.subtitle ? (
+              <p className="text-muted-foreground text-sm">{group.subtitle}</p>
+            ) : null}
+          </div>
+          <ul className="space-y-2">
+            {group.subgroups.flatMap((sub) =>
+              sub.items.map((permission) => (
+                <li
+                  key={permission.id}
+                  className="flex gap-3 rounded-lg border border-border bg-card px-3 py-2.5"
+                  onMouseEnter={() =>
+                    shieldIconRefs.current[permission.id]?.startAnimation()
+                  }
+                  onMouseLeave={() =>
+                    shieldIconRefs.current[permission.id]?.stopAnimation()
+                  }
+                >
+                  <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
+                    <ShieldCheckIcon
+                      ref={(el) => {
+                        shieldIconRefs.current[permission.id] = el;
+                      }}
+                      animateOnHover={false}
+                      className="text-primary"
+                      isAnimateOnView={false}
+                      size={18}
+                    />
+                  </span>
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <p className="font-medium text-foreground text-sm">
+                      {permission.title}
+                    </p>
+                    <p className="text-muted-foreground text-sm leading-snug">
+                      {permission.description}
+                    </p>
+                  </div>
+                </li>
+              )),
+            )}
+          </ul>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function ConnectStep({
   onIntentCreated,
 }: {
   onIntentCreated: (intentId: string) => void;
@@ -93,7 +147,7 @@ function Step1({
   const externalLinkIcon = useRef<ExternalLinkIconHandle>(null);
   const [isStarting, setIsStarting] = useState(false);
 
-  async function handleTelegramPrimaryAction() {
+  async function handleConnectTelegram() {
     setIsStarting(true);
     try {
       const res = await fetch("/api/telegram/group-connections/start", {
@@ -204,7 +258,7 @@ function Step1({
         disabled={isStarting}
         loading={isStarting}
         className="max-w-md w-full flex items-center gap-x-2"
-        onClick={() => void handleTelegramPrimaryAction()}
+        onClick={() => void handleConnectTelegram()}
         onMouseEnter={() => externalLinkIcon.current?.startAnimation()}
         onMouseLeave={() => externalLinkIcon.current?.stopAnimation()}
       >
@@ -214,89 +268,12 @@ function Step1({
   );
 }
 
-function Step2() {
-  const shieldIconRefs = useRef<Record<string, ShieldCheckIconHandle | null>>(
-    {},
-  );
-
-  return (
-    <div className="flex flex-col w-full gap-y-4">
-      {TELEGRAM_BOT_PERMISSION_GROUPS.map((group) => (
-        <div key={group.id} className="flex flex-col gap-y-2">
-          <h3 className="font-semibold text-foreground text-base leading-snug">
-            {group.title}
-          </h3>
-          {group.subgroups.map((sub) => (
-            <div key={sub.id} className="space-y-2">
-              <ul className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                {sub.items.map((permission) => (
-                  <Tooltip key={permission.id}>
-                    <TooltipTrigger
-                      render={(props) => (
-                        <li
-                          {...props}
-                          className={cn(
-                            "flex items-center gap-2 rounded-xl border border-border bg-card p-2",
-                            props.className,
-                          )}
-                          onMouseEnter={(e: MouseEvent<HTMLLIElement>) => {
-                            props.onMouseEnter?.(e);
-                            shieldIconRefs.current[
-                              permission.id
-                            ]?.startAnimation();
-                          }}
-                          onMouseLeave={(e: MouseEvent<HTMLLIElement>) => {
-                            props.onMouseLeave?.(e);
-                            shieldIconRefs.current[
-                              permission.id
-                            ]?.stopAnimation();
-                          }}
-                        >
-                          <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
-                            <ShieldCheckIcon
-                              ref={(el) => {
-                                shieldIconRefs.current[permission.id] = el;
-                              }}
-                              animateOnHover={false}
-                              className="text-primary"
-                              isAnimateOnView={false}
-                              size={18}
-                            />
-                          </span>
-                          <p
-                            className={cn(
-                              "min-w-0 flex-1 truncate font-medium text-foreground text-sm",
-                              "underline decoration-dotted decoration-primary/60 underline-offset-2",
-                            )}
-                          >
-                            {permission.title}
-                          </p>
-                          <span className="text-xs text-muted-foreground">
-                            {permission.description}
-                          </span>
-                        </li>
-                      )}
-                    />
-                    <TooltipContent className="max-w-sm" side="top">
-                      {permission.description}
-                    </TooltipContent>
-                  </Tooltip>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-type Step3Props = {
+type ConfirmStepProps = {
   intentId: string | null;
   onConnectionCompleted: () => void;
 };
 
-function Step3({ intentId, onConnectionCompleted }: Step3Props) {
+function ConfirmStep({ intentId, onConnectionCompleted }: ConfirmStepProps) {
   const groupsRefreshedRef = useRef(false);
   const [latest, setLatest] =
     useState<TelegramGroupConnectionIntentStatusDto | null>(null);
@@ -390,8 +367,8 @@ function Step3({ intentId, onConnectionCompleted }: Step3Props) {
           <BadgeAlertIcon size={40} className="mx-auto text-yellow-500" />
         </div>
         <p className="text-muted-foreground text-sm font-light leading-relaxed">
-          Conclua a primeira etapa (abrir o Telegram com o link seguro) para
-          poder acompanhar a conexão aqui.
+          Volte ao passo anterior e abra o Telegram com o link seguro para
+          acompanhar a conexão aqui.
         </p>
       </div>
     );
@@ -526,28 +503,29 @@ export function AddGroupBotDialog() {
   const steps: AddGroupBotWizardStep[] = useMemo(
     () => [
       {
-        title: "Confirmar identidade no Telegram",
+        title: "Permissões do bot no grupo",
         description:
-          "Geramos um link seguro só para você. Você confirmará em privado com o bot e depois escolherá o grupo.",
-        content: <Step1 onIntentCreated={handleIntentCreated} />,
-        showNextButton: false,
+          "Antes de conectar, confira o que o Gateon precisa no Telegram. No grupo, promova o bot a administrador e marque as permissões da lista.",
+        content: <PermissionsStep />,
       },
       {
-        title: "Conceder permissões ao bot",
+        title: "Conectar no Telegram",
         description:
-          "No grupo escolhido, promova o bot a administrador e marque todas as permissões obrigatórias abaixo (e as opcionais desejadas).",
-        content: <Step2 />,
+          "Abra o bot em uma conversa privada, confirme sua identidade e escolha o grupo onde o Gateon será adicionado.",
+        content: <ConnectStep onIntentCreated={handleIntentCreated} />,
+        showNextButton: false,
       },
       {
         title: "Confirmar conexão",
         description:
           "Acompanhamos automaticamente até o bot confirmar como administrador com as permissões corretas.",
         content: (
-          <Step3
+          <ConfirmStep
             intentId={intentId}
             onConnectionCompleted={handleConnectionCompleted}
           />
         ),
+        showNextButton: false,
       },
     ],
     [handleConnectionCompleted, handleIntentCreated, intentId],
@@ -587,10 +565,10 @@ export function AddGroupBotDialog() {
 
           return (
             <DialogStackContent
-              className="h-[600px]"
+              className="flex h-[640px] flex-col overflow-hidden"
               key={`${step.title}-${index}`}
             >
-              <DialogStackHeader>
+              <DialogStackHeader className="shrink-0">
                 <div className="flex items-start justify-between">
                   <div className="flex flex-col gap-y-1 pr-2">
                     <DialogStackTitle>{step.title}</DialogStackTitle>
@@ -616,7 +594,7 @@ export function AddGroupBotDialog() {
                 </div>
                 <DialogStackProgress steps={[...dialogProgressSteps]} />
               </DialogStackHeader>
-              <div className="min-h-0 flex items-center justify-center w-full h-full p-6 flex-1 overflow-y-auto">
+              <div className="min-h-0 shrink-0 flex-1 h-full  overflow-y-auto overscroll-contain p-6">
                 {step.content}
               </div>
               {showFooter && (
