@@ -2,7 +2,7 @@
 
 import { ptBR } from "date-fns/locale";
 import { Search } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import {
   SlidersHorizontalIcon,
   type SlidersHorizontalIconHandle,
@@ -19,6 +19,11 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 export interface TextFilterParam {
@@ -98,38 +103,64 @@ export function FiltersPopover({
   description,
 }: FiltersPopoverProps) {
   const refIconFilters = useRef<SlidersHorizontalIconHandle>(null);
+  const [popoverOpen, setPopoverOpen] = useState(false);
 
   const activeFilterCount = filters.filter(isFilterActive).length;
   const hasFilters = activeFilterCount > 0;
+  const tooltipLabel = hasFilters
+    ? `${activeFilterCount} filtro${activeFilterCount === 1 ? "" : "s"} ativo${activeFilterCount === 1 ? "" : "s"}`
+    : "Abrir filtros";
 
   return (
-    <Popover>
-      <PopoverTrigger
-        render={(props) => (
-          <Button
-            {...props}
-            variant={hasFilters ? "default" : "outline"}
-            className={cn("relative size-[38px] shrink-0 overflow-visible")}
-            aria-label={
-              hasFilters
-                ? `Filtros (${activeFilterCount} ativo${activeFilterCount === 1 ? "" : "s"})`
-                : "Abrir filtros"
-            }
-            onMouseEnter={() => refIconFilters.current?.startAnimation()}
-            onMouseLeave={() => refIconFilters.current?.stopAnimation()}
-          >
-            <SlidersHorizontalIcon ref={refIconFilters} size={18} />
-            {hasFilters ? (
-              <span
-                aria-hidden
-                className="absolute -top-1.5 -right-1.5 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-foreground px-0.5 text-[10px] leading-none font-semibold text-primary tabular-nums shadow-sm ring-1 ring-primary"
-              >
-                {activeFilterCount > 9 ? "9+" : activeFilterCount}
-              </span>
-            ) : null}
-          </Button>
-        )}
-      />
+    <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+      <Tooltip disabled={popoverOpen}>
+        <PopoverTrigger
+          render={(popoverProps) => (
+            <TooltipTrigger
+              render={(tooltipProps) => (
+                <Button
+                  {...popoverProps}
+                  {...tooltipProps}
+                  variant={hasFilters ? "default" : "outline"}
+                  className={cn(
+                    "relative size-[36px] shrink-0 overflow-visible",
+                    popoverProps.className,
+                    tooltipProps.className,
+                  )}
+                  aria-label={tooltipLabel}
+                  onMouseEnter={(event) => {
+                    popoverProps.onMouseEnter?.(event);
+                    tooltipProps.onMouseEnter?.(event);
+                    refIconFilters.current?.startAnimation();
+                  }}
+                  onMouseLeave={(event) => {
+                    popoverProps.onMouseLeave?.(event);
+                    tooltipProps.onMouseLeave?.(event);
+                    refIconFilters.current?.stopAnimation();
+                  }}
+                  onClick={(event) => {
+                    popoverProps.onClick?.(event);
+                    tooltipProps.onClick?.(event);
+                  }}
+                >
+                  <SlidersHorizontalIcon ref={refIconFilters} />
+                  {hasFilters ? (
+                    <span
+                      aria-hidden
+                      className="absolute -top-1.5 -right-1.5 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-foreground px-0.5 text-[10px] leading-none font-semibold text-primary tabular-nums shadow-sm ring-1 ring-primary"
+                    >
+                      {activeFilterCount > 9 ? "9+" : activeFilterCount}
+                    </span>
+                  ) : null}
+                </Button>
+              )}
+            />
+          )}
+        />
+        <TooltipContent sideOffset={8} side="bottom">
+          {tooltipLabel}
+        </TooltipContent>
+      </Tooltip>
       <PopoverContent align="end" className={cn("w-70 p-0")}>
         <div className="p-3 flex flex-col gap-3">
           <PopoverHeader>

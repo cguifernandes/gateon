@@ -173,9 +173,7 @@ function GroupsEmptyState({
   return (
     <Empty
       className={
-        embedded
-          ? "border-0 py-10"
-          : "rounded-xl border border-border border-dashed"
+        embedded ? "border-0 py-10" : "rounded-xl border border-border"
       }
     >
       <EmptyHeader>
@@ -294,29 +292,32 @@ export function GroupsTable({ groups }: GroupsTableProps) {
       ) : (
         <>
           <div className="flex items-center justify-between gap-3">
-            <div className="relative max-w-md flex-1">
-              <SearchIcon
-                ref={searchIconRef}
-                className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
-                size={16}
-              />
-              <Input
-                placeholder="Pesquisar por nome, descrição ou ID do grupo"
-                type="search"
-                value={search}
-                className="pl-9"
-                onFocus={() => searchIconRef.current?.startAnimation()}
-                onBlur={() => searchIconRef.current?.stopAnimation()}
-                onChange={(e) => setSearch(e.target.value)}
+            <div className="flex w-full items-center gap-3">
+              <div className="relative max-w-sm flex-1">
+                <SearchIcon
+                  ref={searchIconRef}
+                  className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
+                  size={16}
+                />
+                <Input
+                  placeholder="Pesquisar por nome, descrição ou ID do grupo"
+                  type="search"
+                  value={search}
+                  className="pl-9"
+                  onFocus={() => searchIconRef.current?.startAnimation()}
+                  onBlur={() => searchIconRef.current?.stopAnimation()}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <GroupsFiltersPopover
+                botStatus={botStatusFilter}
+                onBotStatusChange={setBotStatusFilter}
+                connectedRange={connectedRange}
+                onConnectedRangeChange={setConnectedRange}
+                onClearFilters={clearPopoverFilters}
               />
             </div>
-            <GroupsFiltersPopover
-              botStatus={botStatusFilter}
-              onBotStatusChange={setBotStatusFilter}
-              connectedRange={connectedRange}
-              onConnectedRangeChange={setConnectedRange}
-              onClearFilters={clearPopoverFilters}
-            />
+            <AddGroupBotDialog />
           </div>
           <div className="overflow-hidden rounded-xl border border-border bg-background shadow-xs">
             <Table>

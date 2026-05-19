@@ -545,6 +545,10 @@ export function useDialogStackNavigation() {
     }
   }, [context.activeIndex, context.setActiveIndex]);
 
+  const goToStart = useCallback(() => {
+    context.setActiveIndex(0);
+  }, [context.setActiveIndex]);
+
   const canGoNext =
     context.totalDialogs > 0 && context.activeIndex < context.totalDialogs - 1;
   const canGoPrevious = context.activeIndex > 0;
@@ -552,6 +556,7 @@ export function useDialogStackNavigation() {
   return {
     goNext,
     goPrevious,
+    goToStart,
     activeIndex: context.activeIndex,
     totalDialogs: context.totalDialogs,
     canGoNext,

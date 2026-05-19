@@ -37,10 +37,10 @@ export function StepsSection() {
           {steps.map((s) => (
             <Card
               key={s.n}
-              className="border-dashed border-slate-300/80 bg-surface-container-high/30 text-center"
+              className="border-slate-300/80 bg-surface-container-high/30 text-center"
             >
               <CardHeader>
-                <div className="mx-auto mb-2 flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-dashed border-border bg-card text-2xl font-bold text-primary">
+                <div className="mx-auto mb-2 flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-border bg-card text-2xl font-bold text-primary">
                   {s.n}
                 </div>
                 <CardTitle className="text-base">

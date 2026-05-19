@@ -18,7 +18,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       icons={{
         success: (
           <CircleCheckIcon
-            isAnimateOnView
+            isAnimateOnView={true}
             animateOnHover={false}
             size={24}
             className="mt-1 text-green-500"
@@ -28,7 +28,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
         warning: <TriangleAlertIcon className="size-4 mt-1 text-yellow-500" />,
         error: (
           <CircleErrorIcon
-            isAnimateOnView
+            isAnimateOnView={true}
             animateOnHover={false}
             size={24}
             className="mt-1 text-destructive"

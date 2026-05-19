@@ -1,9 +1,11 @@
 "use client";
 
-import { Monitor, Moon, Sun } from "lucide-react";
 import { motion } from "motion/react";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useState } from "react";
+import { MonitorIcon } from "@/components/icons/monitor";
+import { MoonIcon } from "@/components/icons/moon";
+import { SunIcon } from "@/components/icons/sun";
 import {
   Tooltip,
   TooltipContent,
@@ -14,17 +16,17 @@ import { cn } from "@/lib/utils";
 const themes = [
   {
     key: "system",
-    icon: Monitor,
+    icon: MonitorIcon,
     label: "Tema do sistema",
   },
   {
     key: "light",
-    icon: Sun,
+    icon: SunIcon,
     label: "Tema claro",
   },
   {
     key: "dark",
-    icon: Moon,
+    icon: MoonIcon,
     label: "Tema escuro",
   },
 ] as const;
@@ -104,8 +106,9 @@ export function ThemeSwitcher({
                     />
                   ) : null}
                   <Icon
+                    size={16}
                     className={cn(
-                      "relative z-10 m-auto h-4 w-4",
+                      "relative z-10 flex items-center justify-center m-auto",
                       isActive ? "text-primary" : "text-muted-foreground",
                     )}
                   />

@@ -42,9 +42,17 @@ import {
   useDialogStackNavigation,
 } from "@/components/kibo-ui/dialog-stack";
 import { Button } from "@/components/ui/button";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { useGroupLimit } from "@/contexts/group-limit-context";
 import { revalidateTelegramGroupsAction } from "@/lib/server/revalidate-telegram-groups.action";
-import { TELEGRAM_BOT_PERMISSION_GROUPS } from "@/lib/utils";
+import { cn, TELEGRAM_BOT_PERMISSION_GROUPS } from "@/lib/utils";
 import type {
   TelegramConnectionStatusFromApi,
   TelegramGroupConnectionIntentStatusDto,
@@ -54,6 +62,8 @@ import {
   telegramConnectionStatusSchema,
   telegramGroupConnectionIntentStatusSchema,
 } from "@/lib/zod/telegram-group-connection-schemas";
+import { ArrowLeftIcon, type ArrowLeftIconHandle } from "./icons/arrow-left";
+import { ArrowRightIcon, type ArrowRightIconHandle } from "./icons/arrow-right";
 
 type AddGroupBotWizardStep = {
   title: string;
@@ -237,43 +247,181 @@ function ConnectStep({
   }
 
   return (
-    <div className="rounded-2xl border w-full flex items-center flex-col gap-y-6 border-border px-4 py-6">
-      <div className="flex size-16 items-center justify-center rounded-xl bg-muted">
-        <Image src={TelegramIcon} alt="Telegram" width={44} height={44} />
-      </div>
-      <div className="flex max-w-md w-full flex-col gap-y-1 items-center">
-        <h3 className="font-medium font-heading text-center text-foreground">
-          Confirmar sua identidade no Telegram
-        </h3>
-        <p className="text-muted-foreground text-center text-sm">
+    <Empty>
+      <EmptyHeader className="max-w-xl">
+        <EmptyMedia className="size-16 rounded-xl bg-muted">
+          <Image src={TelegramIcon} alt="Telegram" width={44} height={44} />
+        </EmptyMedia>
+        <EmptyTitle>Confirmar sua identidade no Telegram</EmptyTitle>
+        <EmptyDescription className="text-pretty w-full">
           Abriremos o bot no chat privado. Toque em{" "}
           <strong>Start ou Iniciar</strong>. Depois use o botão do bot para{" "}
-          <strong>selecionar o grupo</strong> onde o Gateon será adicionado Isso
-          irá garantir que a conta do painel corresponda à mesma pessoa no
+          <strong>selecionar o grupo</strong> onde o Gateon será adicionado.
+          Isso irá garantir que a conta do painel corresponda à mesma pessoa no
           Telegram.
-        </p>
-      </div>
-      <Button
-        type="button"
-        disabled={isStarting}
-        loading={isStarting}
-        className="max-w-md w-full flex items-center gap-x-2"
-        onClick={() => void handleConnectTelegram()}
-        onMouseEnter={() => externalLinkIcon.current?.startAnimation()}
-        onMouseLeave={() => externalLinkIcon.current?.stopAnimation()}
-      >
-        Abrir Telegram <ExternalLinkIcon ref={externalLinkIcon} />
-      </Button>
-    </div>
+        </EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent className="w-full">
+        <Button
+          type="button"
+          disabled={isStarting}
+          loading={isStarting}
+          className="w-full gap-x-2"
+          onClick={() => void handleConnectTelegram()}
+          onMouseEnter={() => externalLinkIcon.current?.startAnimation()}
+          onMouseLeave={() => externalLinkIcon.current?.stopAnimation()}
+        >
+          Abrir Telegram <ExternalLinkIcon ref={externalLinkIcon} />
+        </Button>
+      </EmptyContent>
+    </Empty>
   );
+}
+
+type ConfirmStatusView = {
+  mediaClassName: string;
+  icon: ReactNode;
+  title?: string;
+  description: ReactNode;
+  footer?: ReactNode;
+};
+
+function ConfirmStatusEmpty({
+  mediaClassName,
+  icon,
+  title,
+  description,
+  footer,
+}: ConfirmStatusView) {
+  return (
+    <Empty>
+      <EmptyHeader>
+        <EmptyMedia className={cn("mb-0 size-16 rounded-xl", mediaClassName)}>
+          {icon}
+        </EmptyMedia>
+        {title ? <EmptyTitle className="text-base">{title}</EmptyTitle> : null}
+        <EmptyDescription className="text-pretty font-light leading-relaxed">
+          {description}
+        </EmptyDescription>
+      </EmptyHeader>
+      {footer ? <EmptyContent>{footer}</EmptyContent> : null}
+    </Empty>
+  );
+}
+
+function resolveConfirmStatusView(
+  intentId: string | null,
+  status: TelegramConnectionStatusFromApi | null,
+  pollError: string | null,
+  onRestartWizard?: () => void,
+): ConfirmStatusView {
+  if (!intentId) {
+    return {
+      mediaClassName: "bg-yellow-500/10",
+      icon: <BadgeAlertIcon size={40} className="text-yellow-500" />,
+      description: (
+        <>
+          Volte ao passo anterior e abra o Telegram com o link seguro para
+          acompanhar a conexão aqui.
+        </>
+      ),
+    };
+  }
+
+  if (status === "CONNECTED") {
+    return {
+      mediaClassName: "bg-green-600/10",
+      icon: <CircleCheckIcon size={40} className="text-green-600" />,
+      title: "Grupo conectado ao Gateon",
+      description: (
+        <>
+          Daqui você pode seguir no{" "}
+          <Link
+            href="/groups"
+            className="font-medium text-primary underline underline-offset-2 hover:text-primary/90"
+          >
+            painel principal
+          </Link>{" "}
+          para conectar o gateway de pagamento, revisar permissões do bot e
+          personalizar mensagens automáticas.
+        </>
+      ),
+    };
+  }
+
+  if (status === "EXPIRED" || status === "FAILED") {
+    return {
+      mediaClassName: "bg-destructive/10",
+      icon: <BadgeAlertIcon size={40} className="text-destructive" />,
+      title: "Conexão não concluída",
+      description:
+        status === "EXPIRED" ? (
+          <Fragment key="expired">
+            O prazo deste link de conexão acabou (ele é válido só por um tempo).
+            Toque de novo em{" "}
+            <button
+              type="button"
+              onClick={onRestartWizard}
+              className="font-medium text-primary underline underline-offset-2 cursor-pointer hover:text-primary/90"
+            >
+              Cadastrar
+            </button>{" "}
+            para gerar um link novo e concluir no Telegram.
+          </Fragment>
+        ) : (
+          <Fragment key="failed">
+            A conexão não pôde ser concluída. Isso pode ter sido causado por uma
+            falha temporária ou por algum problema no grupo. Toque em{" "}
+            <button
+              type="button"
+              onClick={onRestartWizard}
+              className="font-medium text-primary underline underline-offset-2 cursor-pointer hover:text-primary/90"
+            >
+              Cadastrar
+            </button>{" "}
+            para gerar um novo link e finalizar o cadastro no Telegram. Se o
+            problema continuar, verifique as mensagens enviadas pelo bot no
+            Telegram.
+          </Fragment>
+        ),
+    };
+  }
+
+  const isWaitingPermissions = status === "WAITING_FOR_PERMISSIONS";
+
+  return {
+    mediaClassName: isWaitingPermissions ? "bg-yellow-500/10" : "bg-muted",
+    icon: isWaitingPermissions ? (
+      <BadgeAlertIcon size={40} className="text-yellow-500" />
+    ) : (
+      <LoaderIcon size={40} className="text-primary" />
+    ),
+    title: isWaitingPermissions
+      ? "Faltam permissões no grupo"
+      : "Continue no Telegram",
+    description: isWaitingPermissions
+      ? "O bot já está no grupo, mas ainda não tem permissão de administrador com todas as ações obrigatórias (por exemplo mensagens, restringir membros e convidar por link — conforme o Telegram mostrar ao editar o bot). Ajuste em Administradores no grupo e salve: esta tela será atualizada sozinha em instantes."
+      : "Complete no app do Telegram o que aparece depois que você abrir o link: confirmar na conversa com o bot e adicioná-lo ao grupo como administrador. Você pode deixar esta janela aberta — assim que houver novidade lá, mostramos o resultado aqui automaticamente.",
+    footer: pollError ? (
+      <div className="flex px-2 py-1 rounded-lg border border-destructive/10 bg-destructive/5">
+        <p className="text-destructive text-xs font-light">{pollError}</p>
+      </div>
+    ) : undefined,
+  };
 }
 
 type ConfirmStepProps = {
   intentId: string | null;
   onConnectionCompleted: () => void;
+  onResetWizard: () => void;
 };
 
-function ConfirmStep({ intentId, onConnectionCompleted }: ConfirmStepProps) {
+function ConfirmStep({
+  intentId,
+  onConnectionCompleted,
+  onResetWizard,
+}: ConfirmStepProps) {
+  const { goToStart } = useDialogStackNavigation();
   const groupsRefreshedRef = useRef(false);
   const [latest, setLatest] =
     useState<TelegramGroupConnectionIntentStatusDto | null>(null);
@@ -360,113 +508,25 @@ function ConfirmStep({ intentId, onConnectionCompleted }: ConfirmStepProps) {
     };
   }, [intentId, onConnectionCompleted]);
 
-  if (!intentId) {
-    return (
-      <div className="space-y-4 rounded-xl border border-border bg-card p-5 text-center">
-        <div className="flex size-16 mx-auto items-center justify-center rounded-xl bg-yellow-500/10">
-          <BadgeAlertIcon size={40} className="mx-auto text-yellow-500" />
-        </div>
-        <p className="text-muted-foreground text-sm font-light leading-relaxed">
-          Volte ao passo anterior e abra o Telegram com o link seguro para
-          acompanhar a conexão aqui.
-        </p>
-      </div>
-    );
-  }
-
   const statusParsed = latest
     ? telegramConnectionStatusSchema.safeParse(latest.status)
     : null;
   const status = statusParsed?.success ? statusParsed.data : null;
 
-  if (status === "CONNECTED") {
-    return (
-      <div className="space-y-4 rounded-xl w-full border border-border p-5 text-center">
-        <div className="flex size-16 mx-auto items-center justify-center rounded-xl bg-green-600/10">
-          <CircleCheckIcon size={40} className="mx-auto text-green-600" />
-        </div>
-        <div className="flex flex-col gap-y-1">
-          <h3 className="font-semibold text-foreground text-base">
-            Grupo conectado ao Gateon
-          </h3>
-          <p className="text-muted-foreground text-sm font-light leading-relaxed">
-            Daqui você pode seguir no{" "}
-            <Link
-              href="/groups"
-              className="font-medium text-primary underline underline-offset-2 hover:text-primary/90"
-            >
-              painel principal
-            </Link>{" "}
-            para conectar o gateway de pagamento, revisar permissões do bot e
-            personalizar mensagens automáticas.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (status === "EXPIRED" || status === "FAILED") {
-    return (
-      <div className="space-y-4 rounded-xl border w-full border-border bg-card p-5 text-center">
-        <div className="flex size-16 mx-auto items-center justify-center rounded-xl bg-destructive/10">
-          <BadgeAlertIcon size={40} className="mx-auto text-destructive" />
-        </div>
-        <div className="flex flex-col gap-y-1">
-          <h3 className="font-semibold text-foreground text-base">
-            Conexão não concluída
-          </h3>
-          <p className="text-muted-foreground text-sm font-light leading-relaxed">
-            {status === "EXPIRED" ? (
-              <Fragment key="expired">
-                O prazo deste link de conexão acabou (ele é válido só por um
-                tempo). Feche o assistente e toque de novo em{" "}
-                <b className="font-medium text-primary">Cadastrar</b> para gerar
-                um link novo e concluir no Telegram.
-              </Fragment>
-            ) : (
-              <Fragment key="failed">
-                A conexão não pôde ser finalizada — pode ter sido uma falha
-                temporária ou algo no grupo (por exemplo, bot removido ou sem
-                permissões de administrador). Feche o assistente e inicie um
-                novo cadastro; se repetir, confira as mensagens do bot no
-                Telegram.
-              </Fragment>
-            )}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const isWaitingPermissions = status === "WAITING_FOR_PERMISSIONS";
+  const handleRestartWizard = useCallback(() => {
+    onResetWizard();
+    goToStart();
+  }, [goToStart, onResetWizard]);
 
   return (
-    <div className="space-y-4 rounded-xl border border-border bg-card p-5 text-center">
-      {!isWaitingPermissions ? (
-        <span className="flex size-16 mx-auto items-center justify-center rounded-xl bg-muted">
-          <LoaderIcon size={40} className="text-primary" />
-        </span>
-      ) : (
-        <div className="flex size-16 mx-auto items-center justify-center rounded-xl bg-yellow-500/10">
-          <BadgeAlertIcon size={40} className="mx-auto text-yellow-500" />
-        </div>
+    <ConfirmStatusEmpty
+      {...resolveConfirmStatusView(
+        intentId,
+        status,
+        pollError,
+        handleRestartWizard,
       )}
-      <div className="flex flex-col gap-y-1">
-        <h3 className="font-semibold text-foreground text-base">
-          {isWaitingPermissions
-            ? "Faltam permissões no grupo"
-            : "Continue no Telegram"}
-        </h3>
-        <p className="text-muted-foreground text-sm font-light leading-relaxed">
-          {isWaitingPermissions
-            ? "O bot já está no grupo, mas ainda não tem permissão de administrador com todas as ações obrigatórias (por exemplo mensagens, restringir membros e convidar por link — conforme o Telegram mostrar ao editar o bot). Ajuste em Administradores no grupo e salve: esta tela será atualizada sozinha em instantes."
-            : "Complete no app do Telegram o que aparece depois que você abrir o link: confirmar na conversa com o bot e adicioná-lo ao grupo como administrador. Você pode deixar esta janela aberta — assim que houver novidade lá, mostramos o resultado aqui automaticamente."}
-        </p>
-      </div>
-      {pollError ? (
-        <p className="text-amber-600 text-xs font-light">{pollError}</p>
-      ) : null}
-    </div>
+    />
   );
 }
 
@@ -476,6 +536,8 @@ export function AddGroupBotDialog() {
   const [intentId, setIntentId] = useState<string | null>(null);
   const xIconRefs = useRef<(XIconHandle | null)[]>([]);
   const plusIconRefs = useRef<PlusIconHandle | null>(null);
+  const arrowLeftIconRefs = useRef<(ArrowLeftIconHandle | null)[]>([]);
+  const arrowRightIconRefs = useRef<(ArrowRightIconHandle | null)[]>([]);
 
   function handleOpenChange(next: boolean) {
     if (next && !canAddGroup) {
@@ -489,6 +551,10 @@ export function AddGroupBotDialog() {
 
   const handleIntentCreated = useCallback((id: string) => {
     setIntentId(id);
+  }, []);
+
+  const handleResetWizard = useCallback(() => {
+    setIntentId(null);
   }, []);
 
   const handleConnectionCompleted = useCallback(async () => {
@@ -523,12 +589,18 @@ export function AddGroupBotDialog() {
           <ConfirmStep
             intentId={intentId}
             onConnectionCompleted={handleConnectionCompleted}
+            onResetWizard={handleResetWizard}
           />
         ),
         showNextButton: false,
       },
     ],
-    [handleConnectionCompleted, handleIntentCreated, intentId],
+    [
+      handleConnectionCompleted,
+      handleIntentCreated,
+      handleResetWizard,
+      intentId,
+    ],
   );
 
   return (
@@ -551,7 +623,7 @@ export function AddGroupBotDialog() {
           onMouseEnter={() => plusIconRefs.current?.startAnimation()}
           onMouseLeave={() => plusIconRefs.current?.stopAnimation()}
         >
-          <PlusIcon ref={plusIconRefs} size={16} /> Cadastrar um novo
+          <PlusIcon ref={plusIconRefs} size={14} /> Conectar Novo Grupo
         </Button>
       </DialogStackTrigger>
 
@@ -594,14 +666,35 @@ export function AddGroupBotDialog() {
                 </div>
                 <DialogStackProgress steps={[...dialogProgressSteps]} />
               </DialogStackHeader>
-              <div className="min-h-0 shrink-0 flex-1 h-full  overflow-y-auto overscroll-contain p-6">
+              <div
+                className={cn(
+                  "min-h-0 shrink-0 flex-1 h-full overflow-y-auto overscroll-contain p-6",
+                  index !== 0 && "flex items-center justify-center",
+                )}
+              >
                 {step.content}
               </div>
               {showFooter && (
                 <DialogStackFooter className="mt-auto border-t border-border flex w-full shrink-0 justify-between">
                   {hasPrevious && (
                     <DialogStackPrevious asChild>
-                      <Button className="w-40" variant="outline">
+                      <Button
+                        className="w-40"
+                        variant="outline"
+                        onMouseEnter={() =>
+                          arrowLeftIconRefs.current[index]?.startAnimation()
+                        }
+                        onMouseLeave={() =>
+                          arrowLeftIconRefs.current[index]?.stopAnimation()
+                        }
+                      >
+                        <ArrowLeftIcon
+                          ref={(el) => {
+                            arrowLeftIconRefs.current[index] = el;
+                          }}
+                          isAnimateOnView={false}
+                          size={16}
+                        />
                         Anterior
                       </Button>
                     </DialogStackPrevious>
@@ -609,8 +702,24 @@ export function AddGroupBotDialog() {
                   {hasNext && (
                     <DialogStackNext asChild>
                       {step.nextButton ?? (
-                        <Button className="w-40 ml-auto" type="button">
-                          Proximo
+                        <Button
+                          className="w-40 ml-auto"
+                          type="button"
+                          onMouseEnter={() =>
+                            arrowRightIconRefs.current[index]?.startAnimation()
+                          }
+                          onMouseLeave={() =>
+                            arrowRightIconRefs.current[index]?.stopAnimation()
+                          }
+                        >
+                          Próximo
+                          <ArrowRightIcon
+                            ref={(el) => {
+                              arrowRightIconRefs.current[index] = el;
+                            }}
+                            isAnimateOnView={false}
+                            size={16}
+                          />
                         </Button>
                       )}
                     </DialogStackNext>
