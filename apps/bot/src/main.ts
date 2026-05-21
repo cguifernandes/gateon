@@ -2,6 +2,8 @@ import "./load-env.js";
 import { API_CONSTANTS, Bot } from "grammy";
 import { loadConfig } from "./config.js";
 import { registerChatMemberHandler } from "./handlers/chat-member.js";
+import { registerChatForumHandler } from "./handlers/chat-forum.js";
+import { registerChatMigrateHandler } from "./handlers/chat-migrate.js";
 import { registerHelpCommand } from "./handlers/help.js";
 import { registerMyChatMemberHandler } from "./handlers/my-chat-member.js";
 import { registerStartCommand } from "./handlers/start.js";
@@ -13,6 +15,8 @@ async function bootstrap() {
   registerStartCommand(bot, config);
   registerHelpCommand(bot);
   registerChatMemberHandler(bot, config);
+  registerChatMigrateHandler(bot, config);
+  registerChatForumHandler(bot, config);
   registerMyChatMemberHandler(bot, config);
 
   bot.catch((err) => {

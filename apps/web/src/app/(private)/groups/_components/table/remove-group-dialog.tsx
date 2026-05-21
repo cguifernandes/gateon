@@ -44,12 +44,12 @@ export function RemoveGroupDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Desconectar grupo</DialogTitle>
           <DialogDescription>
             Tem certeza que deseja remover a conexão com{" "}
-            <strong className="text-foreground">
+            <strong className="text-foreground break-all">
               {groupTitle || "este grupo"}
             </strong>
             ? O bot será desativado e os membros não serão mais gerenciados
@@ -57,7 +57,7 @@ export function RemoveGroupDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter className="gap-2">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}

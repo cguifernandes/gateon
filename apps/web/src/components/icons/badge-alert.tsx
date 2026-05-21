@@ -16,6 +16,7 @@ interface BadgeAlertIconProps extends HTMLAttributes<HTMLDivElement> {
   size?: number;
   isAnimateOnView?: boolean;
   strokeWidth?: number;
+  animateOnHover?: boolean;
 }
 
 const ICON_VARIANTS: Variants = {
@@ -39,6 +40,7 @@ const BadgeAlertIcon = forwardRef<BadgeAlertIconHandle, BadgeAlertIconProps>(
       size = 28,
       isAnimateOnView = true,
       strokeWidth = 2,
+      animateOnHover = false,
       ...props
     },
     ref,
@@ -47,6 +49,7 @@ const BadgeAlertIcon = forwardRef<BadgeAlertIconHandle, BadgeAlertIconProps>(
       isAnimateOnView,
       onMouseEnter,
       onMouseLeave,
+      animateOnHover,
     });
 
     return (

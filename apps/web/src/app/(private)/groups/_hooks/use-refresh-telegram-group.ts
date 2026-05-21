@@ -4,10 +4,22 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { toast } from "sonner";
 
+export type RefreshTelegramGroupResult = {
+  refreshed?: boolean;
+  synced?: {
+    title?: string | null;
+    chatType?: string;
+    isForum?: boolean;
+    memberCount?: number | null;
+    hasChatPhoto?: boolean;
+    telegramChatId?: string;
+  };
+};
+
 export function useRefreshTelegramGroup(
   groupId: string,
   groupTitle?: string,
-  options?: { onSuccess?: () => void },
+  options?: { onSuccess?: (result: RefreshTelegramGroupResult) => void },
 ) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -23,8 +35,9 @@ export function useRefreshTelegramGroup(
           },
         );
 
+        const body: unknown = await res.json().catch(() => null);
+
         if (!res.ok) {
-          const body: unknown = await res.json().catch(() => null);
           const message =
             body &&
             typeof body === "object" &&
@@ -37,13 +50,16 @@ export function useRefreshTelegramGroup(
           return;
         }
 
+        const result = (body ?? {}) as RefreshTelegramGroupResult;
+
         toast.success("Grupo atualizado", {
           description: groupTitle
             ? `"${groupTitle}" foi sincronizado com o Telegram.`
-            : "Título e foto do grupo foram sincronizados com o Telegram.",
+            : "Dados do grupo foram sincronizados com o Telegram.",
         });
+
         router.refresh();
-        options?.onSuccess?.();
+        options?.onSuccess?.(result);
       } catch {
         toast.error("Falha ao atualizar grupo", {
           description: "Não foi possível sincronizar agora. Tente novamente.",

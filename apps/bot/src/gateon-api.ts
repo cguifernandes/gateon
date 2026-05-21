@@ -45,6 +45,18 @@ type TelegramBotEvent =
       chat: TelegramChatPayload;
       subjectUser: TelegramUserPayload & { isBot?: boolean };
       newMemberStatus: string;
+    }
+  | {
+      eventType: "chat_migrated";
+      oldChatId: string;
+      newChatId: string;
+      title?: string;
+    }
+  | {
+      eventType: "chat_forum_updated";
+      chatId: string;
+      isForum: boolean;
+      title?: string;
     };
 
 export type TelegramBotEventResult = {

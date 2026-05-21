@@ -92,6 +92,21 @@ const chatMemberEventSchema = z.object({
   newMemberStatus: telegramBotStatusSchema,
 });
 
+const chatMigratedEventSchema = z.object({
+  eventType: z.literal('chat_migrated'),
+  oldChatId: telegramIdSchema,
+  newChatId: telegramIdSchema,
+  title: optionalTextSchema,
+});
+
+/** Fired when topics are enabled on an existing supergroup (no chat id migration). */
+const chatForumUpdatedEventSchema = z.object({
+  eventType: z.literal('chat_forum_updated'),
+  chatId: telegramIdSchema,
+  isForum: z.boolean(),
+  title: optionalTextSchema,
+});
+
 export const telegramBotEventSchema = z.union([
   z.object({
     eventType: z.literal('private_start'),
@@ -101,6 +116,8 @@ export const telegramBotEventSchema = z.union([
   groupStartEventSchema,
   botChatMemberEventSchema,
   chatMemberEventSchema,
+  chatMigratedEventSchema,
+  chatForumUpdatedEventSchema,
 ]);
 
 export type TelegramBotEventInput = z.infer<typeof telegramBotEventSchema>;

@@ -116,6 +116,7 @@ model TelegramGroups {
   title                          String?
   chatPhotoFileId                String?
   type                           String
+  isForum                        Boolean  @default(false)
   addedByTelegramUserId          String
   botStatus                      String
   addedByProfilePhotoFileId      String?

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { TelegramGroupTypeCell } from "@/app/(private)/groups/_components/table/telegram-group-type-badges";
 import StripeIcon from "@/assets/gateway/stripe-4.svg";
 import { AddGroupBotDialog } from "@/components/add-group-bot-dialog";
 import { SearchIcon, type SearchIconHandle } from "@/components/icons/search";
@@ -56,7 +57,6 @@ function memberMatchesSearch(
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
-    timeStyle: "short",
   }).format(new Date(value));
 }
 
@@ -162,6 +162,16 @@ export function GroupsTable({ groups }: GroupsTableProps) {
   const [membersDrawerGroup, setMembersDrawerGroup] =
     useState<TelegramGroupSummaryDto | null>(null);
 
+  useEffect(() => {
+    if (!membersDrawerGroup) {
+      return;
+    }
+    const fresh = groups.find((g) => g.id === membersDrawerGroup.id);
+    if (fresh) {
+      setMembersDrawerGroup(fresh);
+    }
+  }, [groups, membersDrawerGroup?.id]);
+
   const hasPopoverFilters =
     botStatusFilter !== "all" || connectedRange?.from !== undefined;
 
@@ -239,18 +249,21 @@ export function GroupsTable({ groups }: GroupsTableProps) {
             <Table className="table-fixed">
               <TableHeader>
                 <TableRow className="bg-muted hover:bg-muted/40">
-                  <TableHead className="w-92">Grupo</TableHead>
+                  <TableHead className="w-full">Grupo</TableHead>
                   <TableHead className="w-[220px]">Membros</TableHead>
+                  <TableHead className="hidden w-28 whitespace-nowrap px-2 text-center sm:table-cell">
+                    Tipo
+                  </TableHead>
                   <TableHead className="hidden w-28 whitespace-nowrap px-2 text-center lg:table-cell">
                     Gateway
                   </TableHead>
-                  <TableHead className="hidden w-32 whitespace-nowrap px-2 text-center md:table-cell">
+                  <TableHead className="hidden w-28 whitespace-nowrap px-2 text-center md:table-cell">
                     Conectado em
                   </TableHead>
-                  <TableHead className="w-16 whitespace-nowrap px-2 text-center">
+                  <TableHead className="w-28 whitespace-nowrap px-2 text-center">
                     Status
                   </TableHead>
-                  <TableHead className="w-12 px-1">
+                  <TableHead className="w-16 px-2 text-center">
                     <span className="sr-only">Ações</span>
                   </TableHead>
                 </TableRow>
@@ -283,19 +296,21 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                                 group.updatedAt,
                               )}
                               alt={group.title ?? "Foto do grupo"}
-                              width={35}
-                              height={35}
-                              sizes="35px"
-                              className="size-[35px] shrink-0 rounded-md border border-border object-cover"
+                              width={38}
+                              height={38}
+                              sizes="38px"
+                              className="size-[38px] shrink-0 rounded-md border border-border object-cover"
                             />
                           )}
                           <div className="min-w-0 flex-1 overflow-hidden">
                             <TruncatedTextTooltip
                               text={group.title ?? "Sem título"}
-                              variant="line-clamp"
-                              lineClamp={2}
-                              className="font-heading break-all font-medium leading-tight text-foreground"
+                              variant="truncate"
+                              className="font-heading font-medium leading-tight text-foreground"
                             />
+                            <span className="text-xs text-muted-foreground">
+                              {group.telegramChatId}
+                            </span>
                           </div>
                         </div>
                       </TableCell>
@@ -333,6 +348,13 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                         </div>
                       </TableCell>
 
+                      <TableCell className="hidden w-36 align-middle sm:table-cell">
+                        <TelegramGroupTypeCell
+                          type={group.type}
+                          isForum={group.isForum}
+                        />
+                      </TableCell>
+
                       <TableCell className="hidden w-28 text-center whitespace-nowrap lg:table-cell">
                         <ImageComponent
                           src={StripeIcon.src}
@@ -363,15 +385,17 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                       </TableCell>
 
                       <TableCell
-                        className="w-12 text-right"
+                        className="w-16 px-1 text-center align-middle"
                         onClick={(event) => event.stopPropagation()}
                         onKeyDown={(event) => event.stopPropagation()}
                       >
-                        <GroupRowActionsMenu
-                          groupId={group.id}
-                          groupTitle={group.title ?? ""}
-                          onViewMembers={() => setMembersDrawerGroup(group)}
-                        />
+                        <div className="flex justify-center">
+                          <GroupRowActionsMenu
+                            groupId={group.id}
+                            groupTitle={group.title ?? ""}
+                            onViewMembers={() => setMembersDrawerGroup(group)}
+                          />
+                        </div>
                       </TableCell>
                     </TableRow>
                   );

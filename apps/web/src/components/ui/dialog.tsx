@@ -1,9 +1,10 @@
 "use client";
 
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import { XIcon } from "lucide-react";
 import type * as React from "react";
-
+import { useRef } from "react";
+import { XIcon, type XIconHandle } from "@/components/icons/x";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
@@ -25,6 +26,40 @@ function DialogClose({ ...props }: DialogPrimitive.Close.Props) {
 type DialogContentProps = DialogPrimitive.Popup.Props & {
   showClose?: boolean;
 };
+
+function DialogCloseButton({ className }: { className?: string }) {
+  const xIconRef = useRef<XIconHandle>(null);
+
+  return (
+    <DialogPrimitive.Close
+      render={(closeProps) => (
+        <Button
+          {...closeProps}
+          type="button"
+          variant="outline"
+          size="icon"
+          className={cn(
+            "absolute inset-e-4 top-4 z-10 shrink-0",
+            className,
+            closeProps.className,
+          )}
+          aria-label="Fechar"
+          onMouseEnter={(event) => {
+            closeProps.onMouseEnter?.(event);
+            xIconRef.current?.startAnimation();
+          }}
+          onMouseLeave={(event) => {
+            closeProps.onMouseLeave?.(event);
+            xIconRef.current?.stopAnimation();
+          }}
+        >
+          <XIcon size={16} isAnimateOnView={false} ref={xIconRef} />
+          <span className="sr-only">Fechar</span>
+        </Button>
+      )}
+    />
+  );
+}
 
 function DialogContent({
   className,
@@ -50,15 +85,7 @@ function DialogContent({
         )}
         {...props}
       >
-        {showClose ? (
-          <DialogPrimitive.Close
-            data-slot="dialog-close-button"
-            className="absolute end-4 top-4 z-10 inline-flex size-8 items-center justify-center rounded-md text-muted-foreground opacity-80 transition-opacity hover:bg-muted hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <XIcon className="size-4" />
-            <span className="sr-only">Fechar</span>
-          </DialogPrimitive.Close>
-        ) : null}
+        {showClose ? <DialogCloseButton /> : null}
         {children}
       </DialogPrimitive.Popup>
     </DialogPortal>

@@ -154,6 +154,7 @@ export class TelegramService {
         title: true,
         chatPhotoFileId: true,
         type: true,
+        isForum: true,
         botStatus: true,
         connectedAt: true,
         updatedAt: true,
@@ -205,6 +206,7 @@ export class TelegramService {
             ? `/api/telegram/groups/${group.id}/chat-photo`
             : null,
           type: group.type,
+          isForum: group.isForum,
           botStatus: group.botStatus,
           connectedAt: group.connectedAt,
           updatedAt: group.updatedAt,
@@ -239,6 +241,8 @@ export class TelegramService {
         id: true,
         title: true,
         telegramChatId: true,
+        type: true,
+        isForum: true,
         connectedAt: true,
         updatedAt: true,
       },
@@ -276,6 +280,8 @@ export class TelegramService {
       id: group.id,
       title: group.title,
       telegramChatId,
+      type: group.type,
+      isForum: group.isForum,
       memberCount: await this.getTelegramChatMemberCount(telegramChatId),
       trackedMemberCount,
       trackedMemberLimitPerGroup,
@@ -310,13 +316,15 @@ export class TelegramService {
       throw new NotFoundException('Telegram group connection not found.');
     }
 
-    await this.syncTelegramGroupRichMetadata(group.id, group.telegramChatId);
+    const { telegramChatId: syncedChatId } =
+      await this.syncTelegramGroupRichMetadata(group.id, group.telegramChatId);
 
     const updated = await this.prisma.telegramGroups.findFirst({
       where: { id: groupId, userId },
       select: {
         title: true,
         type: true,
+        isForum: true,
         chatPhotoFileId: true,
         telegramChatId: true,
       },
@@ -336,7 +344,9 @@ export class TelegramService {
         title: updated.title,
         hasChatPhoto: Boolean(updated.chatPhotoFileId),
         chatType: updated.type,
+        isForum: updated.isForum,
         memberCount,
+        telegramChatId: syncedChatId,
       },
     };
   }
@@ -396,12 +406,236 @@ export class TelegramService {
       return this.syncChatMemberForGateonGroup(event);
     }
 
+    if (event.eventType === 'chat_migrated') {
+      return this.handleChatMigrated(event);
+    }
+
+    if (event.eventType === 'chat_forum_updated') {
+      return this.handleChatForumUpdated(event);
+    }
+
     return this.connectGroupFromTelegramUser(
       event.telegramUser,
       event.chat,
       event.botStatus,
       event.administratorRights,
     );
+  }
+
+  private async handleChatForumUpdated(
+    event: Extract<TelegramBotEventInput, { eventType: 'chat_forum_updated' }>,
+  ): Promise<{
+    ok: true;
+    applied: boolean;
+    isForum: boolean;
+    group?: { id: string; telegramChatId: string; title: string | null };
+  }> {
+    const applied = await this.applyChatForumStatus(
+      event.chatId,
+      event.isForum,
+      event.title,
+    );
+
+    if (!applied) {
+      this.logger.warn(
+        `chat_forum_updated not applied for chatId=${event.chatId} (no Gateon group with this telegramChatId)`,
+      );
+      return { ok: true, applied: false, isForum: event.isForum };
+    }
+
+    return {
+      ok: true,
+      applied: true,
+      isForum: applied.isForum,
+      group: {
+        id: applied.id,
+        telegramChatId: applied.telegramChatId,
+        title: applied.title,
+      },
+    };
+  }
+
+  private async applyChatForumStatus(
+    telegramChatId: string,
+    isForum: boolean,
+    titleFromEvent?: string,
+  ): Promise<{
+    id: string;
+    telegramChatId: string;
+    title: string | null;
+    isForum: boolean;
+  } | null> {
+    const chatId = telegramChatId.trim();
+    if (!chatId) {
+      return null;
+    }
+
+    const group = await this.prisma.telegramGroups.findUnique({
+      where: { telegramChatId: chatId },
+      select: { id: true, title: true },
+    });
+
+    if (!group) {
+      return null;
+    }
+
+    const chatResult = await this.fetchTelegramGetChatResult(chatId);
+    const details = chatResult.details;
+    const type = details?.type ?? 'supergroup';
+    // getChat can lag after topics are disabled; never keep isForum true when the bot reports false.
+    const resolvedForum =
+      isForum === false
+        ? false
+        : details?.isForum !== undefined
+          ? details.isForum
+          : isForum;
+    const title = titleFromEvent ?? details?.title ?? group.title;
+
+    const updated = await this.prisma.telegramGroups.update({
+      where: { id: group.id },
+      data: {
+        type,
+        isForum: resolvedForum,
+        ...(title !== undefined && title !== null ? { title } : {}),
+        ...(details?.chatPhotoFileId !== undefined
+          ? { chatPhotoFileId: details.chatPhotoFileId }
+          : {}),
+      },
+      select: {
+        id: true,
+        telegramChatId: true,
+        title: true,
+        isForum: true,
+      },
+    });
+
+    return {
+      id: updated.id,
+      telegramChatId: updated.telegramChatId,
+      title: updated.title,
+      isForum: updated.isForum,
+    };
+  }
+
+  private async handleChatMigrated(
+    event: Extract<TelegramBotEventInput, { eventType: 'chat_migrated' }>,
+  ): Promise<{
+    ok: true;
+    applied: boolean;
+    migratedToForum: boolean;
+    group?: { id: string; telegramChatId: string; title: string | null };
+  }> {
+    const applied = await this.applyChatMigration(
+      event.oldChatId,
+      event.newChatId,
+      event.title,
+    );
+
+    if (!applied) {
+      this.logger.warn(
+        `chat_migrated not applied for ${event.oldChatId} -> ${event.newChatId} (no Gateon group on old chat id, conflict, or invalid ids — see logs above)`,
+      );
+      return { ok: true, applied: false, migratedToForum: false };
+    }
+
+    return {
+      ok: true,
+      applied: true,
+      migratedToForum: applied.isForum,
+      group: {
+        id: applied.id,
+        telegramChatId: applied.telegramChatId,
+        title: applied.title,
+      },
+    };
+  }
+
+  /**
+   * Telegram upgrades a basic group to supergroup (new chat id). Optionally enables topics (forum).
+   */
+  private async applyChatMigration(
+    oldChatId: string,
+    newChatId: string,
+    titleFromEvent?: string,
+  ): Promise<{
+    id: string;
+    telegramChatId: string;
+    title: string | null;
+    isForum: boolean;
+  } | null> {
+    const oldId = oldChatId.trim();
+    const newId = newChatId.trim();
+    if (!oldId || !newId || oldId === newId) {
+      this.logger.warn(
+        `applyChatMigration skipped: invalid ids old=${oldId} new=${newId}`,
+      );
+      return null;
+    }
+
+    const group = await this.prisma.telegramGroups.findUnique({
+      where: { telegramChatId: oldId },
+      select: { id: true, userId: true, title: true },
+    });
+
+    if (!group) {
+      this.logger.warn(
+        `applyChatMigration skipped: no TelegramGroups row with telegramChatId=${oldId}. If you enabled topics on an already-supergroup chat, Telegram may not send migrate events — use Sincronizar dados instead.`,
+      );
+      return null;
+    }
+
+    const conflicting = await this.prisma.telegramGroups.findUnique({
+      where: { telegramChatId: newId },
+      select: { id: true, userId: true },
+    });
+
+    if (conflicting && conflicting.id !== group.id) {
+      this.logger.warn(
+        `Chat migration ${oldId} -> ${newId} skipped: new id already linked to group ${conflicting.id}`,
+      );
+      return null;
+    }
+
+    const chatResult = await this.fetchTelegramGetChatResult(newId);
+    const details = chatResult.details;
+    const type = details?.type ?? 'supergroup';
+    const isForum = details?.isForum ?? false;
+    const title = titleFromEvent ?? details?.title ?? group.title;
+
+    const updated = await this.prisma.telegramGroups.update({
+      where: { id: group.id },
+      data: {
+        telegramChatId: newId,
+        type,
+        isForum,
+        ...(title !== undefined && title !== null ? { title } : {}),
+        ...(details?.chatPhotoFileId !== undefined
+          ? { chatPhotoFileId: details.chatPhotoFileId }
+          : {}),
+      },
+      select: {
+        id: true,
+        telegramChatId: true,
+        title: true,
+        isForum: true,
+      },
+    });
+
+    await this.prisma.telegramGroupConnectionIntents.updateMany({
+      where: { telegramChatId: oldId },
+      data: {
+        telegramChatId: newId,
+        telegramChatType: type,
+        ...(title ? { telegramChatTitle: title } : {}),
+      },
+    });
+
+    return {
+      id: updated.id,
+      telegramChatId: updated.telegramChatId,
+      title: updated.title,
+      isForum: updated.isForum,
+    };
   }
 
   private async syncChatMemberForGateonGroup(
@@ -1089,18 +1323,12 @@ export class TelegramService {
     }
   }
 
-  private async fetchTelegramGetChatDetails(telegramChatId: string): Promise<{
+  private parseTelegramChatRecord(result: Record<string, unknown>): {
     title?: string;
     chatPhotoFileId?: string | null;
-  } | null> {
-    const result = await this.callTelegramBotMethod<Record<string, unknown>>(
-      'getChat',
-      { chat_id: telegramChatId.trim() },
-    );
-    if (!result || typeof result !== 'object') {
-      return null;
-    }
-
+    type?: string;
+    isForum?: boolean;
+  } {
     const title =
       typeof result.title === 'string' && result.title.trim()
         ? result.title.trim()
@@ -1123,7 +1351,71 @@ export class TelegramService {
       chatPhotoFileId = smallFileId ?? bigFileId ?? null;
     }
 
-    return { title, chatPhotoFileId };
+    let type: string | undefined;
+    let isForum: boolean | undefined;
+    if (typeof result.type === 'string' && result.type.trim()) {
+      type = result.type.trim();
+      if (type === 'supergroup') {
+        isForum = result.is_forum === true;
+      } else {
+        isForum = false;
+      }
+    }
+
+    return { title, chatPhotoFileId, type, isForum };
+  }
+
+  private async fetchTelegramGetChatResult(telegramChatId: string): Promise<{
+    details: {
+      title?: string;
+      chatPhotoFileId?: string | null;
+      type?: string;
+      isForum?: boolean;
+    } | null;
+    migrateToChatId: string | null;
+  }> {
+    const token = this.getTelegramBotToken();
+    const chatId = telegramChatId.trim();
+    if (!token || !chatId) {
+      return { details: null, migrateToChatId: null };
+    }
+
+    try {
+      const response = await fetch(
+        `https://api.telegram.org/bot${token}/getChat`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId }),
+          signal: AbortSignal.timeout(15_000),
+        },
+      );
+
+      const data = (await response.json()) as TelegramApiResponse<
+        Record<string, unknown>
+      > & {
+        parameters?: { migrate_to_chat_id?: number | string };
+      };
+
+      if (data.ok && data.result && typeof data.result === 'object') {
+        return {
+          details: this.parseTelegramChatRecord(data.result),
+          migrateToChatId: null,
+        };
+      }
+
+      const migrateRaw = data.parameters?.migrate_to_chat_id;
+      if (migrateRaw !== undefined && migrateRaw !== null) {
+        return {
+          details: null,
+          migrateToChatId: String(migrateRaw),
+        };
+      }
+
+      return { details: null, migrateToChatId: null };
+    } catch {
+      return { details: null, migrateToChatId: null };
+    }
   }
 
   private async fetchTelegramUserProfilePhotos(
@@ -1155,18 +1447,31 @@ export class TelegramService {
   private async syncTelegramGroupRichMetadata(
     groupRecordId: string,
     telegramChatId: string,
-  ): Promise<void> {
-    const chat = telegramChatId.trim();
+  ): Promise<{ migratedToForum: boolean; telegramChatId: string }> {
+    let chat = telegramChatId.trim();
     if (!chat) {
-      return;
+      return { migratedToForum: false, telegramChatId: chat };
     }
 
     const groupRow = await this.prisma.telegramGroups.findUnique({
       where: { id: groupRecordId },
-      select: { addedByTelegramUserId: true },
+      select: { addedByTelegramUserId: true, telegramChatId: true },
     });
     if (!groupRow) {
-      return;
+      return { migratedToForum: false, telegramChatId: chat };
+    }
+
+    let migratedToForum = false;
+    const initialFetch = await this.fetchTelegramGetChatResult(chat);
+    if (initialFetch.migrateToChatId) {
+      const migrated = await this.applyChatMigration(
+        chat,
+        initialFetch.migrateToChatId,
+      );
+      if (migrated) {
+        migratedToForum = migrated.isForum;
+        chat = migrated.telegramChatId;
+      }
     }
 
     let connectorProfilePhotoFileId: string | null = null;
@@ -1178,16 +1483,43 @@ export class TelegramService {
       connectorProfilePhotoFileId = null;
     }
 
-    const details = await this.fetchTelegramGetChatDetails(chat);
+    const { details } =
+      initialFetch.migrateToChatId && chat !== telegramChatId.trim()
+        ? await this.fetchTelegramGetChatResult(chat)
+        : initialFetch;
+
+    const updateData: {
+      title?: string;
+      chatPhotoFileId?: string | null;
+      type?: string;
+      isForum?: boolean;
+      addedByProfilePhotoFileId: string | null;
+    } = {
+      addedByProfilePhotoFileId: connectorProfilePhotoFileId,
+    };
+
+    if (details?.title !== undefined) {
+      updateData.title = details.title;
+    }
+    if (details?.chatPhotoFileId !== undefined) {
+      updateData.chatPhotoFileId = details.chatPhotoFileId;
+    }
+    if (details?.type !== undefined) {
+      updateData.type = details.type;
+      if (details.type === 'supergroup') {
+        updateData.isForum = details.isForum ?? false;
+      } else {
+        updateData.isForum = false;
+      }
+    } else if (details?.isForum !== undefined) {
+      updateData.isForum = details.isForum;
+    }
+
     await this.prisma.telegramGroups.update({
       where: { id: groupRecordId },
-      data: {
-        ...(details?.title !== undefined ? { title: details.title } : {}),
-        ...(details?.chatPhotoFileId !== undefined
-          ? { chatPhotoFileId: details.chatPhotoFileId }
-          : {}),
-        addedByProfilePhotoFileId: connectorProfilePhotoFileId,
-      },
+      data: updateData,
     });
+
+    return { migratedToForum, telegramChatId: chat };
   }
 }

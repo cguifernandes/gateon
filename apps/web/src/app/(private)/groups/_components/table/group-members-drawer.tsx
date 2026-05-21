@@ -1,8 +1,8 @@
 "use client";
 
 import { InfoIcon } from "lucide-react";
-import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { TelegramGroupTypeBadges } from "@/app/(private)/groups/_components/table/telegram-group-type-badges";
 import { LoaderIcon } from "@/components/icons/loader";
 import {
   RefreshCWIcon,
@@ -20,6 +20,7 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { getBotStatusDisplay } from "@/lib/telegram-bot-status";
 import { cn, withCacheBuster } from "@/lib/utils";
 import {
@@ -27,7 +28,11 @@ import {
   type TelegramGroupSummaryDto,
   telegramGroupMembersListResponseSchema,
 } from "@/lib/zod/telegram-group-connection-schemas";
-import { useRefreshTelegramGroup } from "../../_hooks/use-refresh-telegram-group";
+import {
+  useRefreshTelegramGroup,
+  type RefreshTelegramGroupResult,
+} from "../../_hooks/use-refresh-telegram-group";
+import { GroupMemberRow } from "./group-member-row";
 import { RemoveGroupDialog } from "./remove-group-dialog";
 
 type MemberRow = TelegramGroupMembersListResponseDto["members"][number];
@@ -63,19 +68,6 @@ function getMemberUpdatedAt(
   return typeof value === "string" ? value : null;
 }
 
-function getTelegramChatTypeLabel(type: string): string {
-  switch (type.toLowerCase()) {
-    case "supergroup":
-      return "Supergrupo";
-    case "group":
-      return "Grupo";
-    case "channel":
-      return "Canal";
-    default:
-      return type;
-  }
-}
-
 type GroupMembersDrawerProps = {
   group: TelegramGroupSummaryDto;
   open?: boolean;
@@ -92,6 +84,8 @@ export function GroupMembersDrawer({
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = openProp !== undefined;
   const open = isControlled ? openProp : internalOpen;
+  const [displayGroup, setDisplayGroup] =
+    useState<TelegramGroupSummaryDto>(group);
   const [data, setData] = useState<TelegramGroupMembersListResponseDto | null>(
     null,
   );
@@ -103,10 +97,16 @@ export function GroupMembersDrawer({
   const refreshIconRef = useRef<RefreshCWIconHandle>(null);
   const removeIconRef = useRef<XIconHandle>(null);
 
-  const groupTitle = group.title ?? "";
+  const groupTitle = displayGroup.title ?? "";
 
-  const loadMembers = useCallback(async () => {
-    setIsLoading(true);
+  useEffect(() => {
+    setDisplayGroup(group);
+  }, [group]);
+
+  const loadMembers = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) {
+      setIsLoading(true);
+    }
     setError(null);
 
     try {
@@ -129,22 +129,56 @@ export function GroupMembersDrawer({
       }
 
       setData(parsed.data);
+      setDisplayGroup((prev) => ({
+        ...prev,
+        title: parsed.data.title ?? prev.title,
+        type: parsed.data.type,
+        isForum:
+          typeof parsed.data.isForum === "boolean"
+            ? parsed.data.isForum
+            : prev.isForum,
+        memberCount: parsed.data.memberCount,
+        trackedMemberCount: parsed.data.trackedMemberCount,
+        trackedMemberLimitPerGroup: parsed.data.trackedMemberLimitPerGroup,
+        trackedMemberLimitReached: parsed.data.trackedMemberLimitReached,
+        updatedAt: parsed.data.lastSyncedAt,
+      }));
     } catch (err) {
       setData(null);
       setError(
         err instanceof Error ? err.message : "Erro ao carregar membros.",
       );
     } finally {
-      setIsLoading(false);
+      if (!options?.silent) {
+        setIsLoading(false);
+      }
     }
   }, [group.id]);
+
+  const applyRefreshResult = useCallback((result: RefreshTelegramGroupResult) => {
+    const synced = result.synced;
+    if (!synced) {
+      return;
+    }
+
+    setDisplayGroup((prev) => ({
+      ...prev,
+      title: synced.title ?? prev.title,
+      type: synced.chatType ?? prev.type,
+      isForum:
+        typeof synced.isForum === "boolean" ? synced.isForum : prev.isForum,
+      memberCount: synced.memberCount ?? prev.memberCount,
+      updatedAt: new Date().toISOString(),
+    }));
+  }, []);
 
   const { refresh, isPending: isSyncing } = useRefreshTelegramGroup(
     group.id,
     groupTitle,
     {
-      onSuccess: () => {
-        void loadMembers();
+      onSuccess: (result) => {
+        applyRefreshResult(result);
+        void loadMembers({ silent: true });
       },
     },
   );
@@ -166,19 +200,25 @@ export function GroupMembersDrawer({
   }, [open, loadMembers]);
 
   const summary = {
-    memberCount: data?.memberCount ?? group.memberCount,
-    trackedMemberCount: data?.trackedMemberCount ?? group.trackedMemberCount,
+    memberCount: data?.memberCount ?? displayGroup.memberCount,
+    trackedMemberCount:
+      data?.trackedMemberCount ?? displayGroup.trackedMemberCount,
     trackedMemberLimitPerGroup:
-      data?.trackedMemberLimitPerGroup ?? group.trackedMemberLimitPerGroup,
+      data?.trackedMemberLimitPerGroup ??
+      displayGroup.trackedMemberLimitPerGroup,
     trackedMemberLimitReached:
-      data?.trackedMemberLimitReached ?? group.trackedMemberLimitReached,
+      data?.trackedMemberLimitReached ??
+      displayGroup.trackedMemberLimitReached,
     leftMemberCount: data?.leftMemberCount,
-    connectedAt: data?.connectedAt ?? group.connectedAt,
-    lastSyncedAt: data?.lastSyncedAt ?? group.updatedAt,
+    connectedAt: data?.connectedAt ?? displayGroup.connectedAt,
+    lastSyncedAt: data?.lastSyncedAt ?? displayGroup.updatedAt,
   };
 
-  const members = data?.members ?? group.members;
-  const botDisplay = getBotStatusDisplay(group.botStatus);
+  const members = data?.members ?? displayGroup.members;
+  const chatType = data?.type ?? displayGroup.type;
+  const isForum =
+    typeof data?.isForum === "boolean" ? data.isForum : displayGroup.isForum;
+  const botDisplay = getBotStatusDisplay(displayGroup.botStatus);
 
   return (
     <Drawer direction="right" open={open} onOpenChange={handleOpenChange}>
@@ -195,7 +235,7 @@ export function GroupMembersDrawer({
       ) : null}
       <DrawerContent className="data-[vaul-drawer-direction=right]:h-full data-[vaul-drawer-direction=right]:max-h-none data-[vaul-drawer-direction=right]:w-full data-[vaul-drawer-direction=right]:sm:max-w-md">
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <DrawerHeader className="relative shrink-0 border-b border-border text-left">
+          <DrawerHeader className="relative shrink-0 p-0 border-b border-border text-left">
             <DrawerClose asChild>
               <Button
                 type="button"
@@ -210,20 +250,20 @@ export function GroupMembersDrawer({
               </Button>
             </DrawerClose>
             <div className="flex flex-col gap-4">
-              <div className="flex items-start pr-10 gap-3">
+              <div className="flex items-start pl-6 pt-4 pr-16 gap-3">
                 <ImageComponent
                   src={withCacheBuster(
-                    group.chatPhotoUrl ?? "",
-                    group.updatedAt ?? "",
+                    displayGroup.chatPhotoUrl ?? "",
+                    displayGroup.updatedAt ?? "",
                   )}
-                  alt={group.title || "Grupo sem nome"}
+                  alt={displayGroup.title || "Grupo sem nome"}
                   width={50}
                   height={50}
                   className="size-[50px] border border-border shrink-0 rounded-full object-cover"
                 />
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <DrawerTitle className="max-w-full line-clamp-2 break-all">
-                    {group.title || "Grupo sem nome"}
+                    {displayGroup.title || "Grupo sem nome"}
                   </DrawerTitle>
                   <div className="flex flex-wrap items-center gap-1.5">
                     <Badge
@@ -235,16 +275,14 @@ export function GroupMembersDrawer({
                     >
                       {botDisplay.label}
                     </Badge>
-                    <Badge
-                      variant="outline"
-                      className="shrink-0 text-[10px] font-medium text-muted-foreground"
-                    >
-                      {getTelegramChatTypeLabel(group.type)}
-                    </Badge>
+                    <TelegramGroupTypeBadges
+                      type={chatType}
+                      isForum={isForum}
+                    />
                   </div>
                 </div>
               </div>
-              <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex flex-col px-6 py-4 border-t border-border gap-2 sm:flex-row">
                 <Button
                   type="button"
                   variant="outline"
@@ -297,26 +335,20 @@ export function GroupMembersDrawer({
                   <span className="font-medium text-foreground">
                     Total no grupo
                   </span>{" "}
-                  é a contagem que o Telegram reporta para este chat, atualizada
-                  ao sincronizar. Pode ser maior que os gerenciados e incluir
-                  pessoas que o Gateon ainda não registrou.
+                  — todos os membros do chat segundo o Telegram (bots inclusos).
+                  O Gateon só exibe esse número e não gerencia.
                 </p>
                 <p>
                   <span className="font-medium text-foreground">
                     Gerenciados
                   </span>{" "}
-                  são perfis que o bot já rastreou e que seguem no grupo,{" "}
-                  <span className="font-medium">sem saída registrada</span>.
-                  Entram na base quando o bot recebe o evento de entrada; contam
-                  para o limite do plano neste grupo.
-                </p>
-                <p>
-                  A lista{" "}
+                  — perfis que o bot registrou e que ainda estão no grupo. São
+                  os da lista{" "}
                   <span className="font-medium text-foreground">
                     Membros rastreados
-                  </span>{" "}
-                  abaixo mostra só esses gerenciados ativos. Quem sair ou for
-                  removido deixa de aparecer aqui e passa a contar em{" "}
+                  </span>
+                  , contam no limite do plano e, ao sair, deixam de aparecer e
+                  passam para{" "}
                   <span className="font-medium text-foreground">
                     Saíram do grupo
                   </span>
@@ -325,66 +357,71 @@ export function GroupMembersDrawer({
               </div>
             </div>
 
-            <dl className="grid grid-cols-2 gap-2 text-xs">
-              <div className="rounded-lg border flex flex-col gap-y-0.5 border-border bg-card p-2.5">
-                <dt className="text-muted-foreground font-heading">
-                  Total no grupo
-                </dt>
-                <dd className="font-semibold text-foreground">
-                  {summary.memberCount ?? "—"}
-                </dd>
-              </div>
-              <div className="rounded-lg border flex flex-col gap-y-0.5 border-border bg-card p-2.5">
-                <dt className="text-muted-foreground font-heading">
-                  Gerenciados
-                </dt>
-                <dd
-                  className={cn(
-                    "font-semibold",
-                    summary.trackedMemberLimitReached
-                      ? "text-amber-600 dark:text-amber-500"
-                      : "text-foreground",
-                  )}
-                >
-                  {summary.trackedMemberCount} /{" "}
-                  {summary.trackedMemberLimitPerGroup}
-                </dd>
-              </div>
-              <div className="rounded-lg border flex flex-col gap-y-0.5 border-border bg-card p-2.5">
-                <dt className="text-muted-foreground font-heading">
-                  Saíram do grupo
-                </dt>
-                <dd className="font-semibold">
-                  {summary.leftMemberCount ?? "—"}
-                </dd>
-              </div>
-              <div className="rounded-lg border flex flex-col gap-y-0.5 border-border bg-card p-2.5">
-                <dt className="text-muted-foreground font-heading">
-                  Última sincronização
-                </dt>
-                <dd className="font-semibold">
-                  {formatDateTime(summary.lastSyncedAt)}
-                </dd>
-              </div>
-              <div className="col-span-2 rounded-lg border flex flex-col gap-y-0.5 border-border bg-card p-2.5">
-                <dt className="text-muted-foreground font-heading">
-                  Conectado em
-                </dt>
-                <dd className="font-semibold">
-                  {formatDateTime(summary.connectedAt)}
-                </dd>
-              </div>
-            </dl>
+            {!isLoading ? (
+              <dl className="grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-lg border flex flex-col gap-y-0.5 border-border bg-card p-2.5">
+                  <dt className="text-muted-foreground font-heading">
+                    Total no grupo
+                  </dt>
+                  <dd className="font-semibold text-foreground">
+                    {summary.memberCount ?? "—"}
+                  </dd>
+                </div>
+                <div className="rounded-lg border flex flex-col gap-y-0.5 border-border bg-card p-2.5">
+                  <dt className="text-muted-foreground font-heading">
+                    Gerenciados
+                  </dt>
+                  <dd
+                    className={cn(
+                      "font-semibold",
+                      summary.trackedMemberLimitReached
+                        ? "text-amber-600 dark:text-amber-500"
+                        : "text-foreground",
+                    )}
+                  >
+                    {summary.trackedMemberCount} /{" "}
+                    {summary.trackedMemberLimitPerGroup}
+                  </dd>
+                </div>
+                <div className="rounded-lg border flex flex-col gap-y-0.5 border-border bg-card p-2.5">
+                  <dt className="text-muted-foreground font-heading">
+                    Saíram do grupo
+                  </dt>
+                  <dd className="font-semibold">
+                    {summary.leftMemberCount ?? "—"}
+                  </dd>
+                </div>
+                <div className="rounded-lg border flex flex-col gap-y-0.5 border-border bg-card p-2.5">
+                  <dt className="text-muted-foreground font-heading">
+                    Última sincronização
+                  </dt>
+                  <dd className="font-semibold">
+                    {formatDateTime(summary.lastSyncedAt)}
+                  </dd>
+                </div>
+                <div className="col-span-2 rounded-lg border flex flex-col gap-y-0.5 border-border bg-card p-2.5">
+                  <dt className="text-muted-foreground font-heading">
+                    Conectado em
+                  </dt>
+                  <dd className="font-semibold">
+                    {formatDateTime(summary.connectedAt)}
+                  </dd>
+                </div>
+              </dl>
+            ) : null}
 
             <div className="flex flex-col gap-2">
-              <h3 className="text-sm font-semibold text-foreground">
-                Membros rastreados ({members.length})
-              </h3>
-
-              {isLoading ? (
-                <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+              {isLoading && !data ? (
+                <div className="flex items-center justify-center gap-2 pt-10 text-sm text-muted-foreground">
                   <LoaderIcon size={18} />
                   Carregando lista…
+                </div>
+              ) : null}
+
+              {isLoading && data ? (
+                <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
+                  <LoaderIcon size={14} />
+                  Atualizando…
                 </div>
               ) : null}
 
@@ -402,54 +439,25 @@ export function GroupMembersDrawer({
               ) : null}
 
               {!isLoading && !error && members.length > 0 ? (
-                <ul className="space-y-2 pb-2">
-                  {members.map((member) => {
-                    const updatedAt = getMemberUpdatedAt(member);
-                    return (
-                      <li
-                        key={member.telegramUserId}
-                        className="flex gap-3 rounded-lg border border-border bg-card p-2.5"
-                      >
-                        {member.profilePhotoUrl ? (
-                          <Image
-                            src={member.profilePhotoUrl}
-                            alt=""
-                            width={40}
-                            height={40}
-                            className="size-10 shrink-0 rounded-full object-cover"
-                            unoptimized
-                          />
-                        ) : (
-                          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold uppercase text-muted-foreground">
-                            {(
-                              member.firstName?.[0] ??
-                              member.username?.[0] ??
-                              "?"
-                            ).toUpperCase()}
-                          </span>
-                        )}
-                        <div className="min-w-0 flex-1 space-y-0.5">
-                          <p className="truncate font-medium text-foreground text-sm">
-                            {formatMemberName(member)}
-                          </p>
-                          {member.username ? (
-                            <p className="truncate text-muted-foreground text-xs">
-                              @{member.username}
-                            </p>
-                          ) : null}
-                          <p className="truncate font-mono text-[10px] text-muted-foreground">
-                            ID {member.telegramUserId}
-                          </p>
-                          {updatedAt ? (
-                            <p className="text-[10px] text-muted-foreground">
-                              Atualizado em {formatDateTime(updatedAt)}
-                            </p>
-                          ) : null}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
+                <>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Membros rastreados ({members.length})
+                  </h3>
+
+                  <TooltipProvider>
+                    <ul className="space-y-2 pb-2">
+                      {members.map((member) => (
+                        <GroupMemberRow
+                          key={member.telegramUserId}
+                          member={member}
+                          displayName={formatMemberName(member)}
+                          updatedAt={getMemberUpdatedAt(member)}
+                          formatDateTime={formatDateTime}
+                        />
+                      ))}
+                    </ul>
+                  </TooltipProvider>
+                </>
               ) : null}
             </div>
           </div>

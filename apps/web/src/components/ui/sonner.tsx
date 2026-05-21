@@ -4,6 +4,7 @@ import { InfoIcon, Loader2Icon, TriangleAlertIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 import type { CSSProperties } from "react";
 import { Toaster as Sonner, type ToasterProps } from "sonner";
+import { BadgeAlertIcon } from "../icons/badge-alert";
 import { CircleCheckIcon } from "../icons/circle-check";
 import { CircleErrorIcon } from "../icons/circle-error";
 
@@ -24,7 +25,14 @@ const Toaster = ({ ...props }: ToasterProps) => {
             className="mt-1 text-green-500"
           />
         ),
-        info: <InfoIcon className="size-4 mt-1 text-primary" />,
+        info: (
+          <BadgeAlertIcon
+            isAnimateOnView={true}
+            animateOnHover={false}
+            size={24}
+            className="mt-1 text-primary"
+          />
+        ),
         warning: <TriangleAlertIcon className="size-4 mt-1 text-yellow-500" />,
         error: (
           <CircleErrorIcon
