@@ -114,7 +114,6 @@ model TelegramGroups {
   userId                         String
   telegramChatId                 String   @unique
   title                          String?
-  description                    String?  @db.Text
   chatPhotoFileId                String?
   type                           String
   addedByTelegramUserId          String

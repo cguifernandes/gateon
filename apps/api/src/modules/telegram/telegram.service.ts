@@ -152,7 +152,6 @@ export class TelegramService {
         id: true,
         telegramChatId: true,
         title: true,
-        description: true,
         chatPhotoFileId: true,
         type: true,
         botStatus: true,
@@ -202,7 +201,6 @@ export class TelegramService {
           id: group.id,
           telegramChatId,
           title: group.title,
-          description: group.description,
           chatPhotoUrl: group.chatPhotoFileId
             ? `/api/telegram/groups/${group.id}/chat-photo`
             : null,
@@ -241,6 +239,8 @@ export class TelegramService {
         id: true,
         title: true,
         telegramChatId: true,
+        connectedAt: true,
+        updatedAt: true,
       },
     });
 
@@ -251,18 +251,23 @@ export class TelegramService {
     const trackedMemberLimitPerGroup =
       await this.groupLimit.getMaxManagedMembersPerGroup(userId);
 
-    const members = await this.prisma.telegramGroupMembers.findMany({
-      where: { telegramGroupId: groupId, leftAt: null },
-      orderBy: { updatedAt: 'desc' },
-      select: {
-        telegramUserId: true,
-        username: true,
-        firstName: true,
-        lastName: true,
-        profilePhotoFileId: true,
-        updatedAt: true,
-      },
-    });
+    const [members, leftMemberCount] = await Promise.all([
+      this.prisma.telegramGroupMembers.findMany({
+        where: { telegramGroupId: groupId, leftAt: null },
+        orderBy: { updatedAt: 'desc' },
+        select: {
+          telegramUserId: true,
+          username: true,
+          firstName: true,
+          lastName: true,
+          profilePhotoFileId: true,
+          updatedAt: true,
+        },
+      }),
+      this.prisma.telegramGroupMembers.count({
+        where: { telegramGroupId: groupId, leftAt: { not: null } },
+      }),
+    ]);
 
     const telegramChatId = group.telegramChatId.trim();
     const trackedMemberCount = members.length;
@@ -276,6 +281,9 @@ export class TelegramService {
       trackedMemberLimitPerGroup,
       trackedMemberLimitReached:
         trackedMemberCount >= trackedMemberLimitPerGroup,
+      leftMemberCount,
+      connectedAt: group.connectedAt.toISOString(),
+      lastSyncedAt: group.updatedAt.toISOString(),
       members: members.map((m) => ({
         telegramUserId: m.telegramUserId,
         username: m.username,
@@ -286,6 +294,50 @@ export class TelegramService {
           : null,
         updatedAt: m.updatedAt.toISOString(),
       })),
+    };
+  }
+
+  async refreshGroupConnection(userId: string, groupId: string) {
+    const group = await this.prisma.telegramGroups.findFirst({
+      where: { id: groupId, userId },
+      select: {
+        id: true,
+        telegramChatId: true,
+      },
+    });
+
+    if (!group) {
+      throw new NotFoundException('Telegram group connection not found.');
+    }
+
+    await this.syncTelegramGroupRichMetadata(group.id, group.telegramChatId);
+
+    const updated = await this.prisma.telegramGroups.findFirst({
+      where: { id: groupId, userId },
+      select: {
+        title: true,
+        type: true,
+        chatPhotoFileId: true,
+        telegramChatId: true,
+      },
+    });
+
+    if (!updated) {
+      throw new NotFoundException('Telegram group connection not found.');
+    }
+
+    const memberCount = await this.getTelegramChatMemberCount(
+      updated.telegramChatId,
+    );
+
+    return {
+      refreshed: true,
+      synced: {
+        title: updated.title,
+        hasChatPhoto: Boolean(updated.chatPhotoFileId),
+        chatType: updated.type,
+        memberCount,
+      },
     };
   }
 
@@ -1039,8 +1091,7 @@ export class TelegramService {
 
   private async fetchTelegramGetChatDetails(telegramChatId: string): Promise<{
     title?: string;
-    description?: string | null;
-    chatPhotoFileId?: string;
+    chatPhotoFileId?: string | null;
   } | null> {
     const result = await this.callTelegramBotMethod<Record<string, unknown>>(
       'getChat',
@@ -1054,25 +1105,25 @@ export class TelegramService {
       typeof result.title === 'string' && result.title.trim()
         ? result.title.trim()
         : undefined;
-    const description =
-      typeof result.description === 'string' ? result.description : null;
 
-    let smallFileId: string | undefined;
-    let bigFileId: string | undefined;
-    const photo = result.photo;
-    if (photo && typeof photo === 'object') {
-      const p = photo as Record<string, unknown>;
-      if (typeof p.small_file_id === 'string') {
-        smallFileId = p.small_file_id;
+    let chatPhotoFileId: string | null | undefined;
+    if ('photo' in result) {
+      let smallFileId: string | undefined;
+      let bigFileId: string | undefined;
+      const photo = result.photo;
+      if (photo && typeof photo === 'object') {
+        const p = photo as Record<string, unknown>;
+        if (typeof p.small_file_id === 'string') {
+          smallFileId = p.small_file_id;
+        }
+        if (typeof p.big_file_id === 'string') {
+          bigFileId = p.big_file_id;
+        }
       }
-      if (typeof p.big_file_id === 'string') {
-        bigFileId = p.big_file_id;
-      }
+      chatPhotoFileId = smallFileId ?? bigFileId ?? null;
     }
 
-    const chatPhotoFileId = smallFileId ?? bigFileId;
-
-    return { title, description, chatPhotoFileId };
+    return { title, chatPhotoFileId };
   }
 
   private async fetchTelegramUserProfilePhotos(
@@ -1131,12 +1182,9 @@ export class TelegramService {
     await this.prisma.telegramGroups.update({
       where: { id: groupRecordId },
       data: {
-        ...(details
-          ? {
-              ...(details.title != null ? { title: details.title } : {}),
-              description: details.description ?? null,
-              chatPhotoFileId: details.chatPhotoFileId ?? null,
-            }
+        ...(details?.title !== undefined ? { title: details.title } : {}),
+        ...(details?.chatPhotoFileId !== undefined
+          ? { chatPhotoFileId: details.chatPhotoFileId }
           : {}),
         addedByProfilePhotoFileId: connectorProfilePhotoFileId,
       },

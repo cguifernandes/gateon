@@ -4,9 +4,9 @@ import { DEFAULT_PLAN_ID, getMaxGroupsForPlan } from "@/lib/plan-limits";
 import { getTelegramGroups } from "@/lib/server/get-telegram-groups";
 import { cn } from "@/lib/utils";
 import { GroupsSummaryStats } from "./_components/groups-summary-stats";
-import { GroupsTable } from "./_components/groups-table";
 import { LimitGroups } from "./_components/limit-groups";
 import { SyncGroupLimit } from "./_components/sync-group-limit";
+import { GroupsTable } from "./_components/table/groups-table";
 
 export const metadata: Metadata = {
   title: "Grupos — Gateon",

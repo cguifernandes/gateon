@@ -6,6 +6,11 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export function withCacheBuster(url: string, version: string): string {
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}v=${encodeURIComponent(version)}`;
+}
+
 export type GatewayId = "stripe" | "pagarme" | "pagseguro";
 
 export const SESSION_COOKIE_NAME = "gateon.session";

@@ -43,6 +43,17 @@ export class TelegramController {
     return this.telegram.listGroupMembers(userId, groupId);
   }
 
+  @Post('groups/:groupId/refresh')
+  @UseGuards(AuthGuard)
+  refreshGroup(@Req() req: Request, @Param('groupId') groupId: string) {
+    const userId = req.authSession?.userId;
+    if (!userId) {
+      throw new UnauthorizedException();
+    }
+
+    return this.telegram.refreshGroupConnection(userId, groupId);
+  }
+
   @Get('groups/:groupId/chat-photo')
   @UseGuards(AuthGuard)
   async getGroupChatPhoto(

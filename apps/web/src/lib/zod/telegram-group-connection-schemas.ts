@@ -68,6 +68,9 @@ export const telegramGroupMembersListResponseSchema = z.object({
   trackedMemberCount: z.number().int().nonnegative(),
   trackedMemberLimitPerGroup: z.number().int().positive(),
   trackedMemberLimitReached: z.boolean(),
+  leftMemberCount: z.number().int().nonnegative(),
+  connectedAt: z.string(),
+  lastSyncedAt: z.string(),
   members: z.array(telegramGroupChatMemberDetailSchema),
 });
 
@@ -79,7 +82,6 @@ export const telegramGroupSummarySchema = z.object({
   id: z.string(),
   telegramChatId: z.string(),
   title: z.string().nullable(),
-  description: z.string().nullable(),
   chatPhotoUrl: z.string().nullable(),
   type: z.string(),
   botStatus: z.string(),
