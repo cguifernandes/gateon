@@ -77,7 +77,6 @@ model TelegramAccounts {
   id             String   @id @default(cuid())
   userId         String
   telegramUserId String   @unique
-  username       String?
   firstName      String?
   lastName       String?
   createdAt      DateTime @default(now())
@@ -135,10 +134,10 @@ model TelegramGroupMembers {
   id                 String    @id @default(cuid())
   telegramGroupId    String
   telegramUserId     String
-  username           String?
   firstName          String?
   lastName           String?
   profilePhotoFileId String?
+  joinedAt           DateTime  @default(now())
   leftAt             DateTime?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt

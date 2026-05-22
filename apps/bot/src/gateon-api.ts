@@ -2,7 +2,6 @@ import type { AppConfig } from "./config.js";
 
 type TelegramUserPayload = {
   id: string;
-  username?: string;
   firstName?: string;
   lastName?: string;
 };

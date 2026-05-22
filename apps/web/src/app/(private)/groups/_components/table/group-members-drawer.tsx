@@ -29,8 +29,8 @@ import {
   telegramGroupMembersListResponseSchema,
 } from "@/lib/zod/telegram-group-connection-schemas";
 import {
-  useRefreshTelegramGroup,
   type RefreshTelegramGroupResult,
+  useRefreshTelegramGroup,
 } from "../../_hooks/use-refresh-telegram-group";
 import { GroupMemberRow } from "./group-member-row";
 import { RemoveGroupDialog } from "./remove-group-dialog";
@@ -38,16 +38,12 @@ import { RemoveGroupDialog } from "./remove-group-dialog";
 type MemberRow = TelegramGroupMembersListResponseDto["members"][number];
 
 function formatMemberName(
-  member: Pick<
-    MemberRow,
-    "firstName" | "lastName" | "username" | "telegramUserId"
-  >,
+  member: Pick<MemberRow, "firstName" | "lastName" | "telegramUserId">,
 ) {
   const fullName = [member.firstName, member.lastName]
     .filter(Boolean)
     .join(" ");
   if (fullName) return fullName;
-  if (member.username) return `@${member.username}`;
   return member.telegramUserId;
 }
 
@@ -56,16 +52,6 @@ function formatDateTime(value: string) {
     dateStyle: "short",
     timeStyle: "short",
   }).format(new Date(value));
-}
-
-function getMemberUpdatedAt(
-  member: MemberRow | TelegramGroupSummaryDto["members"][number],
-): string | null {
-  if (!("updatedAt" in member)) {
-    return null;
-  }
-  const value = member.updatedAt;
-  return typeof value === "string" ? value : null;
 }
 
 type GroupMembersDrawerProps = {
@@ -103,74 +89,83 @@ export function GroupMembersDrawer({
     setDisplayGroup(group);
   }, [group]);
 
-  const loadMembers = useCallback(async (options?: { silent?: boolean }) => {
-    if (!options?.silent) {
-      setIsLoading(true);
-    }
-    setError(null);
+  const loadMembers = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!options?.silent) {
+        setIsLoading(true);
+      }
+      setError(null);
 
-    try {
-      const res = await fetch(
-        `/api/telegram/groups/${encodeURIComponent(group.id)}/members`,
-        { credentials: "include", cache: "no-store" },
-      );
+      try {
+        const res = await fetch(
+          `/api/telegram/groups/${encodeURIComponent(group.id)}/members`,
+          { credentials: "include", cache: "no-store" },
+        );
 
-      if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as {
-          error?: string;
-        } | null;
-        throw new Error(body?.error ?? "Não foi possível carregar os membros.");
+        if (!res.ok) {
+          const body = (await res.json().catch(() => null)) as {
+            error?: string;
+          } | null;
+          throw new Error(
+            body?.error ?? "Não foi possível carregar os membros.",
+          );
+        }
+
+        const raw: unknown = await res.json();
+        const parsed = telegramGroupMembersListResponseSchema.safeParse(raw);
+        if (!parsed.success) {
+          throw new Error("Resposta inválida do servidor.");
+        }
+
+        setData(parsed.data);
+        setDisplayGroup((prev) => ({
+          ...prev,
+          title: parsed.data.title ?? prev.title,
+          type: parsed.data.type,
+          isForum:
+            typeof parsed.data.isForum === "boolean"
+              ? parsed.data.isForum
+              : prev.isForum,
+          memberCount: parsed.data.memberCount,
+          trackedMemberCount: parsed.data.trackedMemberCount,
+          trackedMemberLimitPerGroup: parsed.data.trackedMemberLimitPerGroup,
+          trackedMemberLimitReached: parsed.data.trackedMemberLimitReached,
+          leftMemberCount: parsed.data.leftMemberCount,
+          updatedAt: parsed.data.lastSyncedAt,
+        }));
+      } catch (err) {
+        setData(null);
+        setError(
+          err instanceof Error ? err.message : "Erro ao carregar membros.",
+        );
+      } finally {
+        if (!options?.silent) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [group.id],
+  );
+
+  const applyRefreshResult = useCallback(
+    (result: RefreshTelegramGroupResult) => {
+      const synced = result.synced;
+      if (!synced) {
+        return;
       }
 
-      const raw: unknown = await res.json();
-      const parsed = telegramGroupMembersListResponseSchema.safeParse(raw);
-      if (!parsed.success) {
-        throw new Error("Resposta inválida do servidor.");
-      }
-
-      setData(parsed.data);
       setDisplayGroup((prev) => ({
         ...prev,
-        title: parsed.data.title ?? prev.title,
-        type: parsed.data.type,
+        title: synced.title ?? prev.title,
+        type: synced.chatType ?? prev.type,
         isForum:
-          typeof parsed.data.isForum === "boolean"
-            ? parsed.data.isForum
-            : prev.isForum,
-        memberCount: parsed.data.memberCount,
-        trackedMemberCount: parsed.data.trackedMemberCount,
-        trackedMemberLimitPerGroup: parsed.data.trackedMemberLimitPerGroup,
-        trackedMemberLimitReached: parsed.data.trackedMemberLimitReached,
-        updatedAt: parsed.data.lastSyncedAt,
+          typeof synced.isForum === "boolean" ? synced.isForum : prev.isForum,
+        memberCount: synced.memberCount ?? prev.memberCount,
+        updatedAt: new Date().toISOString(),
       }));
-    } catch (err) {
-      setData(null);
-      setError(
-        err instanceof Error ? err.message : "Erro ao carregar membros.",
-      );
-    } finally {
-      if (!options?.silent) {
-        setIsLoading(false);
-      }
-    }
-  }, [group.id]);
-
-  const applyRefreshResult = useCallback((result: RefreshTelegramGroupResult) => {
-    const synced = result.synced;
-    if (!synced) {
-      return;
-    }
-
-    setDisplayGroup((prev) => ({
-      ...prev,
-      title: synced.title ?? prev.title,
-      type: synced.chatType ?? prev.type,
-      isForum:
-        typeof synced.isForum === "boolean" ? synced.isForum : prev.isForum,
-      memberCount: synced.memberCount ?? prev.memberCount,
-      updatedAt: new Date().toISOString(),
-    }));
-  }, []);
+    },
+    [],
+  );
 
   const { refresh, isPending: isSyncing } = useRefreshTelegramGroup(
     group.id,
@@ -207,14 +202,19 @@ export function GroupMembersDrawer({
       data?.trackedMemberLimitPerGroup ??
       displayGroup.trackedMemberLimitPerGroup,
     trackedMemberLimitReached:
-      data?.trackedMemberLimitReached ??
-      displayGroup.trackedMemberLimitReached,
-    leftMemberCount: data?.leftMemberCount,
+      data?.trackedMemberLimitReached ?? displayGroup.trackedMemberLimitReached,
+    leftMemberCount: data?.leftMemberCount ?? displayGroup.leftMemberCount ?? 0,
     connectedAt: data?.connectedAt ?? displayGroup.connectedAt,
     lastSyncedAt: data?.lastSyncedAt ?? displayGroup.updatedAt,
   };
 
   const members = data?.members ?? displayGroup.members;
+  const activeMembersCount = members.filter(
+    (member) => member.status === "active",
+  ).length;
+  const leftMembersInListCount = members.filter(
+    (member) => member.status === "left",
+  ).length;
   const chatType = data?.type ?? displayGroup.type;
   const isForum =
     typeof data?.isForum === "boolean" ? data.isForum : displayGroup.isForum;
@@ -387,8 +387,8 @@ export function GroupMembersDrawer({
                   <dt className="text-muted-foreground font-heading">
                     Saíram do grupo
                   </dt>
-                  <dd className="font-semibold">
-                    {summary.leftMemberCount ?? "—"}
+                  <dd className="font-semibold text-foreground">
+                    {summary.leftMemberCount}
                   </dd>
                 </div>
                 <div className="rounded-lg border flex flex-col gap-y-0.5 border-border bg-card p-2.5">
@@ -441,7 +441,11 @@ export function GroupMembersDrawer({
               {!isLoading && !error && members.length > 0 ? (
                 <>
                   <h3 className="text-sm font-semibold text-foreground">
-                    Membros rastreados ({members.length})
+                    Membros rastreados ({activeMembersCount} ativos
+                    {leftMembersInListCount > 0
+                      ? `, ${leftMembersInListCount} saíram`
+                      : ""}
+                    )
                   </h3>
 
                   <TooltipProvider>
@@ -451,7 +455,6 @@ export function GroupMembersDrawer({
                           key={member.telegramUserId}
                           member={member}
                           displayName={formatMemberName(member)}
-                          updatedAt={getMemberUpdatedAt(member)}
                           formatDateTime={formatDateTime}
                         />
                       ))}

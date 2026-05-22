@@ -367,7 +367,7 @@ function CalendarDayButton({
         "gap-1 border-0 leading-none font-normal group-data-[focused=true]/day:relative",
         "data-[range-end=true]:rounded-(--cell-radius)",
         "data-[range-end=true]:rounded-r-(--cell-radius) data-[range-end=true]:bg-primary",
-        "data-[range-end=true]:text-primary-foreground data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-muted",
+        "data-[range-end=true]:text-primary-foreground data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-muted data-[range-middle=true]:dark:bg-muted/60!",
         "data-[range-middle=true]:text-foreground data-[range-start=true]:rounded-(--cell-radius)",
         "data-[range-start=true]:rounded-l-(--cell-radius) data-[range-start=true]:bg-primary",
         "data-[range-start=true]:text-primary-foreground data-[selected-single=true]:bg-primary",

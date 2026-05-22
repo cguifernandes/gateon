@@ -1,6 +1,11 @@
 "use client";
 
-import { HomeIcon, LayoutDashboardIcon, UsersIcon } from "lucide-react";
+import {
+  HomeIcon,
+  LayoutDashboardIcon,
+  UserRoundCheckIcon,
+  UsersIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { GateonLogo } from "@/components/gateon-logo";
@@ -19,6 +24,7 @@ const navItems = [
   { href: "/dashboard", label: "Visão geral", Icon: LayoutDashboardIcon },
   { href: "/", label: "Site", Icon: HomeIcon },
   { href: "/groups", label: "Grupos", Icon: UsersIcon },
+  { href: "/members", label: "Membros", Icon: UserRoundCheckIcon },
 ] as const;
 
 export function AppSidebar() {

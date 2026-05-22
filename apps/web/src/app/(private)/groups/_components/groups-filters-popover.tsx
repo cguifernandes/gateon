@@ -1,59 +1,56 @@
 "use client";
 
 import { useMemo } from "react";
-import {
-  type DateRangeValue,
-  type FilterParam,
-  FiltersPopover,
-} from "@/components/filters-popever";
+import { type FilterParam, FiltersPopover } from "@/components/filters-popever";
 import {
   BOT_STATUS_FILTER_OPTIONS,
   type BotStatusFilterValue,
 } from "@/lib/telegram-bot-status";
+import type { GroupsFiltersPopoverControl } from "../_hooks/use-groups-filters-url";
 
 type GroupsFiltersPopoverProps = {
-  botStatus: BotStatusFilterValue;
-  onBotStatusChange: (value: BotStatusFilterValue) => void;
-  connectedRange: DateRangeValue;
-  onConnectedRangeChange: (value: DateRangeValue) => void;
-  onClearFilters: () => void;
+  control: GroupsFiltersPopoverControl;
 };
 
-export function GroupsFiltersPopover({
-  botStatus,
-  onBotStatusChange,
-  connectedRange,
-  onConnectedRangeChange,
-  onClearFilters,
-}: GroupsFiltersPopoverProps) {
+export function GroupsFiltersPopover({ control }: GroupsFiltersPopoverProps) {
+  const { draft } = control;
+
   const filters = useMemo<FilterParam[]>(
     () => [
       {
         type: "select",
         field: "botStatus",
         label: "Status",
-        value: botStatus,
+        value: draft.botStatus,
         emptyValue: "all",
         options: BOT_STATUS_FILTER_OPTIONS,
-        onChange: (value) => onBotStatusChange(value as BotStatusFilterValue),
+        onChange: (value) => control.setBotStatus(value as BotStatusFilterValue),
       },
       {
         type: "date",
         field: "connectedAt",
         label: "Conectado entre",
         range: true,
-        value: connectedRange,
-        onChange: onConnectedRangeChange,
+        value: draft.connectedRange,
+        onChange: control.setConnectedRange,
       },
     ],
-    [botStatus, connectedRange, onBotStatusChange, onConnectedRangeChange],
+    [draft, control],
   );
 
   return (
     <FiltersPopover
       title="Filtros avançados de grupos"
       filters={filters}
-      onClearFilters={onClearFilters}
+      appliedActiveFilterCount={control.appliedActiveCount}
+      hasPendingChanges={control.hasPendingChanges}
+      onApplyFilters={control.apply}
+      onClearFilters={control.clear}
+      onPopoverOpenChange={(open) => {
+        if (open) {
+          control.syncDraftFromUrl();
+        }
+      }}
     />
   );
 }

@@ -1,8 +1,13 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import type { DateRangeValue } from "@/components/filters-popever";
+import {
+  areGroupsUrlFiltersEqual,
+  countActiveGroupsUrlFilters,
+  EMPTY_GROUPS_URL_FILTERS,
+} from "@/lib/filter-utils";
 import {
   buildGroupsUrlFiltersSearchParams,
   type GroupsUrlFiltersState,
@@ -10,18 +15,35 @@ import {
 } from "@/lib/groups-url-filters";
 import type { BotStatusFilterValue } from "@/lib/telegram-bot-status";
 
+export type GroupsFiltersPopoverControl = {
+  draft: GroupsUrlFiltersState;
+  setBotStatus: (value: BotStatusFilterValue) => void;
+  setConnectedRange: (value: DateRangeValue) => void;
+  syncDraftFromUrl: () => void;
+  apply: () => void;
+  clear: () => void;
+  hasPendingChanges: boolean;
+  appliedActiveCount: number;
+};
+
 export function useGroupsFiltersUrl() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [, startTransition] = useTransition();
 
-  const filtersFromUrl = useMemo(
+  const urlFilters = useMemo(
     () => parseGroupsUrlFiltersFromSearchParams(searchParams),
     [searchParams],
   );
 
+  const [draftFilters, setDraftFilters] =
+    useState<GroupsUrlFiltersState>(urlFilters);
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    setDraftFilters(urlFilters);
+  }, [urlFilters]);
 
   const pushUrlFilters = useCallback(
     (next: GroupsUrlFiltersState) => {
@@ -35,39 +57,47 @@ export function useGroupsFiltersUrl() {
     [pathname, router, searchParams],
   );
 
-  const setBotStatusFilter = useCallback(
-    (botStatus: BotStatusFilterValue) => {
-      pushUrlFilters({ ...filtersFromUrl, botStatus });
-    },
-    [filtersFromUrl, pushUrlFilters],
-  );
+  const syncDraftFromUrl = useCallback(() => {
+    setDraftFilters(urlFilters);
+  }, [urlFilters]);
 
-  const setConnectedRange = useCallback(
-    (connectedRange: DateRangeValue) => {
-      pushUrlFilters({ ...filtersFromUrl, connectedRange });
-    },
-    [filtersFromUrl, pushUrlFilters],
-  );
+  const setBotStatus = useCallback((botStatus: BotStatusFilterValue) => {
+    setDraftFilters((current) => ({ ...current, botStatus }));
+  }, []);
 
-  const clearPopoverFilters = useCallback(() => {
-    pushUrlFilters({
-      botStatus: "all",
-      connectedRange: undefined,
-    });
+  const setConnectedRange = useCallback((connectedRange: DateRangeValue) => {
+    setDraftFilters((current) => ({ ...current, connectedRange }));
+  }, []);
+
+  const apply = useCallback(() => {
+    pushUrlFilters(draftFilters);
+  }, [draftFilters, pushUrlFilters]);
+
+  const clear = useCallback(() => {
+    setDraftFilters(EMPTY_GROUPS_URL_FILTERS);
+    pushUrlFilters(EMPTY_GROUPS_URL_FILTERS);
   }, [pushUrlFilters]);
 
   const clearSearch = useCallback(() => {
     setSearch("");
   }, []);
 
+  const filtersPopover: GroupsFiltersPopoverControl = {
+    draft: draftFilters,
+    setBotStatus,
+    setConnectedRange,
+    syncDraftFromUrl,
+    apply,
+    clear,
+    hasPendingChanges: !areGroupsUrlFiltersEqual(draftFilters, urlFilters),
+    appliedActiveCount: countActiveGroupsUrlFilters(urlFilters),
+  };
+
   return {
     search,
     setSearch,
-    botStatusFilter: filtersFromUrl.botStatus,
-    connectedRange: filtersFromUrl.connectedRange,
-    setBotStatusFilter,
-    setConnectedRange,
-    clearPopoverFilters,
     clearSearch,
+    urlFilters,
+    filtersPopover,
   };
 }

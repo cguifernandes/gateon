@@ -14,7 +14,6 @@ const optionalTextSchema = z
 
 export const telegramUserSchema = z.object({
   id: telegramIdSchema,
-  username: optionalTextSchema,
   firstName: optionalTextSchema,
   lastName: optionalTextSchema,
 });
@@ -84,7 +83,6 @@ const chatMemberEventSchema = z.object({
   chat: telegramChatSchema,
   subjectUser: z.object({
     id: telegramIdSchema,
-    username: optionalTextSchema,
     firstName: optionalTextSchema,
     lastName: optionalTextSchema,
     isBot: z.boolean().optional(),

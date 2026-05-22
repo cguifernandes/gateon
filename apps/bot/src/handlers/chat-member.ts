@@ -23,6 +23,8 @@ export function registerChatMemberHandler(
       return;
     }
 
+    const previousUser = update.old_chat_member.user;
+
     try {
       await sendTelegramBotEvent(config, {
         eventType: "chat_member",
@@ -33,9 +35,8 @@ export function registerChatMemberHandler(
         },
         subjectUser: {
           id: String(user.id),
-          username: user.username,
-          firstName: user.first_name,
-          lastName: user.last_name,
+          firstName: user.first_name ?? previousUser.first_name,
+          lastName: user.last_name ?? previousUser.last_name,
           isBot: user.is_bot,
         },
         newMemberStatus: member.status,

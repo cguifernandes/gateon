@@ -39,7 +39,7 @@ function SelectTrigger({
           variant: "outline",
           size: size === "sm" ? "sm" : "default",
         }),
-        "w-full justify-between data-placeholder:text-muted-foreground",
+        "w-full justify-between h-9 data-placeholder:text-muted-foreground",
         className,
       )}
       {...props}

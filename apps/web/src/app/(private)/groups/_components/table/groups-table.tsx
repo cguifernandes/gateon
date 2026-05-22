@@ -5,19 +5,9 @@ import { TelegramGroupTypeCell } from "@/app/(private)/groups/_components/table/
 import StripeIcon from "@/assets/gateway/stripe-4.svg";
 import { AddGroupBotDialog } from "@/components/add-group-bot-dialog";
 import { SearchIcon, type SearchIconHandle } from "@/components/icons/search";
-import { UsersIcon } from "@/components/icons/users";
 import { ImageComponent } from "@/components/image-component";
 import { TruncatedTextTooltip } from "@/components/truncated-text-tooltip";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -28,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { countActiveGroupsUrlFilters } from "@/lib/filter-utils";
 import { matchesConnectedAtRange } from "@/lib/groups-filter";
 import {
   getBotStatusDisplay,
@@ -37,127 +28,22 @@ import { cn, withCacheBuster } from "@/lib/utils";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
 import { useGroupsFiltersUrl } from "../../_hooks/use-groups-filters-url";
 import { GroupsFiltersPopover } from "../groups-filters-popover";
+import { GroupsEmptyState } from "./group-empty-state";
 import { GroupMembersDrawer } from "./group-members-drawer";
 import { GroupRowActionsMenu } from "./group-row-actions-menu";
-
-function memberMatchesSearch(
-  members: TelegramGroupSummaryDto["members"],
-  q: string,
-) {
-  if (!q) return false;
-  return members.some((m) => {
-    const hay = [m.firstName, m.lastName, m.username, m.telegramUserId]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-    return hay.includes(q);
-  });
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-  }).format(new Date(value));
-}
-
-function getTrackedMembersProgressPercent(
-  tracked: number,
-  limit: number,
-): number {
-  if (limit <= 0) return 0;
-  return Math.min(100, Math.round((tracked / limit) * 100));
-}
-
-type GroupsEmptyStateProps = {
-  hasNoGroups: boolean;
-  isSearchEmpty: boolean;
-  isPopoverFilterEmpty: boolean;
-  embedded?: boolean;
-  onClearSearch: () => void;
-  onClearPopoverFilters: () => void;
-};
-
-function GroupsEmptyState({
-  hasNoGroups,
-  isSearchEmpty,
-  isPopoverFilterEmpty,
-  embedded = false,
-  onClearSearch,
-  onClearPopoverFilters,
-}: GroupsEmptyStateProps) {
-  return (
-    <Empty
-      className={
-        embedded ? "border-0 py-10" : "rounded-xl border border-border"
-      }
-    >
-      <EmptyHeader>
-        <EmptyMedia className="bg-muted size-14 rounded-lg">
-          <UsersIcon className="text-primary" size={24} />
-        </EmptyMedia>
-        {hasNoGroups ? (
-          <>
-            <EmptyTitle>Nenhum grupo conectado</EmptyTitle>
-            <EmptyDescription className="max-w-sm text-pretty">
-              Use o botão &quot;Cadastrar um novo&quot; para vincular seu
-              primeiro grupo do Telegram. O Gateon cuidará de membros e
-              assinaturas por você.
-            </EmptyDescription>
-          </>
-        ) : isSearchEmpty ? (
-          <>
-            <EmptyTitle>Nenhum resultado na busca</EmptyTitle>
-            <EmptyDescription className="max-w-sm text-pretty">
-              Não encontramos grupos para sua pesquisa. Tente outro nome ou ID
-              do chat.
-            </EmptyDescription>
-          </>
-        ) : (
-          <>
-            <EmptyTitle>Nenhum grupo com esses filtros</EmptyTitle>
-            <EmptyDescription className="max-w-sm text-pretty">
-              Nenhum grupo corresponde ao status do bot ou ao período de conexão
-              escolhidos. Ajuste os filtros ou limpe para ver todos.
-            </EmptyDescription>
-          </>
-        )}
-      </EmptyHeader>
-      <EmptyContent className="flex flex-wrap justify-center gap-2">
-        {isSearchEmpty ? (
-          <Button type="button" variant="outline" onClick={onClearSearch}>
-            Limpar busca
-          </Button>
-        ) : null}
-        {isPopoverFilterEmpty ? (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClearPopoverFilters}
-          >
-            Limpar filtros
-          </Button>
-        ) : null}
-        {hasNoGroups ? <AddGroupBotDialog /> : null}
-      </EmptyContent>
-    </Empty>
-  );
-}
+import {
+  formatDate,
+  getTrackedMembersProgressPercent,
+  memberMatchesSearch,
+} from "./group-table-helpers";
 
 type GroupsTableProps = {
   groups: TelegramGroupSummaryDto[];
 };
 
 export function GroupsTable({ groups }: GroupsTableProps) {
-  const {
-    search,
-    setSearch,
-    botStatusFilter,
-    setBotStatusFilter,
-    connectedRange,
-    setConnectedRange,
-    clearPopoverFilters,
-    clearSearch,
-  } = useGroupsFiltersUrl();
+  const { search, setSearch, clearSearch, urlFilters, filtersPopover } =
+    useGroupsFiltersUrl();
   const searchIconRef = useRef<SearchIconHandle>(null);
   const [membersDrawerGroup, setMembersDrawerGroup] =
     useState<TelegramGroupSummaryDto | null>(null);
@@ -170,10 +56,9 @@ export function GroupsTable({ groups }: GroupsTableProps) {
     if (fresh) {
       setMembersDrawerGroup(fresh);
     }
-  }, [groups, membersDrawerGroup?.id]);
+  }, [groups, membersDrawerGroup]);
 
-  const hasPopoverFilters =
-    botStatusFilter !== "all" || connectedRange?.from !== undefined;
+  const hasPopoverFilters = countActiveGroupsUrlFilters(urlFilters) > 0;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -185,15 +70,15 @@ export function GroupsTable({ groups }: GroupsTableProps) {
         memberMatchesSearch(g.members, q);
       const matchesStatus = matchesBotStatusFilter(
         g.botStatus,
-        botStatusFilter,
+        urlFilters.botStatus,
       );
       const matchesConnected = matchesConnectedAtRange(
         g.connectedAt,
-        connectedRange,
+        urlFilters.connectedRange,
       );
       return matchesSearch && matchesStatus && matchesConnected;
     });
-  }, [groups, search, botStatusFilter, connectedRange]);
+  }, [groups, search, urlFilters]);
 
   const hasNoGroups = groups.length === 0;
   const hasActiveSearch = search.trim().length > 0;
@@ -206,13 +91,13 @@ export function GroupsTable({ groups }: GroupsTableProps) {
     hasPopoverFilters;
 
   return (
-    <>
+    <div className="relative flex flex-col gap-3">
       {hasNoGroups ? (
         <GroupsEmptyState
           hasNoGroups
           isPopoverFilterEmpty={false}
           isSearchEmpty={false}
-          onClearPopoverFilters={clearPopoverFilters}
+          onClearPopoverFilters={filtersPopover.clear}
           onClearSearch={clearSearch}
         />
       ) : (
@@ -235,20 +120,14 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
-              <GroupsFiltersPopover
-                botStatus={botStatusFilter}
-                onBotStatusChange={setBotStatusFilter}
-                connectedRange={connectedRange}
-                onConnectedRangeChange={setConnectedRange}
-                onClearFilters={clearPopoverFilters}
-              />
+              <GroupsFiltersPopover control={filtersPopover} />
             </div>
             <AddGroupBotDialog />
           </div>
           <div className="overflow-hidden rounded-xl border border-border bg-background shadow-xs">
             <Table className="table-fixed">
               <TableHeader>
-                <TableRow className="bg-muted hover:bg-muted/40">
+                <TableRow className="bg-muted hover:bg-muted!">
                   <TableHead className="w-full">Grupo</TableHead>
                   <TableHead className="w-[220px]">Membros</TableHead>
                   <TableHead className="hidden w-28 whitespace-nowrap px-2 text-center sm:table-cell">
@@ -296,10 +175,10 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                                 group.updatedAt,
                               )}
                               alt={group.title ?? "Foto do grupo"}
-                              width={38}
-                              height={38}
-                              sizes="38px"
-                              className="size-[38px] shrink-0 rounded-md border border-border object-cover"
+                              width={40}
+                              height={40}
+                              sizes="40px"
+                              className="size-[40px] shrink-0 rounded-md border border-border object-cover"
                             />
                           )}
                           <div className="min-w-0 flex-1 overflow-hidden">
@@ -409,7 +288,7 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                         hasNoGroups={false}
                         isPopoverFilterEmpty={isPopoverFilterEmpty}
                         isSearchEmpty={isSearchEmpty}
-                        onClearPopoverFilters={clearPopoverFilters}
+                        onClearPopoverFilters={filtersPopover.clear}
                         onClearSearch={clearSearch}
                       />
                     </TableCell>
@@ -446,6 +325,6 @@ export function GroupsTable({ groups }: GroupsTableProps) {
             grupo{groups.length !== 1 ? "s" : ""}
           </p>
         )}
-    </>
+    </div>
   );
 }

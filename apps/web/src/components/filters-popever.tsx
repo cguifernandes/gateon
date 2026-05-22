@@ -2,6 +2,7 @@
 
 import { ptBR } from "date-fns/locale";
 import { Search } from "lucide-react";
+import type { ReactNode } from "react";
 import { useRef, useState } from "react";
 import {
   SlidersHorizontalIcon,
@@ -74,45 +75,66 @@ export interface SelectFilterParam {
   onChange: (value: string) => void;
 }
 
-export type FilterParam = TextFilterParam | DateFilterParam | SelectFilterParam;
-
-function isFilterActive(filter: FilterParam): boolean {
-  if (filter.type === "text") return filter.value.length > 0;
-  if (filter.type === "select") {
-    const empty = filter.emptyValue ?? "all";
-    return filter.value !== empty;
-  }
-  if (filter.type === "date" && filter.range) {
-    return filter.value?.from !== undefined;
-  }
-  if (filter.type === "date") return filter.value !== undefined;
-  return false;
+export interface CustomFilterParam {
+  type: "custom";
+  field: string;
+  label: string;
+  isActive?: boolean;
+  render: ReactNode;
 }
+
+export type FilterParam =
+  | TextFilterParam
+  | DateFilterParam
+  | SelectFilterParam
+  | CustomFilterParam;
 
 interface FiltersPopoverProps {
   filters: FilterParam[];
+  appliedActiveFilterCount: number;
+  hasPendingChanges: boolean;
+  onApplyFilters: () => void;
   onClearFilters: () => void;
+  onPopoverOpenChange?: (open: boolean) => void;
   title?: string;
   description?: string;
 }
 
 export function FiltersPopover({
   filters,
+  appliedActiveFilterCount,
+  hasPendingChanges,
+  onApplyFilters,
   onClearFilters,
+  onPopoverOpenChange,
   title = "Filtros",
   description,
 }: FiltersPopoverProps) {
   const refIconFilters = useRef<SlidersHorizontalIconHandle>(null);
   const [popoverOpen, setPopoverOpen] = useState(false);
 
-  const activeFilterCount = filters.filter(isFilterActive).length;
-  const hasFilters = activeFilterCount > 0;
-  const tooltipLabel = hasFilters
-    ? `${activeFilterCount} filtro${activeFilterCount === 1 ? "" : "s"} ativo${activeFilterCount === 1 ? "" : "s"}`
+  const hasAppliedFilters = appliedActiveFilterCount > 0;
+  const tooltipLabel = hasAppliedFilters
+    ? `${appliedActiveFilterCount} filtro${appliedActiveFilterCount === 1 ? "" : "s"} ativo${appliedActiveFilterCount === 1 ? "" : "s"}`
     : "Abrir filtros";
 
+  function handleOpenChange(open: boolean) {
+    setPopoverOpen(open);
+    onPopoverOpenChange?.(open);
+  }
+
+  function handleApplyFilters() {
+    onApplyFilters();
+    setPopoverOpen(false);
+  }
+
+  function handleClearFilters() {
+    onClearFilters();
+    setPopoverOpen(false);
+  }
+
   return (
-    <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+    <Popover open={popoverOpen} onOpenChange={handleOpenChange}>
       <Tooltip disabled={popoverOpen}>
         <PopoverTrigger
           render={(popoverProps) => (
@@ -121,7 +143,7 @@ export function FiltersPopover({
                 <Button
                   {...popoverProps}
                   {...tooltipProps}
-                  variant={hasFilters ? "default" : "outline"}
+                  variant={hasAppliedFilters ? "default" : "outline"}
                   className={cn(
                     "relative size-[36px] shrink-0 overflow-visible",
                     popoverProps.className,
@@ -144,12 +166,14 @@ export function FiltersPopover({
                   }}
                 >
                   <SlidersHorizontalIcon ref={refIconFilters} />
-                  {hasFilters ? (
+                  {hasAppliedFilters ? (
                     <span
                       aria-hidden
                       className="absolute -top-1.5 -right-1.5 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-foreground px-0.5 text-[10px] leading-none font-semibold text-primary tabular-nums shadow-sm ring-1 ring-primary"
                     >
-                      {activeFilterCount > 9 ? "9+" : activeFilterCount}
+                      {appliedActiveFilterCount > 9
+                        ? "9+"
+                        : appliedActiveFilterCount}
                     </span>
                   ) : null}
                 </Button>
@@ -161,7 +185,10 @@ export function FiltersPopover({
           {tooltipLabel}
         </TooltipContent>
       </Tooltip>
-      <PopoverContent align="end" className={cn("w-70 p-0")}>
+      <PopoverContent
+        align="end"
+        className={cn("w-80 max-h-[440px] overflow-y-auto p-0")}
+      >
         <div className="p-3 flex flex-col gap-3">
           <PopoverHeader>
             <PopoverTitle>{title}</PopoverTitle>
@@ -246,22 +273,35 @@ export function FiltersPopover({
                     }}
                   />
                 </>
+              ) : filter.type === "custom" ? (
+                <>
+                  <Label>{filter.label}</Label>
+                  {filter.render}
+                </>
               ) : null}
             </div>
           ))}
         </div>
 
-        {hasFilters && (
-          <div className="items-center space-x-2 px-6 py-4 mt-auto border-t border-border flex w-full shrink-0 justify-between">
-            <Button
-              variant="default"
-              className="w-full"
-              onClick={onClearFilters}
-            >
-              Limpar filtros
-            </Button>
-          </div>
-        )}
+        <div className="mt-auto flex w-full shrink-0 gap-2 border-t border-border px-3 py-3">
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1"
+            onClick={handleClearFilters}
+          >
+            Limpar
+          </Button>
+          <Button
+            type="button"
+            variant="default"
+            className="flex-1"
+            disabled={!hasPendingChanges}
+            onClick={handleApplyFilters}
+          >
+            Aplicar filtros
+          </Button>
+        </div>
       </PopoverContent>
     </Popover>
   );

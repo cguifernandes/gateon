@@ -31,7 +31,6 @@ export function registerMyChatMemberHandler(
       eventType: "bot_chat_member",
       telegramUser: {
         id: String(update.from.id),
-        username: update.from.username,
         firstName: update.from.first_name,
         lastName: update.from.last_name,
       },

@@ -7,6 +7,7 @@ import {
   NotFoundException,
   Param,
   Post,
+  Query,
   Req,
   StreamableFile,
   UnauthorizedException,
@@ -23,10 +24,14 @@ export class TelegramController {
 
   @Get('groups')
   @UseGuards(AuthGuard)
-  listGroups(@Req() req: Request) {
+  listGroups(@Req() req: Request, @Query('view') view?: string) {
     const userId = req.authSession?.userId;
     if (!userId) {
       throw new UnauthorizedException();
+    }
+
+    if (view === 'members') {
+      return this.telegram.listGroupsForMembersView(userId);
     }
 
     return this.telegram.listGroups(userId);

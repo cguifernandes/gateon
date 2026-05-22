@@ -11,7 +11,6 @@ import { buildStartWithoutTokenMessage } from "../telegram-bot-messages.js";
 
 type TelegramUserPayload = {
   id: string;
-  username?: string;
   firstName?: string;
   lastName?: string;
 };
@@ -33,7 +32,6 @@ function getTelegramUser(ctx: Context): TelegramUserPayload | null {
 
   return {
     id: String(ctx.from.id),
-    username: ctx.from.username,
     firstName: ctx.from.first_name,
     lastName: ctx.from.last_name,
   };

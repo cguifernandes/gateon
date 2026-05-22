@@ -80,6 +80,10 @@ export function getBotStatusDisplay(rawStatus: string) {
   return DISPLAY[getBotStatusDisplayKind(rawStatus)];
 }
 
+export function getTrackedMemberStatusDisplay(status: "active" | "left") {
+  return status === "left" ? DISPLAY.inactive : DISPLAY.active;
+}
+
 export type BotStatusFilterValue = "all" | BotStatusDisplayKind;
 
 export const BOT_STATUS_FILTER_OPTIONS: {
