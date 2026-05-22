@@ -32,7 +32,7 @@ export const EMPTY_MEMBERS_URL_FILTERS: MembersUrlFiltersState = {
   memberStatus: "all",
   joinedRange: undefined,
   leftRange: undefined,
-  telegramChatId: "all",
+  telegramChatIds: [],
 };
 
 export function areGroupsUrlFiltersEqual(
@@ -45,13 +45,24 @@ export function areGroupsUrlFiltersEqual(
   );
 }
 
+function areTelegramChatIdListsEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+
+  const sortedA = [...a].map((id) => id.trim()).sort();
+  const sortedB = [...b].map((id) => id.trim()).sort();
+
+  return sortedA.every((id, index) => id === sortedB[index]);
+}
+
 export function areMembersUrlFiltersEqual(
   a: MembersUrlFiltersState,
   b: MembersUrlFiltersState,
 ): boolean {
   return (
     a.memberStatus === b.memberStatus &&
-    a.telegramChatId === b.telegramChatId &&
+    areTelegramChatIdListsEqual(a.telegramChatIds, b.telegramChatIds) &&
     areDateRangesEqual(a.joinedRange, b.joinedRange) &&
     areDateRangesEqual(a.leftRange, b.leftRange)
   );
@@ -80,7 +91,7 @@ export function countActiveMembersUrlFilters(
     count += 1;
   }
 
-  if (state.telegramChatId !== "all") {
+  if (state.telegramChatIds.length > 0) {
     count += 1;
   }
 

@@ -20,7 +20,7 @@ export type MembersFiltersPopoverControl = {
   setMemberStatus: (value: MemberStatusFilterValue) => void;
   setJoinedRange: (value: DateRangeValue) => void;
   setLeftRange: (value: DateRangeValue) => void;
-  setTelegramChatId: (value: string) => void;
+  setTelegramChatIds: (value: string[]) => void;
   syncDraftFromUrl: () => void;
   apply: () => void;
   clear: () => void;
@@ -75,8 +75,8 @@ export function useMembersFiltersUrl() {
     setDraftFilters((current) => ({ ...current, leftRange }));
   }, []);
 
-  const setTelegramChatId = useCallback((telegramChatId: string) => {
-    setDraftFilters((current) => ({ ...current, telegramChatId }));
+  const setTelegramChatIds = useCallback((telegramChatIds: string[]) => {
+    setDraftFilters((current) => ({ ...current, telegramChatIds }));
   }, []);
 
   const apply = useCallback(() => {
@@ -97,7 +97,7 @@ export function useMembersFiltersUrl() {
     setMemberStatus,
     setJoinedRange,
     setLeftRange,
-    setTelegramChatId,
+    setTelegramChatIds,
     syncDraftFromUrl,
     apply,
     clear,

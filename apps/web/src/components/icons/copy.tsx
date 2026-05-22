@@ -1,50 +1,41 @@
 "use client";
 
-import type { Transition, Variants } from "motion/react";
+import type { Transition } from "motion/react";
 import { motion } from "motion/react";
 import type { HTMLAttributes } from "react";
 import { forwardRef } from "react";
 import { useIconAnimation } from "@/hooks/use-icon-animation";
 import { cn } from "@/lib/utils";
 
-export interface LoaderIconHandle {
+export interface CopyIconHandle {
   startAnimation: () => void;
   stopAnimation: () => void;
 }
 
-interface LoaderIconProps extends HTMLAttributes<HTMLDivElement> {
+interface CopyIconProps extends HTMLAttributes<HTMLDivElement> {
   size?: number;
   isAnimateOnView?: boolean;
-  strokeWidth?: number;
   animateOnHover?: boolean;
+  strokeWidth?: number;
 }
-
-const G_VARIANTS: Variants = {
-  normal: { rotate: 0 },
-  animate: {
-    rotate: 360,
-    transition: {
-      repeat: Number.POSITIVE_INFINITY,
-      duration: 0.8,
-      ease: "linear",
-    },
-  },
-};
 
 const DEFAULT_TRANSITION: Transition = {
   type: "spring",
-  stiffness: 50,
-  damping: 10,
+  stiffness: 160,
+  damping: 17,
+  mass: 1,
 };
 
-const LoaderIcon = forwardRef<LoaderIconHandle, LoaderIconProps>(
+const CopyIcon = forwardRef<CopyIconHandle, CopyIconProps>(
   (
     {
+      onMouseEnter,
+      onMouseLeave,
       className,
       size = 28,
       isAnimateOnView = true,
-      strokeWidth = 2,
       animateOnHover = true,
+      strokeWidth = 2,
       ...props
     },
     ref,
@@ -52,19 +43,20 @@ const LoaderIcon = forwardRef<LoaderIconHandle, LoaderIconProps>(
     const { controls, refElement, eventHandlers } = useIconAnimation(ref, {
       isAnimateOnView,
       animateOnHover,
+      onMouseEnter,
+      onMouseLeave,
     });
-
     return (
       <div
         className={cn(className)}
-        ref={refElement}
         {...eventHandlers}
+        ref={refElement}
         role="presentation"
         aria-hidden="true"
         {...props}
       >
         <svg
-          aria-label="Loader icon"
+          aria-label="Copy icon"
           aria-hidden="true"
           fill="none"
           height={size}
@@ -76,27 +68,35 @@ const LoaderIcon = forwardRef<LoaderIconHandle, LoaderIconProps>(
           width={size}
           xmlns="http://www.w3.org/2000/svg"
         >
-          <motion.g
+          <motion.rect
             animate={controls}
-            style={{ transformOrigin: "12px 12px" }}
+            height="14"
+            rx="2"
+            ry="2"
             transition={DEFAULT_TRANSITION}
-            variants={G_VARIANTS}
-          >
-            <path d="M12 2v4" />
-            <path d="m16.2 7.8 2.9-2.9" />
-            <path d="M18 12h4" />
-            <path d="m16.2 16.2 2.9 2.9" />
-            <path d="M12 18v4" />
-            <path d="m4.9 19.1 2.9-2.9" />
-            <path d="M2 12h4" />
-            <path d="m4.9 4.9 2.9 2.9" />
-          </motion.g>
+            variants={{
+              normal: { translateY: 0, translateX: 0 },
+              animate: { translateY: -3, translateX: -3 },
+            }}
+            width="14"
+            x="8"
+            y="8"
+          />
+          <motion.path
+            animate={controls}
+            d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
+            transition={DEFAULT_TRANSITION}
+            variants={{
+              normal: { x: 0, y: 0 },
+              animate: { x: 3, y: 3 },
+            }}
+          />
         </svg>
       </div>
     );
   },
 );
 
-LoaderIcon.displayName = "LoaderIcon";
+CopyIcon.displayName = "CopyIcon";
 
-export { LoaderIcon };
+export { CopyIcon };

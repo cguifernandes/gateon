@@ -1,11 +1,12 @@
 "use client";
 
 import { Fragment, useMemo, useRef, useState } from "react";
+import { RefreshGroupButton } from "@/app/(private)/groups/_components/table/refresh-group-button";
 import { SearchIcon, type SearchIconHandle } from "@/components/icons/search";
 import { ImageComponent } from "@/components/image-component";
 import { MemberActionsToolbar } from "@/components/member-actions-toolbar";
+import { MemberOwnerBadge } from "@/components/member-owner-badge";
 import { TruncatedTextTooltip } from "@/components/truncated-text-tooltip";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,11 +19,11 @@ import {
 } from "@/components/ui/table";
 import { countActiveMembersUrlFilters } from "@/lib/filter-utils";
 import {
-  matchesTelegramChatIdFilter,
+  matchesTelegramChatIdsFilter,
   memberPassesPopoverFilters,
 } from "@/lib/members-filter";
 import { getTrackedMemberStatusDisplay } from "@/lib/telegram-bot-status";
-import { cn } from "@/lib/utils";
+import { cn, withCacheBuster } from "@/lib/utils";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
 import { useMembersFiltersUrl } from "../../_hooks/use-members-filters-url";
 import {
@@ -32,13 +33,16 @@ import {
   getMemberDisplayName,
   getMemberInitials,
   getMemberKey,
+  getVisibleSelectionSummary,
   groupMatchesSearch,
   isMemberLeft,
+  isMemberOwner,
   type MemberSummary,
   memberMatchesSearch,
   type VisibleGroup,
 } from "../members-table-helpers";
 import { MemberSelectionCheckbox } from "./member-selection-checkbox";
+import { MembersBulkSelectionToolbar } from "./members-bulk-selection-toolbar";
 import { MembersEmptyState } from "./members-empty-state";
 import { MembersFiltersPopover } from "./members-filters-popover";
 
@@ -72,9 +76,9 @@ export function MembersTable({ groups }: MembersTableProps) {
   const visibleGroups = useMemo<VisibleGroup[]>(() => {
     return groups
       .filter((group) =>
-        matchesTelegramChatIdFilter(
+        matchesTelegramChatIdsFilter(
           group.telegramChatId,
-          urlFilters.telegramChatId,
+          urlFilters.telegramChatIds,
         ),
       )
       .map((group) => {
@@ -98,8 +102,10 @@ export function MembersTable({ groups }: MembersTableProps) {
         }
 
         if (
-          urlFilters.telegramChatId !== "all" &&
-          group.telegramChatId.trim() === urlFilters.telegramChatId.trim()
+          urlFilters.telegramChatIds.length > 0 &&
+          urlFilters.telegramChatIds.some(
+            (id) => id.trim() === group.telegramChatId.trim(),
+          )
         ) {
           return true;
         }
@@ -114,7 +120,7 @@ export function MembersTable({ groups }: MembersTableProps) {
     groups,
     query,
     popoverFilters,
-    urlFilters.telegramChatId,
+    urlFilters.telegramChatIds,
     hasPopoverFilters,
   ]);
 
@@ -153,6 +159,21 @@ export function MembersTable({ groups }: MembersTableProps) {
 
     return getGroupMemberKeys(group).some((key) => selectedMemberKeys.has(key));
   });
+
+  const selectionSummary = useMemo(
+    () =>
+      getVisibleSelectionSummary(
+        visibleGroups,
+        selectedGroupIds,
+        selectedMemberKeys,
+      ),
+    [visibleGroups, selectedGroupIds, selectedMemberKeys],
+  );
+
+  function clearSelection() {
+    setSelectedGroupIds(new Set());
+    setSelectedMemberKeys(new Set());
+  }
 
   function toggleGroup(group: VisibleGroup, checked: boolean) {
     setSelectedGroupIds((current) => {
@@ -262,7 +283,7 @@ export function MembersTable({ groups }: MembersTableProps) {
               <MembersFiltersPopover groups={groups} control={filtersPopover} />
             </div>
           </div>
-          <div className="overflow-hidden rounded-xl border border-border bg-background shadow-xs">
+          <div className="overflow-hidden rounded-md border border-border bg-background shadow-xs">
             <Table className="table-fixed">
               <TableHeader>
                 <TableRow className="bg-muted hover:bg-muted!">
@@ -314,15 +335,33 @@ export function MembersTable({ groups }: MembersTableProps) {
                           />
                         </TableCell>
                         <TableCell className="py-3">
-                          <div className="min-w-0">
-                            <TruncatedTextTooltip
-                              text={group.title ?? "Grupo sem nome"}
-                              variant="truncate"
-                              className="font-heading font-semibold text-foreground"
+                          <div className="flex min-w-0 gap-3">
+                            <ImageComponent
+                              src={
+                                group.chatPhotoUrl
+                                  ? withCacheBuster(
+                                      group.chatPhotoUrl,
+                                      group.updatedAt,
+                                    )
+                                  : null
+                              }
+                              alt={group.title?.trim() || "Sem título"}
+                              width={38}
+                              height={38}
+                              sizes="38px"
+                              avatarFallbackClassName="text-lg"
+                              className="size-[38px] shrink-0 rounded-full border border-border object-cover"
                             />
-                            <p className="truncate text-muted-foreground text-xs">
-                              {group.telegramChatId}
-                            </p>
+                            <div className="min-w-0 flex-1 overflow-hidden">
+                              <TruncatedTextTooltip
+                                text={group.title ?? "Grupo sem nome"}
+                                variant="truncate"
+                                className="font-heading font-semibold text-foreground"
+                              />
+                              <p className="truncate text-muted-foreground text-xs">
+                                {group.telegramChatId}
+                              </p>
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell className="hidden py-3 md:table-cell" />
@@ -335,7 +374,14 @@ export function MembersTable({ groups }: MembersTableProps) {
                             {formatGroupMemberStatusSummary(group.members)}
                           </Badge>
                         </TableCell>
-                        <TableCell className="w-[148px] py-3" />
+                        <TableCell className="w-[148px] py-3 text-center">
+                          <div className="flex justify-end">
+                            <RefreshGroupButton
+                              groupId={group.id}
+                              groupTitle={group.title ?? undefined}
+                            />
+                          </div>
+                        </TableCell>
                       </TableRow>
 
                       {group.visibleMembers.length === 0 ? (
@@ -388,30 +434,34 @@ export function MembersTable({ groups }: MembersTableProps) {
                                   }
                                 />
                               </TableCell>
-                              <TableCell className={memberRowMutedClass}>
+                              <TableCell
+                                className={cn("py-2 pl-8", memberRowMutedClass)}
+                              >
                                 <div className="flex min-w-0 items-center gap-3">
-                                  {member.profilePhotoUrl ? (
-                                    <ImageComponent
-                                      src={member.profilePhotoUrl}
-                                      alt={displayName}
-                                      width={32}
-                                      height={32}
-                                      sizes="32px"
-                                      className="size-[32px] shrink-0 rounded-full border border-border object-cover"
-                                    />
-                                  ) : (
-                                    <Avatar className="size-8 shrink-0">
-                                      <AvatarFallback className="text-xs font-semibold uppercase">
+                                  <ImageComponent
+                                    src={member.profilePhotoUrl ?? null}
+                                    alt={displayName}
+                                    width={32}
+                                    height={32}
+                                    sizes="32px"
+                                    fallback={
+                                      <span className="text-xs font-semibold uppercase">
                                         {getMemberInitials(member)}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                  )}
+                                      </span>
+                                    }
+                                    className="size-[32px] shrink-0 rounded-full border border-border object-cover"
+                                  />
                                   <div className="min-w-0">
-                                    <TruncatedTextTooltip
-                                      text={displayName}
-                                      variant="truncate"
-                                      className="font-medium text-foreground"
-                                    />
+                                    <div className="flex min-w-0 items-center gap-1.5">
+                                      <TruncatedTextTooltip
+                                        text={displayName}
+                                        variant="truncate"
+                                        className="font-medium text-foreground"
+                                      />
+                                      {isMemberOwner(member) ? (
+                                        <MemberOwnerBadge />
+                                      ) : null}
+                                    </div>
                                     <code className="truncate text-muted-foreground text-xs">
                                       {member.telegramUserId}
                                     </code>
@@ -455,9 +505,11 @@ export function MembersTable({ groups }: MembersTableProps) {
                               </TableCell>
                               <TableCell className="w-[148px] py-2">
                                 <MemberActionsToolbar
+                                  groupId={group.id}
                                   telegramUserId={member.telegramUserId}
                                   displayName={displayName}
                                   isInactive={memberLeft}
+                                  isOwner={member.isOwner}
                                   variant="inline"
                                 />
                               </TableCell>
@@ -491,8 +543,23 @@ export function MembersTable({ groups }: MembersTableProps) {
         </>
       )}
 
+      {!showFullPageEmpty && selectionSummary.count > 0 ? (
+        <MembersBulkSelectionToolbar
+          selectedCount={selectionSummary.count}
+          selectedTargets={selectionSummary.targets}
+          selectedTelegramUserIds={selectionSummary.telegramUserIds}
+          hasRemovableMember={selectionSummary.hasRemovableMember}
+          onClear={clearSelection}
+        />
+      ) : null}
+
       {!showFullPageEmpty ? (
-        <p className="text-center text-muted-foreground text-xs">
+        <p
+          className={cn(
+            "text-center text-muted-foreground text-xs",
+            selectionSummary.count > 0 && "pb-16",
+          )}
+        >
           Exibindo{" "}
           <strong className="font-medium text-foreground">
             {visibleMemberCount}

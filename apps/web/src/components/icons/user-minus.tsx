@@ -1,73 +1,72 @@
 "use client";
 
-import type { Transition, Variants } from "motion/react";
+import type { Variants } from "motion/react";
 import { motion } from "motion/react";
 import type { HTMLAttributes } from "react";
 import { forwardRef } from "react";
 import { useIconAnimation } from "@/hooks/use-icon-animation";
 import { cn } from "@/lib/utils";
 
-export interface LoaderIconHandle {
+export interface UserMinusIconHandle {
   startAnimation: () => void;
   stopAnimation: () => void;
 }
 
-interface LoaderIconProps extends HTMLAttributes<HTMLDivElement> {
+interface UserMinusIconProps extends HTMLAttributes<HTMLDivElement> {
   size?: number;
   isAnimateOnView?: boolean;
   strokeWidth?: number;
-  animateOnHover?: boolean;
 }
 
-const G_VARIANTS: Variants = {
-  normal: { rotate: 0 },
+const HORIZONTAL_BAR_VARIANTS: Variants = {
+  normal: {
+    opacity: 1,
+  },
   animate: {
-    rotate: 360,
+    opacity: [0, 1],
+    pathLength: [0, 1],
     transition: {
-      repeat: Number.POSITIVE_INFINITY,
-      duration: 0.8,
-      ease: "linear",
+      delay: 0.3,
+      duration: 0.2,
+      opacity: { duration: 0.1, delay: 0.3 },
     },
   },
 };
 
-const DEFAULT_TRANSITION: Transition = {
-  type: "spring",
-  stiffness: 50,
-  damping: 10,
-};
-
-const LoaderIcon = forwardRef<LoaderIconHandle, LoaderIconProps>(
+const UserMinusIcon = forwardRef<UserMinusIconHandle, UserMinusIconProps>(
   (
     {
+      onMouseEnter,
+      onMouseLeave,
       className,
       size = 28,
       isAnimateOnView = true,
       strokeWidth = 2,
-      animateOnHover = true,
       ...props
     },
     ref,
   ) => {
     const { controls, refElement, eventHandlers } = useIconAnimation(ref, {
       isAnimateOnView,
-      animateOnHover,
+      onMouseEnter,
+      onMouseLeave,
     });
 
     return (
       <div
         className={cn(className)}
         ref={refElement}
-        {...eventHandlers}
         role="presentation"
         aria-hidden="true"
+        {...eventHandlers}
         {...props}
       >
-        <svg
-          aria-label="Loader icon"
+        <motion.svg
+          aria-label="User minus icon"
           aria-hidden="true"
           fill="none"
           height={size}
+          initial="normal"
           stroke="currentColor"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -76,27 +75,20 @@ const LoaderIcon = forwardRef<LoaderIconHandle, LoaderIconProps>(
           width={size}
           xmlns="http://www.w3.org/2000/svg"
         >
-          <motion.g
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <motion.path
             animate={controls}
-            style={{ transformOrigin: "12px 12px" }}
-            transition={DEFAULT_TRANSITION}
-            variants={G_VARIANTS}
-          >
-            <path d="M12 2v4" />
-            <path d="m16.2 7.8 2.9-2.9" />
-            <path d="M18 12h4" />
-            <path d="m16.2 16.2 2.9 2.9" />
-            <path d="M12 18v4" />
-            <path d="m4.9 19.1 2.9-2.9" />
-            <path d="M2 12h4" />
-            <path d="m4.9 4.9 2.9 2.9" />
-          </motion.g>
-        </svg>
+            d="M22 11H16"
+            initial="normal"
+            variants={HORIZONTAL_BAR_VARIANTS}
+          />
+        </motion.svg>
       </div>
     );
   },
 );
 
-LoaderIcon.displayName = "LoaderIcon";
+UserMinusIcon.displayName = "UserMinusIcon";
 
-export { LoaderIcon };
+export { UserMinusIcon };

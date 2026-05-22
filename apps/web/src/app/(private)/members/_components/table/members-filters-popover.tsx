@@ -37,12 +37,12 @@ export function MembersFiltersPopover({
         type: "custom",
         field: "telegramChatId",
         label: "Grupo",
-        isActive: draft.telegramChatId !== "all",
+        isActive: draft.telegramChatIds.length > 0,
         render: (
           <MembersGroupFilterOptions
             groups={groups}
-            value={draft.telegramChatId}
-            onChange={control.setTelegramChatId}
+            value={draft.telegramChatIds}
+            onChange={control.setTelegramChatIds}
           />
         ),
       },

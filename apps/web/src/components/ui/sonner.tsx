@@ -1,12 +1,12 @@
 "use client";
 
-import { InfoIcon, Loader2Icon, TriangleAlertIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 import type { CSSProperties } from "react";
 import { Toaster as Sonner, type ToasterProps } from "sonner";
 import { BadgeAlertIcon } from "../icons/badge-alert";
 import { CircleCheckIcon } from "../icons/circle-check";
 import { CircleErrorIcon } from "../icons/circle-error";
+import { LoaderIcon } from "../icons/loader";
 
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme();
@@ -21,7 +21,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
           <CircleCheckIcon
             isAnimateOnView={true}
             animateOnHover={false}
-            size={24}
+            size={20}
             className="mt-1 text-green-500"
           />
         ),
@@ -29,20 +29,29 @@ const Toaster = ({ ...props }: ToasterProps) => {
           <BadgeAlertIcon
             isAnimateOnView={true}
             animateOnHover={false}
-            size={24}
+            size={20}
             className="mt-1 text-primary"
           />
         ),
-        warning: <TriangleAlertIcon className="size-4 mt-1 text-yellow-500" />,
+        warning: (
+          <BadgeAlertIcon
+            isAnimateOnView={true}
+            animateOnHover={false}
+            size={20}
+            className="mt-1 text-yellow-500"
+          />
+        ),
         error: (
           <CircleErrorIcon
             isAnimateOnView={true}
             animateOnHover={false}
-            size={24}
+            size={20}
             className="mt-1 text-destructive"
           />
         ),
-        loading: <Loader2Icon className="size-4 animate-spin mt-1" />,
+        loading: (
+          <LoaderIcon isAnimateOnView={true} animateOnHover={false} size={20} />
+        ),
       }}
       style={
         {
@@ -54,7 +63,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }
       toastOptions={{
         classNames: {
-          toast: "cn-toast !gap-x-4 !w-96",
+          toast: "cn-toast gap-x-3! !w-96",
           title:
             "font-semibold font-heading text-sm leading-snug text-foreground",
           description:

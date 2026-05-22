@@ -9,7 +9,7 @@ export type MembersUrlFiltersState = {
   memberStatus: MemberStatusFilterValue;
   joinedRange: DateRangeValue;
   leftRange: DateRangeValue;
-  telegramChatId: string;
+  telegramChatIds: string[];
 };
 
 const VALID_MEMBER_STATUS = new Set<MemberStatusFilterValue>(
@@ -56,7 +56,7 @@ function parseDateRange(
 }
 
 export function parseMembersUrlFiltersFromSearchParams(
-  params: Pick<URLSearchParams, "get">,
+  params: Pick<URLSearchParams, "get" | "getAll">,
 ): MembersUrlFiltersState {
   const statusParam = params.get("status") ?? "all";
   const memberStatus: MemberStatusFilterValue = VALID_MEMBER_STATUS.has(
@@ -65,13 +65,16 @@ export function parseMembersUrlFiltersFromSearchParams(
     ? (statusParam as MemberStatusFilterValue)
     : "all";
 
-  const telegramChatId = params.get("chatId")?.trim() || "all";
+  const telegramChatIds = params
+    .getAll("chatId")
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0 && id !== "all");
 
   return {
     memberStatus,
     joinedRange: parseDateRange("joinedFrom", "joinedTo", params),
     leftRange: parseDateRange("leftFrom", "leftTo", params),
-    telegramChatId,
+    telegramChatIds,
   };
 }
 
@@ -89,10 +92,12 @@ export function buildMembersUrlFiltersSearchParams(
 
   params.delete("group");
 
-  if (filters.telegramChatId !== "all") {
-    params.set("chatId", filters.telegramChatId);
-  } else {
-    params.delete("chatId");
+  params.delete("chatId");
+  for (const chatId of filters.telegramChatIds) {
+    const normalized = chatId.trim();
+    if (normalized.length > 0 && normalized !== "all") {
+      params.append("chatId", normalized);
+    }
   }
 
   if (filters.joinedRange?.from) {

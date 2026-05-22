@@ -1,7 +1,8 @@
 "use client";
 
 import Image, { type ImageProps, type StaticImageData } from "next/image";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -9,38 +10,85 @@ function isSessionProxiedSrc(src: ImageProps["src"]): boolean {
   return typeof src === "string" && src.startsWith("/api/");
 }
 
-function resolveImageKey(src: ImageProps["src"]): string {
+function hasValidSrc(src: ImageComponentProps["src"]): boolean {
+  if (src == null) return false;
+  if (typeof src === "string") return src.trim().length > 0;
+  return true;
+}
+
+function resolveImageKey(src: ImageComponentProps["src"]): string {
+  if (!hasValidSrc(src)) return "fallback";
   return typeof src === "string" ? src : (src as StaticImageData).src;
 }
 
-type ImageComponentProps = ImageProps & {
+function getFallbackLabel(alt: string) {
+  const letter = alt.trim()[0];
+  return letter ? letter.toUpperCase() : "?";
+}
+
+type ImageComponentProps = Omit<ImageProps, "src"> & {
+  src?: ImageProps["src"] | null;
   containerClassName?: string;
+  avatarFallbackClassName?: string;
   showLoadingSkeleton?: boolean;
+  fallback?: ReactNode;
 };
 
 export function ImageComponent(props: ImageComponentProps) {
-  return <ImageComponentInner key={resolveImageKey(props.src)} {...props} />;
+  return (
+    <ImageComponentInner
+      key={`${resolveImageKey(props.src)}-${props.alt}`}
+      {...props}
+    />
+  );
 }
 
 function ImageComponentInner({
   alt,
   className,
   containerClassName,
+  fallback,
   onError,
   onLoad,
   quality = 100,
+  avatarFallbackClassName,
   showLoadingSkeleton = true,
   src,
   unoptimized,
   ...props
 }: ImageComponentProps) {
   const [status, setStatus] = useState<"loading" | "loaded" | "error">(
-    "loading",
+    hasValidSrc(src) ? "loading" : "error",
   );
 
-  const resolvedUnoptimized = unoptimized ?? isSessionProxiedSrc(src);
   const isLoading = status === "loading";
   const isLoaded = status === "loaded";
+  const shouldShowFallback = !hasValidSrc(src) || status === "error";
+
+  if (shouldShowFallback) {
+    return (
+      <Avatar
+        aria-label={alt}
+        className={cn(
+          "border! ring-0 border-border",
+          containerClassName,
+          className,
+        )}
+      >
+        <AvatarFallback
+          className={cn(
+            "text-xs rounded-none font-semibold uppercase",
+            avatarFallbackClassName,
+          )}
+        >
+          {fallback ?? getFallbackLabel(alt)}
+        </AvatarFallback>
+      </Avatar>
+    );
+  }
+
+  const resolvedSrc = src as NonNullable<typeof src>;
+  const resolvedUnoptimized = unoptimized ?? isSessionProxiedSrc(resolvedSrc);
 
   return (
     <span
@@ -61,13 +109,12 @@ function ImageComponentInner({
 
       <Image
         alt={alt}
-        src={src}
+        src={resolvedSrc}
         quality={quality}
         unoptimized={resolvedUnoptimized}
         className={cn(
           "transition-opacity duration-300",
           isLoaded ? "opacity-100" : "opacity-0",
-          status === "error" && "hidden",
           className,
         )}
         onLoad={(event) => {

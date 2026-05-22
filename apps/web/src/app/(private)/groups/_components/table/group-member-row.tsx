@@ -2,6 +2,7 @@
 
 import type { z } from "zod";
 import { MemberActionsToolbar } from "@/components/member-actions-toolbar";
+import { MemberOwnerBadge } from "@/components/member-owner-badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -10,9 +11,11 @@ import type { telegramGroupChatMemberSchema } from "@/lib/zod/telegram-group-con
 export type GroupMemberRowData = z.infer<typeof telegramGroupChatMemberSchema>;
 
 type GroupMemberRowProps = {
+  groupId: string;
   member: GroupMemberRowData;
   displayName: string;
   formatDateTime: (value: string) => string;
+  onMemberUpdated?: () => void;
 };
 
 function getMemberInitials(member: GroupMemberRowData) {
@@ -22,9 +25,11 @@ function getMemberInitials(member: GroupMemberRowData) {
 }
 
 export function GroupMemberRow({
+  groupId,
   member,
   displayName,
   formatDateTime,
+  onMemberUpdated,
 }: GroupMemberRowProps) {
   const isInactive = member.status === "left";
 
@@ -48,6 +53,7 @@ export function GroupMemberRow({
         <div className="min-w-0 flex-1 space-y-0.5">
           <p className="flex items-center gap-1 truncate font-medium text-foreground text-sm">
             {displayName}
+            {member.isOwner ? <MemberOwnerBadge /> : null}
             <Badge
               variant="outline"
               className={cn(
@@ -67,10 +73,13 @@ export function GroupMemberRow({
       </div>
 
       <MemberActionsToolbar
+        groupId={groupId}
         telegramUserId={member.telegramUserId}
         displayName={displayName}
         isInactive={isInactive}
+        isOwner={member.isOwner}
         variant="overlay"
+        onActionSuccess={onMemberUpdated}
       />
     </li>
   );

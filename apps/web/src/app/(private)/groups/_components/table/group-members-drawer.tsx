@@ -252,15 +252,21 @@ export function GroupMembersDrawer({
             <div className="flex flex-col gap-4">
               <div className="flex items-start pl-6 pt-4 pr-16 gap-3">
                 <ImageComponent
-                  src={withCacheBuster(
-                    displayGroup.chatPhotoUrl ?? "",
-                    displayGroup.updatedAt ?? "",
-                  )}
-                  alt={displayGroup.title || "Grupo sem nome"}
+                  src={
+                    displayGroup.chatPhotoUrl
+                      ? withCacheBuster(
+                          displayGroup.chatPhotoUrl,
+                          displayGroup.updatedAt,
+                        )
+                      : null
+                  }
+                  alt={displayGroup.title?.trim() || "Grupo sem nome"}
+                  avatarFallbackClassName="text-lg"
                   width={50}
                   height={50}
                   className="size-[50px] border border-border shrink-0 rounded-full object-cover"
                 />
+
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <DrawerTitle className="max-w-full line-clamp-2 break-all">
                     {displayGroup.title || "Grupo sem nome"}
@@ -411,17 +417,10 @@ export function GroupMembersDrawer({
             ) : null}
 
             <div className="flex flex-col gap-2">
-              {isLoading && !data ? (
+              {isLoading ? (
                 <div className="flex items-center justify-center gap-2 pt-10 text-sm text-muted-foreground">
                   <LoaderIcon size={18} />
                   Carregando lista…
-                </div>
-              ) : null}
-
-              {isLoading && data ? (
-                <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
-                  <LoaderIcon size={14} />
-                  Atualizando…
                 </div>
               ) : null}
 
@@ -453,9 +452,13 @@ export function GroupMembersDrawer({
                       {members.map((member) => (
                         <GroupMemberRow
                           key={member.telegramUserId}
+                          groupId={displayGroup.id}
                           member={member}
                           displayName={formatMemberName(member)}
                           formatDateTime={formatDateTime}
+                          onMemberUpdated={() =>
+                            void loadMembers({ silent: true })
+                          }
                         />
                       ))}
                     </ul>

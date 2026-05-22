@@ -124,7 +124,7 @@ export function GroupsTable({ groups }: GroupsTableProps) {
             </div>
             <AddGroupBotDialog />
           </div>
-          <div className="overflow-hidden rounded-xl border border-border bg-background shadow-xs">
+          <div className="overflow-hidden rounded-md border border-border bg-background shadow-xs">
             <Table className="table-fixed">
               <TableHeader>
                 <TableRow className="bg-muted hover:bg-muted!">
@@ -168,19 +168,22 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                     >
                       <TableCell className="w-92 align-top">
                         <div className="flex min-w-0 gap-3">
-                          {group.chatPhotoUrl && (
-                            <ImageComponent
-                              src={withCacheBuster(
-                                group.chatPhotoUrl,
-                                group.updatedAt,
-                              )}
-                              alt={group.title ?? "Foto do grupo"}
-                              width={40}
-                              height={40}
-                              sizes="40px"
-                              className="size-[40px] shrink-0 rounded-md border border-border object-cover"
-                            />
-                          )}
+                          <ImageComponent
+                            src={
+                              group.chatPhotoUrl
+                                ? withCacheBuster(
+                                    group.chatPhotoUrl,
+                                    group.updatedAt,
+                                  )
+                                : null
+                            }
+                            alt={group.title?.trim() || "Sem título"}
+                            width={38}
+                            height={38}
+                            sizes="38px"
+                            avatarFallbackClassName="text-lg"
+                            className="size-[38px] shrink-0 rounded-full border border-border object-cover"
+                          />
                           <div className="min-w-0 flex-1 overflow-hidden">
                             <TruncatedTextTooltip
                               text={group.title ?? "Sem título"}

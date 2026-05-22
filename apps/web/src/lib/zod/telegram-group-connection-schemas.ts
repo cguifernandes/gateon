@@ -56,6 +56,7 @@ export const telegramGroupChatMemberSchema = z.object({
   joinedAt: z.string(),
   leftAt: z.string().nullable(),
   status: telegramTrackedMemberStatusSchema,
+  isOwner: z.boolean(),
 });
 
 export const telegramGroupChatMemberDetailSchema =
@@ -107,4 +108,31 @@ export const telegramGroupsResponseSchema = z.array(telegramGroupSummarySchema);
 
 export type TelegramGroupSummaryDto = z.infer<
   typeof telegramGroupSummarySchema
+>;
+
+export const telegramGroupMemberActionSchema = z.enum([
+  "notice",
+  "remove",
+  "ban",
+]);
+
+export const telegramGroupMemberBulkActionRequestSchema = z.object({
+  action: telegramGroupMemberActionSchema,
+  telegramUserIds: z.array(z.string().trim().min(1)).min(1).max(100),
+  text: z.string().trim().min(1).max(4096).optional(),
+});
+
+export const telegramGroupMemberBulkActionResultSchema = z.object({
+  successCount: z.number().int().nonnegative(),
+  failedCount: z.number().int().nonnegative(),
+  failures: z.array(
+    z.object({
+      telegramUserId: z.string(),
+      reason: z.string(),
+    }),
+  ),
+});
+
+export type TelegramGroupMemberBulkActionResultDto = z.infer<
+  typeof telegramGroupMemberBulkActionResultSchema
 >;

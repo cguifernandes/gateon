@@ -137,6 +137,7 @@ model TelegramGroupMembers {
   firstName          String?
   lastName           String?
   profilePhotoFileId String?
+  isOwner            Boolean   @default(false)
   joinedAt           DateTime  @default(now())
   leftAt             DateTime?
   createdAt          DateTime  @default(now())

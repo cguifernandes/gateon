@@ -1,3 +1,4 @@
+import type { MemberActionTarget } from "@/lib/member-actions";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
 
 export type MemberSummary = TelegramGroupSummaryDto["members"][number];
@@ -39,6 +40,14 @@ export function isMemberLeft(member: MemberSummary) {
   return member.status === "left";
 }
 
+export function isMemberOwner(member: MemberSummary) {
+  return member.isOwner;
+}
+
+export function isMemberRemovable(member: MemberSummary) {
+  return member.status === "active" && !member.isOwner;
+}
+
 function normalizeSearchValue(value: string | null | undefined) {
   return value?.toLowerCase() ?? "";
 }
@@ -66,6 +75,59 @@ export function getGroupMemberKeys(group: TelegramGroupSummaryDto) {
   return group.members.map((member) =>
     getMemberKey(group.id, member.telegramUserId),
   );
+}
+
+export type SelectedMemberTarget = MemberActionTarget;
+
+export type VisibleSelectionSummary = {
+  count: number;
+  targets: SelectedMemberTarget[];
+  telegramUserIds: string[];
+  hasActiveMember: boolean;
+  hasRemovableMember: boolean;
+};
+
+export function getVisibleSelectionSummary(
+  visibleGroups: VisibleGroup[],
+  selectedGroupIds: Set<string>,
+  selectedMemberKeys: Set<string>,
+): VisibleSelectionSummary {
+  const targets: SelectedMemberTarget[] = [];
+  let hasActiveMember = false;
+  let hasRemovableMember = false;
+
+  for (const group of visibleGroups) {
+    const members = selectedGroupIds.has(group.id)
+      ? group.visibleMembers
+      : group.visibleMembers.filter((member) =>
+          selectedMemberKeys.has(
+            getMemberKey(group.id, member.telegramUserId),
+          ),
+        );
+
+    for (const member of members) {
+      targets.push({
+        groupId: group.id,
+        telegramUserId: member.telegramUserId,
+        status: member.status,
+        isOwner: member.isOwner,
+      });
+      if (member.status === "active") {
+        hasActiveMember = true;
+        if (!member.isOwner) {
+          hasRemovableMember = true;
+        }
+      }
+    }
+  }
+
+  return {
+    count: targets.length,
+    targets,
+    telegramUserIds: targets.map((target) => target.telegramUserId),
+    hasActiveMember,
+    hasRemovableMember,
+  };
 }
 
 function formatCountLabel(count: number, singular: string, plural: string) {

@@ -34,7 +34,7 @@ export function MembersEmptyState({
   return (
     <Empty
       className={
-        embedded ? "border-0 py-10" : "rounded-xl border border-border"
+        embedded ? "border-0 py-10" : "rounded-md border border-border"
       }
     >
       <EmptyHeader>
@@ -85,7 +85,11 @@ export function MembersEmptyState({
           </Button>
         ) : null}
         {isPopoverFilterEmpty && onClearPopoverFilters ? (
-          <Button type="button" variant="outline" onClick={onClearPopoverFilters}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClearPopoverFilters}
+          >
             Limpar filtros
           </Button>
         ) : null}

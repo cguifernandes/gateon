@@ -14,6 +14,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
+import { telegramGroupMemberBulkActionSchema } from '../../lib/zod/telegram-member-actions-schemas';
 import { telegramBotEventSchema } from './schemas/telegram-schemas';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { TelegramService } from './telegram.service';
@@ -35,6 +36,22 @@ export class TelegramController {
     }
 
     return this.telegram.listGroups(userId);
+  }
+
+  @Post('groups/:groupId/members/actions')
+  @UseGuards(AuthGuard)
+  performGroupMemberActions(
+    @Req() req: Request,
+    @Param('groupId') groupId: string,
+    @Body() body: unknown,
+  ) {
+    const userId = req.authSession?.userId;
+    if (!userId) {
+      throw new UnauthorizedException();
+    }
+
+    const input = telegramGroupMemberBulkActionSchema.parse(body);
+    return this.telegram.performGroupMemberActions(userId, groupId, input);
   }
 
   @Get('groups/:groupId/members')

@@ -53,15 +53,16 @@ export function matchesLeftAtRange(
   return matchesConnectedAtRange(leftAtIso, range);
 }
 
-export function matchesTelegramChatIdFilter(
+export function matchesTelegramChatIdsFilter(
   telegramChatId: string,
-  filterTelegramChatId: string,
+  filterTelegramChatIds: string[],
 ): boolean {
-  if (filterTelegramChatId === "all") {
+  if (filterTelegramChatIds.length === 0) {
     return true;
   }
 
-  return telegramChatId.trim() === filterTelegramChatId.trim();
+  const normalizedId = telegramChatId.trim();
+  return filterTelegramChatIds.some((id) => id.trim() === normalizedId);
 }
 
 export function memberPassesPopoverFilters(

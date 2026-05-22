@@ -37,7 +37,7 @@ export function GroupsEmptyState({
           ? ""
           : embedded
             ? "border-0 bg-background py-10"
-            : "rounded-xl border border-border"
+            : "rounded-md border border-border"
       }
     >
       <EmptyHeader>

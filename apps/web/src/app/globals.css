@@ -296,3 +296,9 @@ body {
 *::placeholder {
   @apply text-gray-500;
 }
+
+/* Sonner: espaço entre ícone e conteúdo do toast */
+[data-sonner-toaster],
+.toaster {
+  --toast-icon-margin-end: 0px !important;
+}

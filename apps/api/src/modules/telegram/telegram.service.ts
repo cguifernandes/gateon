@@ -12,11 +12,25 @@ import { TelegramConnectionStatus } from '@prisma/client';
 import { GroupLimitService } from '../../lib/group-limit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { hashSensitiveValue } from '../../utils/utils';
+import type { TelegramGroupMemberBulkActionInput } from '../../lib/zod/telegram-member-actions-schemas';
 import type { TelegramBotEventInput } from './schemas/telegram-schemas';
 import {
   listMissingRequiredAdministratorRights,
   type TelegramAdministratorRightsInput,
 } from '../../utils/utils';
+
+const DEFAULT_MEMBER_NOTICE_TEXT = 'Boa tarde';
+
+type TelegramMemberActionFailure = {
+  telegramUserId: string;
+  reason: string;
+};
+
+type TelegramMemberBulkActionResult = {
+  successCount: number;
+  failedCount: number;
+  failures: TelegramMemberActionFailure[];
+};
 
 type TelegramActor = {
   id: string;
@@ -49,6 +63,7 @@ type TrackedMemberRow = {
   firstName: string | null;
   lastName: string | null;
   profilePhotoFileId: string | null;
+  isOwner: boolean;
   joinedAt: Date;
   leftAt: Date | null;
 };
@@ -160,6 +175,7 @@ export class TelegramService {
       joinedAt: member.joinedAt.toISOString(),
       leftAt: member.leftAt?.toISOString() ?? null,
       status: member.leftAt ? ('left' as const) : ('active' as const),
+      isOwner: member.isOwner,
     };
   }
 
@@ -191,6 +207,7 @@ export class TelegramService {
             firstName: true,
             lastName: true,
             profilePhotoFileId: true,
+            isOwner: true,
             joinedAt: true,
             leftAt: true,
           },
@@ -293,6 +310,7 @@ export class TelegramService {
             firstName: true,
             lastName: true,
             profilePhotoFileId: true,
+            isOwner: true,
             joinedAt: true,
             leftAt: true,
           },
@@ -398,6 +416,7 @@ export class TelegramService {
         firstName: true,
         lastName: true,
         profilePhotoFileId: true,
+        isOwner: true,
         joinedAt: true,
         leftAt: true,
         updatedAt: true,
@@ -429,6 +448,114 @@ export class TelegramService {
     };
   }
 
+  async performGroupMemberActions(
+    userId: string,
+    groupId: string,
+    input: TelegramGroupMemberBulkActionInput,
+  ): Promise<TelegramMemberBulkActionResult> {
+    const group = await this.prisma.telegramGroups.findFirst({
+      where: { id: groupId, userId },
+      select: {
+        id: true,
+        telegramChatId: true,
+        botStatus: true,
+      },
+    });
+
+    if (!group) {
+      throw new NotFoundException('Telegram group connection not found.');
+    }
+
+    const uniqueTelegramUserIds = [
+      ...new Set(input.telegramUserIds.map((id) => id.trim()).filter(Boolean)),
+    ];
+
+    if (uniqueTelegramUserIds.length === 0) {
+      throw new BadRequestException('No member IDs provided.');
+    }
+
+    const trackedMembers = await this.prisma.telegramGroupMembers.findMany({
+      where: {
+        telegramGroupId: groupId,
+        telegramUserId: { in: uniqueTelegramUserIds },
+      },
+      select: {
+        telegramUserId: true,
+        leftAt: true,
+        isOwner: true,
+      },
+    });
+
+    const trackedByUserId = new Map(
+      trackedMembers.map((member) => [member.telegramUserId, member]),
+    );
+
+    const failures: TelegramMemberActionFailure[] = [];
+    const successIds: string[] = [];
+
+    for (const telegramUserId of uniqueTelegramUserIds) {
+      const tracked = trackedByUserId.get(telegramUserId);
+      if (!tracked) {
+        failures.push({
+          telegramUserId,
+          reason: 'Membro não rastreado neste grupo.',
+        });
+        continue;
+      }
+
+      if (input.action !== 'notice' && tracked.isOwner) {
+        failures.push({
+          telegramUserId,
+          reason:
+            'Não é possível remover ou banir o dono do grupo. O bot não tem permissão para isso.',
+        });
+        continue;
+      }
+
+      if (input.action !== 'notice' && tracked.leftAt !== null) {
+        failures.push({
+          telegramUserId,
+          reason: 'Membro já saiu do grupo.',
+        });
+        continue;
+      }
+
+      const actionResult = await this.executeGroupMemberAction({
+        action: input.action,
+        telegramChatId: group.telegramChatId,
+        telegramUserId,
+        text: input.text?.trim() || DEFAULT_MEMBER_NOTICE_TEXT,
+      });
+
+      if (!actionResult.ok) {
+        failures.push({
+          telegramUserId,
+          reason: actionResult.reason,
+        });
+        continue;
+      }
+
+      if (input.action === 'remove' || input.action === 'ban') {
+        await this.prisma.telegramGroupMembers.updateMany({
+          where: {
+            telegramGroupId: groupId,
+            telegramUserId,
+            leftAt: null,
+          },
+          data: { leftAt: new Date() },
+        });
+      }
+
+      successIds.push(telegramUserId);
+    }
+
+    return {
+      successCount: successIds.length,
+      failedCount: failures.length,
+      failures,
+    };
+  }
+
   async refreshGroupConnection(userId: string, groupId: string) {
     const group = await this.prisma.telegramGroups.findFirst({
       where: { id: groupId, userId },
@@ -444,6 +571,8 @@ export class TelegramService {
 
     const { telegramChatId: syncedChatId } =
       await this.syncTelegramGroupRichMetadata(group.id, group.telegramChatId);
+
+    await this.syncGroupMemberOwnerFlags(group.id, syncedChatId);
 
     const updated = await this.prisma.telegramGroups.findFirst({
       where: { id: groupId, userId },
@@ -835,8 +964,22 @@ export class TelegramService {
         firstName,
         lastName,
         refreshProfilePhoto: true,
+        isOwner: newMemberStatus === 'creator',
       },
     );
+
+    if (newMemberStatus === 'creator') {
+      await this.syncGroupMemberOwnerFlags(group.id, chat.id).catch(
+        (err: unknown) => {
+          this.logger.warn(
+            `Owner flags sync failed after creator change in group ${group.id}: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+        },
+      );
+    }
+
     return { ok: true, applied: wasManaged };
   }
 
@@ -848,6 +991,7 @@ export class TelegramService {
       firstName: string | null;
       lastName: string | null;
       refreshProfilePhoto: boolean;
+      isOwner?: boolean;
     },
   ): Promise<boolean> {
     const existingMember = await this.prisma.telegramGroupMembers.findUnique({
@@ -910,12 +1054,14 @@ export class TelegramService {
         firstName: fields.firstName,
         lastName: fields.lastName,
         profilePhotoFileId: profilePhotoFileId ?? null,
+        isOwner: fields.isOwner ?? false,
         leftAt: null,
       },
       update: {
         firstName: fields.firstName,
         lastName: fields.lastName,
         leftAt: null,
+        ...(fields.isOwner !== undefined ? { isOwner: fields.isOwner } : {}),
         ...(createsOrReactivates ? { joinedAt: new Date() } : {}),
         ...(profilePhotoFileId !== undefined ? { profilePhotoFileId } : {}),
       },
@@ -1318,6 +1464,16 @@ export class TelegramService {
         );
       });
 
+    await this.syncGroupMemberOwnerFlags(group.id, chat.id).catch(
+      (err: unknown) => {
+        this.logger.warn(
+          `Owner flags sync failed for group ${group.id}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      },
+    );
+
     const updatedIntent =
       await this.prisma.telegramGroupConnectionIntents.update({
         where: { id: intentId },
@@ -1402,9 +1558,17 @@ export class TelegramService {
     method: string,
     payload: Record<string, unknown>,
   ): Promise<T | null> {
+    const result = await this.callTelegramBotMethodDetailed<T>(method, payload);
+    return result.ok ? result.result : null;
+  }
+
+  private async callTelegramBotMethodDetailed<T>(
+    method: string,
+    payload: Record<string, unknown>,
+  ): Promise<{ ok: true; result: T } | { ok: false; reason: string }> {
     const token = this.getTelegramBotToken();
     if (!token) {
-      return null;
+      return { ok: false, reason: 'Bot do Telegram não configurado.' };
     }
 
     try {
@@ -1417,17 +1581,158 @@ export class TelegramService {
           signal: AbortSignal.timeout(15_000),
         },
       );
-      if (!response.ok) {
-        return null;
+
+      const data = (await response.json()) as TelegramApiResponse<T> & {
+        description?: string;
+      };
+
+      if (!response.ok || !data.ok) {
+        return {
+          ok: false,
+          reason:
+            typeof data.description === 'string' && data.description.trim()
+              ? data.description
+              : 'Falha na API do Telegram.',
+        };
       }
-      const data = (await response.json()) as TelegramApiResponse<T>;
-      if (!data.ok) {
-        return null;
-      }
-      return data.result as T;
+
+      return { ok: true, result: data.result as T };
     } catch {
+      return { ok: false, reason: 'Falha ao comunicar com o Telegram.' };
+    }
+  }
+
+  private parseTelegramUserId(telegramUserId: string): number | null {
+    const numericId = Number(telegramUserId);
+    if (!Number.isFinite(numericId)) {
       return null;
     }
+    return numericId;
+  }
+
+  private mapTelegramDmFailureReason(description: string): string {
+    const normalized = description.toLowerCase();
+    if (
+      normalized.includes("can't initiate conversation") ||
+      normalized.includes('bot was blocked') ||
+      normalized.includes('user is deactivated')
+    ) {
+      return 'Não foi possível enviar no particular. O membro precisa ter enviado mensagem para o bot antes.';
+    }
+    return description;
+  }
+
+  private async syncGroupMemberOwnerFlags(
+    gateonGroupId: string,
+    telegramChatId: string,
+  ): Promise<void> {
+    const chatId = telegramChatId.trim();
+    if (!chatId) {
+      return;
+    }
+
+    const administrators = await this.callTelegramBotMethod<
+      { user: { id: number | string }; status: string }[]
+    >('getChatAdministrators', { chat_id: chatId });
+
+    if (!administrators) {
+      return;
+    }
+
+    const ownerIds = [
+      ...new Set(
+        administrators
+          .filter((admin) => admin.status === 'creator')
+          .map((admin) => String(admin.user.id)),
+      ),
+    ];
+
+    await this.prisma.$transaction([
+      this.prisma.telegramGroupMembers.updateMany({
+        where: {
+          telegramGroupId: gateonGroupId,
+          leftAt: null,
+          isOwner: true,
+          ...(ownerIds.length > 0
+            ? { telegramUserId: { notIn: ownerIds } }
+            : {}),
+        },
+        data: { isOwner: false },
+      }),
+      ...(ownerIds.length > 0
+        ? [
+            this.prisma.telegramGroupMembers.updateMany({
+              where: {
+                telegramGroupId: gateonGroupId,
+                leftAt: null,
+                telegramUserId: { in: ownerIds },
+              },
+              data: { isOwner: true },
+            }),
+          ]
+        : []),
+    ]);
+  }
+
+  private async executeGroupMemberAction(params: {
+    action: TelegramGroupMemberBulkActionInput['action'];
+    telegramChatId: string;
+    telegramUserId: string;
+    text: string;
+  }): Promise<{ ok: true } | { ok: false; reason: string }> {
+    const userId = this.parseTelegramUserId(params.telegramUserId);
+    if (userId === null) {
+      return { ok: false, reason: 'ID do Telegram inválido.' };
+    }
+
+    if (params.action === 'notice') {
+      const sendResult = await this.callTelegramBotMethodDetailed<unknown>(
+        'sendMessage',
+        {
+          chat_id: userId,
+          text: params.text,
+        },
+      );
+      if (!sendResult.ok) {
+        return {
+          ok: false,
+          reason: this.mapTelegramDmFailureReason(sendResult.reason),
+        };
+      }
+      return { ok: true };
+    }
+
+    const chatId = params.telegramChatId.trim();
+    if (!chatId) {
+      return { ok: false, reason: 'Grupo do Telegram inválido.' };
+    }
+
+    const banResult = await this.callTelegramBotMethodDetailed<unknown>(
+      'banChatMember',
+      {
+        chat_id: chatId,
+        user_id: userId,
+      },
+    );
+    if (!banResult.ok) {
+      return { ok: false, reason: banResult.reason };
+    }
+
+    if (params.action === 'remove') {
+      const unbanResult = await this.callTelegramBotMethodDetailed<unknown>(
+        'unbanChatMember',
+        {
+          chat_id: chatId,
+          user_id: userId,
+          only_if_banned: true,
+        },
+      );
+      if (!unbanResult.ok) {
+        return { ok: false, reason: unbanResult.reason };
+      }
+    }
+
+    return { ok: true };
   }
 
   private async downloadTelegramFileById(
