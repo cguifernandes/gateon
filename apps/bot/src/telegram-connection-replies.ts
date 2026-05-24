@@ -1,7 +1,10 @@
 const PERMISSION_LABELS: Record<string, string> = {
-  "send-messages": "Enviar mensagens",
+  canManageChat: "Gerenciar o chat",
+  canRestrictMembers: "Banir usuários",
+  canInviteUsers: "Convidar usuários via link",
+  "send-messages": "Gerenciar o chat",
   "ban-users": "Banir usuários",
-  "manage-invite-links": "Gerenciar links de convite",
+  "manage-invite-links": "Convidar usuários via link",
 };
 
 function formatPermissionList(ids: string[]): string {
@@ -26,7 +29,7 @@ export function replyForTelegramConnectionReason(
     return [
       "Grupo identificado.",
       "",
-      "Para concluir a conexão no Gateon, abra Configurações do grupo → Administradores, promova o bot a administrador e ative as permissões obrigatórias indicadas no painel.",
+      "Para concluir a conexão no Gateon, abra Configurações do grupo → Administradores, promova o bot a administrador e ative as permissões obrigatórias indicadas no painel (mesmos nomes do Telegram).",
     ].join("\n");
   }
 

@@ -123,11 +123,28 @@ model TelegramGroups {
   createdAt                      DateTime @default(now())
   updatedAt                      DateTime @updatedAt
 
-  user    Users                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  members TelegramGroupMembers[]
+  user     Users                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  members  TelegramGroupMembers[]
+  settings TelegramGroupBotSettings?
 
   @@index([userId])
   @@index([addedByTelegramUserId])
+}
+
+model TelegramGroupBotSettings {
+  id                   String   @id @default(cuid())
+  telegramGroupId      String   @unique
+  enabled              Boolean  @default(true)
+  welcomeEnabled       Boolean  @default(false)
+  welcomeMessage       String   @default("Bem-vindo, {name}! Sua entrada no grupo foi registrada com sucesso.") @db.Text
+  privateMessageOnJoin Boolean  @default(false)
+  notifyPermissionLoss Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  group TelegramGroups @relation(fields: [telegramGroupId], references: [id], onDelete: Cascade)
+
+  @@index([telegramGroupId])
 }
 
 model TelegramGroupMembers {

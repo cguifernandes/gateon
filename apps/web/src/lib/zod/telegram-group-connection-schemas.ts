@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { telegramGroupBotSettingsSchema } from "./telegram-group-bot-settings-schemas";
 
 /** Matches Prisma `TelegramConnectionStatus` from the Nest API */
 export const telegramConnectionStatusSchema = z.enum([
@@ -108,6 +109,55 @@ export const telegramGroupsResponseSchema = z.array(telegramGroupSummarySchema);
 
 export type TelegramGroupSummaryDto = z.infer<
   typeof telegramGroupSummarySchema
+>;
+
+export const telegramBotAdministratorRightsSchema = z.object({
+  canManageChat: z.boolean(),
+  canRestrictMembers: z.boolean(),
+  canInviteUsers: z.boolean(),
+  canDeleteMessages: z.boolean(),
+  canPinMessages: z.boolean(),
+  canChangeInfo: z.boolean(),
+  canPromoteMembers: z.boolean(),
+  canManageVideoChats: z.boolean(),
+  canManageTopics: z.boolean(),
+});
+
+export const telegramBotPermissionsSnapshotSchema = z
+  .object({
+    botStatus: z.string(),
+    administratorRights: telegramBotAdministratorRightsSchema.nullable(),
+    missingRequiredRightIds: z.array(z.string()),
+  })
+  .nullable();
+
+export const telegramGroupDetailSchema = telegramGroupSummarySchema
+  .omit({ members: true })
+  .extend({
+    settings: telegramGroupBotSettingsSchema,
+    permissions: telegramBotPermissionsSnapshotSchema,
+  });
+
+export type TelegramGroupDetailDto = z.infer<typeof telegramGroupDetailSchema>;
+
+export const refreshTelegramGroupResultSchema = z.object({
+  refreshed: z.boolean().optional(),
+  synced: z
+    .object({
+      title: z.string().nullable().optional(),
+      chatType: z.string().optional(),
+      isForum: z.boolean().optional(),
+      memberCount: z.number().int().nonnegative().nullable().optional(),
+      hasChatPhoto: z.boolean().optional(),
+      telegramChatId: z.string().optional(),
+    })
+    .optional(),
+  botStatus: z.string().nullable().optional(),
+  permissions: telegramBotPermissionsSnapshotSchema.optional(),
+});
+
+export type RefreshTelegramGroupResultDto = z.infer<
+  typeof refreshTelegramGroupResultSchema
 >;
 
 export const telegramGroupMemberActionSchema = z.enum([

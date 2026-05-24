@@ -1,13 +1,13 @@
 "use client";
 
 import { useRef } from "react";
+import { useRefreshTelegramGroup } from "@/app/(private)/groups/_hooks/use-refresh-telegram-group";
 import {
   RefreshCWIcon,
   type RefreshCWIconHandle,
 } from "@/components/icons/refresh-cw";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useRefreshTelegramGroup } from "../../_hooks/use-refresh-telegram-group";
 
 type RefreshGroupButtonProps = {
   groupId: string;

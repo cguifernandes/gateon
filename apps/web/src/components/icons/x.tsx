@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import type { HTMLAttributes } from "react";
 import { forwardRef } from "react";
 import { useIconAnimation } from "@/hooks/use-icon-animation";
+import { iconSizeClass } from "@/lib/icon-size-class";
 import { cn } from "@/lib/utils";
 
 export interface XIconHandle {
@@ -58,14 +59,15 @@ const XIcon = forwardRef<XIconHandle, XIconProps>(
         aria-hidden="true"
       >
         <svg
+          className={iconSizeClass(size)}
           fill="none"
           height={size}
+          width={size}
           stroke="currentColor"
           strokeLinecap="round"
           strokeLinejoin="round"
           strokeWidth={strokeWidth}
           viewBox="0 0 24 24"
-          width={size}
           xmlns="http://www.w3.org/2000/svg"
           role="presentation"
           aria-hidden="true"

@@ -1,17 +1,31 @@
 "use client";
 
-import { InfoIcon } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
 import { TelegramGroupTypeBadges } from "@/app/(private)/groups/_components/table/telegram-group-type-badges";
+import {
+  type RefreshTelegramGroupResult,
+  useRefreshTelegramGroup,
+} from "@/app/(private)/groups/_hooks/use-refresh-telegram-group";
+import { BadgeAlertIcon } from "@/components/icons/badge-alert";
 import { LoaderIcon } from "@/components/icons/loader";
+import {
+  MessageCircleIcon,
+  type MessageCircleIconHandle,
+} from "@/components/icons/message-circle";
 import {
   RefreshCWIcon,
   type RefreshCWIconHandle,
 } from "@/components/icons/refresh-cw";
+import {
+  SettingsIcon,
+  type SettingsIconHandle,
+} from "@/components/icons/settings";
 import { XIcon, type XIconHandle } from "@/components/icons/x";
 import { ImageComponent } from "@/components/image-component";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Drawer,
   DrawerClose,
@@ -20,7 +34,11 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { postGroupChatNotice } from "@/lib/group-chat-notice";
+import {
+  DEFAULT_MEMBER_NOTICE_TEXT,
+  getMemberActionLoadingToast,
+} from "@/lib/member-actions";
 import { getBotStatusDisplay } from "@/lib/telegram-bot-status";
 import { cn, withCacheBuster } from "@/lib/utils";
 import {
@@ -28,30 +46,166 @@ import {
   type TelegramGroupSummaryDto,
   telegramGroupMembersListResponseSchema,
 } from "@/lib/zod/telegram-group-connection-schemas";
-import {
-  type RefreshTelegramGroupResult,
-  useRefreshTelegramGroup,
-} from "../../_hooks/use-refresh-telegram-group";
-import { GroupMemberRow } from "./group-member-row";
-import { RemoveGroupDialog } from "./remove-group-dialog";
-
-type MemberRow = TelegramGroupMembersListResponseDto["members"][number];
-
-function formatMemberName(
-  member: Pick<MemberRow, "firstName" | "lastName" | "telegramUserId">,
-) {
-  const fullName = [member.firstName, member.lastName]
-    .filter(Boolean)
-    .join(" ");
-  if (fullName) return fullName;
-  return member.telegramUserId;
-}
+import { RemoveGroupDialog } from "../../../../../components/remove-group-dialog";
+import { type GroupMemberRowData, GroupMembersList } from "./group-member-row";
 
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+type MembersSummary = {
+  memberCount: number | null | undefined;
+  trackedMemberCount: number;
+  trackedMemberLimitPerGroup: number;
+  trackedMemberLimitReached: boolean;
+  leftMemberCount: number;
+  connectedAt: string;
+  lastSyncedAt: string;
+};
+
+type MembersContentState =
+  | { kind: "loading" }
+  | { kind: "error"; message: string }
+  | { kind: "empty" }
+  | { kind: "list" };
+
+function resolveMembersContentState(
+  isLoading: boolean,
+  error: string | null,
+  memberCount: number,
+): MembersContentState {
+  if (isLoading) {
+    return { kind: "loading" };
+  }
+  if (error) {
+    return { kind: "error", message: error };
+  }
+  if (memberCount === 0) {
+    return { kind: "empty" };
+  }
+  return { kind: "list" };
+}
+
+function MembersInfoCallout() {
+  return (
+    <div className="p-6">
+      <div className="flex w-full items-start gap-2 rounded-lg border border-border bg-muted p-3">
+        <BadgeAlertIcon size={20} className="mt-0.5 shrink-0 text-primary" />
+        <div className="space-y-2 text-xs leading-relaxed text-muted-foreground">
+          <p>
+            <span className="font-medium text-foreground">Total no grupo</span>{" "}
+            — todos os membros do chat segundo o Telegram (bots inclusos). O
+            Gateon só exibe esse número e não gerencia.
+          </p>
+          <p>
+            <span className="font-medium text-foreground">Gerenciados</span> —
+            perfis que o bot registrou e que ainda estão no grupo. São os da
+            lista{" "}
+            <span className="font-medium text-foreground">
+              Membros rastreados
+            </span>
+            , contam no limite do plano e, ao sair, deixam de aparecer e passam
+            para{" "}
+            <span className="font-medium text-foreground">Saíram do grupo</span>
+            .
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MembersSummaryGrid({ summary }: { summary: MembersSummary }) {
+  return (
+    <dl className="grid grid-cols-2 gap-2 text-xs">
+      <div className="flex flex-col gap-y-0.5 rounded-lg border border-border bg-card p-2.5">
+        <dt className="font-heading text-muted-foreground">Total no grupo</dt>
+        <dd className="font-semibold text-foreground">
+          {summary.memberCount ?? "—"}
+        </dd>
+      </div>
+      <div className="flex flex-col gap-y-0.5 rounded-lg border border-border bg-card p-2.5">
+        <dt className="font-heading text-muted-foreground">Gerenciados</dt>
+        <dd
+          className={cn(
+            "font-semibold",
+            summary.trackedMemberLimitReached
+              ? "text-amber-600 dark:text-amber-500"
+              : "text-foreground",
+          )}
+        >
+          {summary.trackedMemberCount} / {summary.trackedMemberLimitPerGroup}
+        </dd>
+      </div>
+      <div className="flex flex-col gap-y-0.5 rounded-lg border border-border bg-card p-2.5">
+        <dt className="font-heading text-muted-foreground">Saíram do grupo</dt>
+        <dd className="font-semibold text-foreground">
+          {summary.leftMemberCount}
+        </dd>
+      </div>
+      <div className="flex flex-col gap-y-0.5 rounded-lg border border-border bg-card p-2.5">
+        <dt className="font-heading text-muted-foreground">
+          Última sincronização
+        </dt>
+        <dd className="font-semibold">
+          {formatDateTime(summary.lastSyncedAt)}
+        </dd>
+      </div>
+      <div className="col-span-2 flex flex-col gap-y-0.5 rounded-lg border border-border bg-card p-2.5">
+        <dt className="font-heading text-muted-foreground">Conectado em</dt>
+        <dd className="font-semibold">{formatDateTime(summary.connectedAt)}</dd>
+      </div>
+    </dl>
+  );
+}
+
+type MembersMainContentProps = {
+  state: MembersContentState;
+  groupId: string;
+  members: GroupMemberRowData[];
+  onMemberUpdated: () => void;
+};
+
+function MembersMainContent({
+  state,
+  groupId,
+  members,
+  onMemberUpdated,
+}: MembersMainContentProps) {
+  switch (state.kind) {
+    case "loading":
+      return (
+        <div className="flex items-center justify-center gap-2 pt-10 text-sm text-muted-foreground">
+          <LoaderIcon size={18} />
+          Carregando lista…
+        </div>
+      );
+    case "error":
+      return (
+        <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-destructive text-xs">
+          {state.message}
+        </p>
+      );
+    case "empty":
+      return (
+        <p className="text-muted-foreground text-xs">
+          Nenhum membro rastreado ainda. Entradas no grupo passam a aparecer
+          aqui quando o bot receber os eventos do Telegram.
+        </p>
+      );
+    case "list":
+      return (
+        <GroupMembersList
+          groupId={groupId}
+          members={members}
+          formatDateTime={formatDateTime}
+          onMemberUpdated={onMemberUpdated}
+        />
+      );
+  }
 }
 
 type GroupMembersDrawerProps = {
@@ -82,6 +236,9 @@ export function GroupMembersDrawer({
   const xIconRef = useRef<XIconHandle>(null);
   const refreshIconRef = useRef<RefreshCWIconHandle>(null);
   const removeIconRef = useRef<XIconHandle>(null);
+  const settingsIconRef = useRef<SettingsIconHandle>(null);
+  const groupNoticeIconRef = useRef<MessageCircleIconHandle>(null);
+  const [isSendingGroupNotice, startGroupNoticeTransition] = useTransition();
 
   const groupTitle = displayGroup.title ?? "";
 
@@ -209,16 +366,48 @@ export function GroupMembersDrawer({
   };
 
   const members = data?.members ?? displayGroup.members;
-  const activeMembersCount = members.filter(
-    (member) => member.status === "active",
-  ).length;
-  const leftMembersInListCount = members.filter(
-    (member) => member.status === "left",
-  ).length;
   const chatType = data?.type ?? displayGroup.type;
   const isForum =
     typeof data?.isForum === "boolean" ? data.isForum : displayGroup.isForum;
   const botDisplay = getBotStatusDisplay(displayGroup.botStatus);
+
+  function handleSendGroupNotice() {
+    if (isSendingGroupNotice || isSyncing || isLoading) {
+      return;
+    }
+
+    const loadingToast = getMemberActionLoadingToast("notice");
+    const toastId = toast.loading(loadingToast.title, {
+      description: isForum
+        ? `Enviando "${DEFAULT_MEMBER_NOTICE_TEXT}" no tópico geral do grupo.`
+        : `Enviando "${DEFAULT_MEMBER_NOTICE_TEXT}" no chat do grupo.`,
+    });
+
+    startGroupNoticeTransition(async () => {
+      try {
+        await postGroupChatNotice(displayGroup.id);
+        toast.success("Aviso enviado no grupo", {
+          id: toastId,
+          description: isForum
+            ? "A mensagem foi publicada no tópico geral."
+            : "A mensagem foi publicada no chat do grupo.",
+        });
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Não foi possível enviar o aviso no grupo.",
+          { id: toastId },
+        );
+      }
+    });
+  }
+  const membersContentState = resolveMembersContentState(
+    isLoading,
+    error,
+    members.length,
+  );
+  const showSummary = membersContentState.kind !== "loading";
 
   return (
     <Drawer direction="right" open={open} onOpenChange={handleOpenChange}>
@@ -288,183 +477,118 @@ export function GroupMembersDrawer({
                   </div>
                 </div>
               </div>
-              <div className="flex flex-col px-6 py-4 border-t border-border gap-2 sm:flex-row">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1"
-                  disabled={isSyncing || isLoading}
-                  onClick={() => refresh()}
-                  onMouseEnter={() => refreshIconRef.current?.startAnimation()}
-                  onMouseLeave={() => refreshIconRef.current?.stopAnimation()}
-                >
-                  <RefreshCWIcon
-                    ref={refreshIconRef}
-                    size={14}
-                    isAnimateOnView={false}
+              <div className="flex flex-col gap-2 border-t border-border px-4 py-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <Link
+                    href={`/groups/${displayGroup.id}/bot`}
                     className={cn(
-                      "text-muted-foreground",
-                      isSyncing && "animate-spin",
+                      buttonVariants({ variant: "outline" }),
+                      "flex h-auto flex-col items-center justify-center gap-1 py-3 text-sm",
                     )}
-                  />
-                  {isSyncing ? "Sincronizando…" : "Sincronizar dados"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  className="flex-1"
-                  disabled={isSyncing || isLoading}
-                  onClick={() => setRemoveOpen(true)}
-                  onMouseEnter={() => removeIconRef.current?.startAnimation()}
-                  onMouseLeave={() => removeIconRef.current?.stopAnimation()}
-                >
-                  <XIcon
-                    ref={removeIconRef}
-                    size={14}
-                    isAnimateOnView={false}
-                    className="text-destructive"
-                  />
-                  Desconectar
-                </Button>
+                    onMouseEnter={() =>
+                      settingsIconRef.current?.startAnimation()
+                    }
+                    onMouseLeave={() =>
+                      settingsIconRef.current?.stopAnimation()
+                    }
+                  >
+                    <SettingsIcon
+                      ref={settingsIconRef}
+                      size={18}
+                      className="shrink-0 text-muted-foreground"
+                    />
+                    <span className="text-center leading-tight">
+                      Configurar bot
+                    </span>
+                  </Link>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex h-auto flex-col items-center justify-center gap-1 py-3 text-sm"
+                    disabled={isSyncing || isLoading || isSendingGroupNotice}
+                    onClick={() => refresh()}
+                    onMouseEnter={() =>
+                      refreshIconRef.current?.startAnimation()
+                    }
+                    onMouseLeave={() => refreshIconRef.current?.stopAnimation()}
+                  >
+                    <RefreshCWIcon
+                      ref={refreshIconRef}
+                      size={18}
+                      isAnimateOnView={false}
+                      className={cn(
+                        "shrink-0 text-muted-foreground",
+                        isSyncing && "animate-spin",
+                      )}
+                    />
+                    <span className="text-center leading-tight">
+                      {isSyncing ? "Sincronizando…" : "Sincronizar dados"}
+                    </span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex h-auto flex-col items-center justify-center gap-1 py-3 text-sm"
+                    disabled={isSyncing || isLoading || isSendingGroupNotice}
+                    onClick={handleSendGroupNotice}
+                    onMouseEnter={() =>
+                      groupNoticeIconRef.current?.startAnimation()
+                    }
+                    onMouseLeave={() =>
+                      groupNoticeIconRef.current?.stopAnimation()
+                    }
+                  >
+                    <MessageCircleIcon
+                      ref={groupNoticeIconRef}
+                      size={18}
+                      isAnimateOnView={false}
+                      className="shrink-0 text-muted-foreground"
+                    />
+                    <span className="text-center leading-tight">
+                      {isSendingGroupNotice
+                        ? "Enviando…"
+                        : "Enviar aviso no grupo"}
+                    </span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    className="flex h-auto flex-col items-center justify-center gap-1 py-3 text-sm"
+                    disabled={isSyncing || isLoading || isSendingGroupNotice}
+                    onClick={() => setRemoveOpen(true)}
+                    onMouseEnter={() => removeIconRef.current?.startAnimation()}
+                    onMouseLeave={() => removeIconRef.current?.stopAnimation()}
+                  >
+                    <XIcon
+                      ref={removeIconRef}
+                      size={18}
+                      isAnimateOnView={false}
+                      className="shrink-0"
+                    />
+                    <span className="text-center leading-tight">
+                      Desconectar bot
+                    </span>
+                  </Button>
+                </div>
               </div>
             </div>
           </DrawerHeader>
 
           <div
             ref={scrollAreaRef}
-            className="min-h-0 flex-1 flex flex-col gap-6 overflow-y-auto p-6"
+            className="flex min-h-0 flex-1 flex-col overflow-y-auto"
           >
-            <div className="flex w-full items-start gap-2 rounded-lg border border-border bg-muted p-3">
-              <InfoIcon className="mt-0.5 size-4 shrink-0 text-primary" />
-              <div className="space-y-2 text-xs leading-relaxed text-muted-foreground">
-                <p>
-                  <span className="font-medium text-foreground">
-                    Total no grupo
-                  </span>{" "}
-                  — todos os membros do chat segundo o Telegram (bots inclusos).
-                  O Gateon só exibe esse número e não gerencia.
-                </p>
-                <p>
-                  <span className="font-medium text-foreground">
-                    Gerenciados
-                  </span>{" "}
-                  — perfis que o bot registrou e que ainda estão no grupo. São
-                  os da lista{" "}
-                  <span className="font-medium text-foreground">
-                    Membros rastreados
-                  </span>
-                  , contam no limite do plano e, ao sair, deixam de aparecer e
-                  passam para{" "}
-                  <span className="font-medium text-foreground">
-                    Saíram do grupo
-                  </span>
-                  .
-                </p>
-              </div>
-            </div>
+            <MembersInfoCallout />
 
-            {!isLoading ? (
-              <dl className="grid grid-cols-2 gap-2 text-xs">
-                <div className="rounded-lg border flex flex-col gap-y-0.5 border-border bg-card p-2.5">
-                  <dt className="text-muted-foreground font-heading">
-                    Total no grupo
-                  </dt>
-                  <dd className="font-semibold text-foreground">
-                    {summary.memberCount ?? "—"}
-                  </dd>
-                </div>
-                <div className="rounded-lg border flex flex-col gap-y-0.5 border-border bg-card p-2.5">
-                  <dt className="text-muted-foreground font-heading">
-                    Gerenciados
-                  </dt>
-                  <dd
-                    className={cn(
-                      "font-semibold",
-                      summary.trackedMemberLimitReached
-                        ? "text-amber-600 dark:text-amber-500"
-                        : "text-foreground",
-                    )}
-                  >
-                    {summary.trackedMemberCount} /{" "}
-                    {summary.trackedMemberLimitPerGroup}
-                  </dd>
-                </div>
-                <div className="rounded-lg border flex flex-col gap-y-0.5 border-border bg-card p-2.5">
-                  <dt className="text-muted-foreground font-heading">
-                    Saíram do grupo
-                  </dt>
-                  <dd className="font-semibold text-foreground">
-                    {summary.leftMemberCount}
-                  </dd>
-                </div>
-                <div className="rounded-lg border flex flex-col gap-y-0.5 border-border bg-card p-2.5">
-                  <dt className="text-muted-foreground font-heading">
-                    Última sincronização
-                  </dt>
-                  <dd className="font-semibold">
-                    {formatDateTime(summary.lastSyncedAt)}
-                  </dd>
-                </div>
-                <div className="col-span-2 rounded-lg border flex flex-col gap-y-0.5 border-border bg-card p-2.5">
-                  <dt className="text-muted-foreground font-heading">
-                    Conectado em
-                  </dt>
-                  <dd className="font-semibold">
-                    {formatDateTime(summary.connectedAt)}
-                  </dd>
-                </div>
-              </dl>
-            ) : null}
+            <div className="flex flex-col gap-6 border-t border-border p-6">
+              {showSummary ? <MembersSummaryGrid summary={summary} /> : null}
 
-            <div className="flex flex-col gap-2">
-              {isLoading ? (
-                <div className="flex items-center justify-center gap-2 pt-10 text-sm text-muted-foreground">
-                  <LoaderIcon size={18} />
-                  Carregando lista…
-                </div>
-              ) : null}
-
-              {error ? (
-                <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-destructive text-xs">
-                  {error}
-                </p>
-              ) : null}
-
-              {!isLoading && !error && members.length === 0 ? (
-                <p className="text-muted-foreground text-xs">
-                  Nenhum membro rastreado ainda. Entradas no grupo passam a
-                  aparecer aqui quando o bot receber os eventos do Telegram.
-                </p>
-              ) : null}
-
-              {!isLoading && !error && members.length > 0 ? (
-                <>
-                  <h3 className="text-sm font-semibold text-foreground">
-                    Membros rastreados ({activeMembersCount} ativos
-                    {leftMembersInListCount > 0
-                      ? `, ${leftMembersInListCount} saíram`
-                      : ""}
-                    )
-                  </h3>
-
-                  <TooltipProvider>
-                    <ul className="space-y-2 pb-2">
-                      {members.map((member) => (
-                        <GroupMemberRow
-                          key={member.telegramUserId}
-                          groupId={displayGroup.id}
-                          member={member}
-                          displayName={formatMemberName(member)}
-                          formatDateTime={formatDateTime}
-                          onMemberUpdated={() =>
-                            void loadMembers({ silent: true })
-                          }
-                        />
-                      ))}
-                    </ul>
-                  </TooltipProvider>
-                </>
-              ) : null}
+              <MembersMainContent
+                state={membersContentState}
+                groupId={displayGroup.id}
+                members={members}
+                onMemberUpdated={() => void loadMembers({ silent: true })}
+              />
             </div>
           </div>
         </div>

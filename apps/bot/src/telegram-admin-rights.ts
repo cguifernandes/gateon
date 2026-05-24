@@ -1,6 +1,6 @@
 /**
  * Maps Telegram ChatMemberAdministrator flags to the payload expected by the Gateon API.
- * Uses snake_case keys from the Bot API JSON / grammy objects.
+ * Field names match the Bot API JSON (snake_case on the wire, camelCase in our API).
  */
 export type TelegramAdministratorRightsPayload = {
   canManageChat: boolean;
@@ -9,7 +9,7 @@ export type TelegramAdministratorRightsPayload = {
 };
 
 function readBool(member: Record<string, unknown>, key: string): boolean {
-  return (member as Record<string, unknown>)[key] === true;
+  return member[key] === true;
 }
 
 export function extractAdministratorRightsPayload(member: {

@@ -1,6 +1,7 @@
 import type { Bot, Context } from "grammy";
 import type { AppConfig } from "../config.js";
 import { sendTelegramBotEvent } from "../gateon-api.js";
+import { fetchGroupSettings } from "../group-settings/fetch-group-settings.js";
 import {
   gateonGroupNotifySlotKey,
   tryConsumeGateonGroupNotifySlot,
@@ -55,6 +56,14 @@ export function registerMyChatMemberHandler(
       result.missingRequiredRightIds,
     );
     if (reasonMessage) {
+      if (result.group) {
+        const settings = await fetchGroupSettings(config, update.chat.id).catch(
+          () => null,
+        );
+        if (settings?.connected && !settings.settings.notifyPermissionLoss) {
+          return;
+        }
+      }
       await ctx.api.sendMessage(update.chat.id, reasonMessage);
       return;
     }

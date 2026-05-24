@@ -52,45 +52,17 @@ export function hashSensitiveValue(value: string): string {
   return createHmac('sha256', getDataHashSecret()).update(value).digest('hex');
 }
 
-/**
- * Required admin capabilities for the Gateon bot in a group/supergroup.
- * IDs must match `REQUIRED_TELEGRAM_BOT_ADMIN_PERMISSION_IDS` in
- * `apps/web/src/lib/utils.ts`.
- *
- * Telegram mapping (ChatMemberAdministrator):
- * - send-messages      → can_manage_chat (includes sending in groups per Bot API)
- * - ban-users          → can_restrict_members
- * - manage-invite-links → can_invite_users
- */
-export const REQUIRED_TELEGRAM_ADMIN_RIGHT_IDS = [
-  'send-messages',
-  'ban-users',
-  'manage-invite-links',
-] as const;
+export {
+  getTelegramAdminRightTitle,
+  listMissingRequiredAdministratorRights,
+  noTelegramGroupAdministratorRights,
+  parseTelegramGroupAdministratorRights,
+  parseTelegramGroupAdministratorRightsPayload,
+  REQUIRED_TELEGRAM_GROUP_ADMIN_RIGHT_IDS,
+  type RequiredTelegramGroupAdminRightId,
+  type TelegramGroupAdministratorRights,
+} from '../lib/telegram-admin-rights';
 
-export type RequiredTelegramAdminRightId =
-  (typeof REQUIRED_TELEGRAM_ADMIN_RIGHT_IDS)[number];
-
-export type TelegramAdministratorRightsInput = {
-  canManageChat: boolean;
-  canRestrictMembers: boolean;
-  canInviteUsers: boolean;
-};
-
-export function listMissingRequiredAdministratorRights(
-  rights: TelegramAdministratorRightsInput,
-): RequiredTelegramAdminRightId[] {
-  const missing: RequiredTelegramAdminRightId[] = [];
-
-  if (!rights.canManageChat) {
-    missing.push('send-messages');
-  }
-  if (!rights.canRestrictMembers) {
-    missing.push('ban-users');
-  }
-  if (!rights.canInviteUsers) {
-    missing.push('manage-invite-links');
-  }
-
-  return missing;
-}
+/** @deprecated Use `TelegramGroupAdministratorRights` */
+export type TelegramAdministratorRightsInput =
+  import('../lib/telegram-admin-rights').TelegramGroupAdministratorRights;

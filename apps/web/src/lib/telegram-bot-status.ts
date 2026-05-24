@@ -47,7 +47,9 @@ export function normalizeTelegramBotStatus(rawStatus: string): string {
   return rawStatus.toLowerCase().replace(/_/g, "");
 }
 
-export function getBotStatusDisplayKind(rawStatus: string): BotStatusDisplayKind {
+export function getBotStatusDisplayKind(
+  rawStatus: string,
+): BotStatusDisplayKind {
   const status = normalizeTelegramBotStatus(rawStatus);
 
   if (status === "administrator" || status === "creator") {
@@ -78,6 +80,21 @@ export function getBotStatusDisplayKind(rawStatus: string): BotStatusDisplayKind
 
 export function getBotStatusDisplay(rawStatus: string) {
   return DISPLAY[getBotStatusDisplayKind(rawStatus)];
+}
+
+const CONFIG_LABELS: Record<BotStatusDisplayKind, string> = {
+  active: "Online",
+  warning: "Sem permissões",
+  inactive: "Necessita reconexão",
+  error: "Removido",
+};
+
+export function getBotConfigStatusDisplay(rawStatus: string) {
+  const kind = getBotStatusDisplayKind(rawStatus);
+  return {
+    ...DISPLAY[kind],
+    label: CONFIG_LABELS[kind],
+  };
 }
 
 export function getTrackedMemberStatusDisplay(status: "active" | "left") {

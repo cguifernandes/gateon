@@ -130,16 +130,16 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                 <TableRow className="bg-muted hover:bg-muted!">
                   <TableHead className="w-full">Grupo</TableHead>
                   <TableHead className="w-[220px]">Membros</TableHead>
-                  <TableHead className="hidden w-28 whitespace-nowrap px-2 text-center sm:table-cell">
+                  <TableHead className="hidden w-32 whitespace-nowrap px-2 text-center sm:table-cell">
                     Tipo
                   </TableHead>
-                  <TableHead className="hidden w-28 whitespace-nowrap px-2 text-center lg:table-cell">
+                  <TableHead className="hidden w-32 whitespace-nowrap px-2 text-center lg:table-cell">
                     Gateway
                   </TableHead>
-                  <TableHead className="hidden w-28 whitespace-nowrap px-2 text-center md:table-cell">
+                  <TableHead className="hidden w-32 whitespace-nowrap px-2 text-center md:table-cell">
                     Conectado em
                   </TableHead>
-                  <TableHead className="w-28 whitespace-nowrap px-2 text-center">
+                  <TableHead className="w-32 whitespace-nowrap px-2 text-center">
                     Status
                   </TableHead>
                   <TableHead className="w-16 px-2 text-center">
@@ -254,16 +254,19 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                         </span>
                       </TableCell>
 
-                      <TableCell className="w-28 text-center whitespace-nowrap align-middle">
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "w-max shrink-0 gap-1.5 text-xs font-medium whitespace-nowrap",
-                            botDisplay.className,
-                          )}
-                        >
-                          {botDisplay.label}
-                        </Badge>
+                      <TableCell className="w-28 max-w-28 px-2 align-middle">
+                        <div className="flex min-w-0 justify-center">
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "h-auto min-w-0 max-w-full shrink gap-1.5 py-0.5 font-medium",
+                              botDisplay.className,
+                            )}
+                            title={botDisplay.label}
+                          >
+                            <span className="truncate">{botDisplay.label}</span>
+                          </Badge>
+                        </div>
                       </TableCell>
 
                       <TableCell

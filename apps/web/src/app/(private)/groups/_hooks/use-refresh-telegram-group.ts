@@ -3,18 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { toast } from "sonner";
+import {
+  type RefreshTelegramGroupResultDto,
+  refreshTelegramGroupResultSchema,
+} from "@/lib/zod/telegram-group-connection-schemas";
 
-export type RefreshTelegramGroupResult = {
-  refreshed?: boolean;
-  synced?: {
-    title?: string | null;
-    chatType?: string;
-    isForum?: boolean;
-    memberCount?: number | null;
-    hasChatPhoto?: boolean;
-    telegramChatId?: string;
-  };
-};
+export type RefreshTelegramGroupResult = RefreshTelegramGroupResultDto;
 
 export function useRefreshTelegramGroup(
   groupId: string,
@@ -50,7 +44,8 @@ export function useRefreshTelegramGroup(
           return;
         }
 
-        const result = (body ?? {}) as RefreshTelegramGroupResult;
+        const parsed = refreshTelegramGroupResultSchema.safeParse(body ?? {});
+        const result = parsed.success ? parsed.data : { refreshed: true };
 
         toast.success("Grupo atualizado", {
           description: groupTitle

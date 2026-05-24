@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import type { HTMLAttributes } from "react";
 import { forwardRef } from "react";
 import { useIconAnimation } from "@/hooks/use-icon-animation";
+import { iconSizeClass } from "@/lib/icon-size-class";
 import { cn } from "@/lib/utils";
 
 export interface RefreshCWIconHandle {
@@ -49,8 +50,10 @@ const RefreshCWIcon = forwardRef<RefreshCWIconHandle, RefreshCWIconProps>(
           aria-label="Refresh CW icon"
           aria-hidden="true"
           animate={controls}
+          className={iconSizeClass(size)}
           fill="none"
           height={size}
+          width={size}
           stroke="currentColor"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -61,7 +64,6 @@ const RefreshCWIcon = forwardRef<RefreshCWIconHandle, RefreshCWIconProps>(
             animate: { rotate: "50deg" },
           }}
           viewBox="0 0 24 24"
-          width={size}
           xmlns="http://www.w3.org/2000/svg"
         >
           <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />

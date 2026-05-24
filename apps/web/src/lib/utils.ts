@@ -70,95 +70,12 @@ export const PAYMENT_GATEWAYS: Gateway[] = [
   },
 ];
 
-export type BotPermissionItem = {
-  id: string;
-  title: string;
-  description: string;
-};
-
-export type BotPermissionSubgroup = {
-  id: string;
-  items: BotPermissionItem[];
-};
-
-export type BotPermissionGroup = {
-  id: string;
-  title: string;
-  subtitle: string;
-  subgroups: BotPermissionSubgroup[];
-};
-
-export const REQUIRED_TELEGRAM_BOT_ADMIN_PERMISSION_IDS = [
-  "send-messages",
-  "ban-users",
-  "manage-invite-links",
-] as const;
-
-const REQUIRED_TELEGRAM_BOT_ADMIN_PERMISSION_DETAILS: Record<
-  (typeof REQUIRED_TELEGRAM_BOT_ADMIN_PERMISSION_IDS)[number],
-  Pick<BotPermissionItem, "title" | "description">
-> = {
-  "send-messages": {
-    title: "Enviar mensagens",
-    description:
-      "Permite ao bot notificar os usuários sobre alterações de acesso, como liberações, bloqueios e avisos importantes.",
-  },
-  "ban-users": {
-    title: "Banir usuários",
-    description:
-      "Necessária para remover automaticamente usuários que perderam acesso, como em casos de cancelamento ou inadimplência.",
-  },
-  "manage-invite-links": {
-    title: "Gerenciar links de convite",
-    description:
-      "Permite criar e gerenciar links de acesso controlados, garantindo que apenas usuários autorizados entrem no grupo.",
-  },
-};
-
-const REQUIRED_TELEGRAM_BOT_ADMIN_PERMISSION_ITEMS: BotPermissionItem[] =
-  REQUIRED_TELEGRAM_BOT_ADMIN_PERMISSION_IDS.map((id) => ({
-    id,
-    ...REQUIRED_TELEGRAM_BOT_ADMIN_PERMISSION_DETAILS[id],
-  }));
-
-export const TELEGRAM_BOT_PERMISSION_GROUPS: BotPermissionGroup[] = [
-  {
-    id: "required",
-    title: "Obrigatórias",
-    subtitle:
-      "Permissões essenciais para o funcionamento correto do controle de acesso:",
-    subgroups: [
-      {
-        id: "required-core",
-        items: REQUIRED_TELEGRAM_BOT_ADMIN_PERMISSION_ITEMS,
-      },
-    ],
-  },
-  {
-    id: "optional",
-    title: "Opcionais",
-    subtitle: "Permissões adicionais que aumentam a segurança e automação:",
-    subgroups: [
-      {
-        id: "optional-automation",
-        items: [
-          {
-            id: "read-messages",
-            title: "Ler mensagens",
-            description:
-              "Permite processar comandos e validar interações dos usuários, como confirmações via código.",
-          },
-          {
-            id: "restrict-users",
-            title: "Restringir usuários",
-            description:
-              "Permite limitar temporariamente as permissões de usuários (ex: silenciar), oferecendo uma alternativa ao banimento imediato.",
-          },
-        ],
-      },
-    ],
-  },
-];
+export {
+  type BotPermissionGroup,
+  type BotPermissionItem,
+  REQUIRED_TELEGRAM_BOT_ADMIN_PERMISSION_IDS,
+  TELEGRAM_BOT_PERMISSION_GROUPS,
+} from "@/lib/telegram-admin-rights";
 
 export function getUserInitials(user: PublicUserDto) {
   const name = user.name?.trim();

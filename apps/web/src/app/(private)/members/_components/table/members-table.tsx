@@ -1,11 +1,11 @@
 "use client";
 
 import { Fragment, useMemo, useRef, useState } from "react";
-import { RefreshGroupButton } from "@/app/(private)/groups/_components/table/refresh-group-button";
 import { SearchIcon, type SearchIconHandle } from "@/components/icons/search";
 import { ImageComponent } from "@/components/image-component";
 import { MemberActionsToolbar } from "@/components/member-actions-toolbar";
 import { MemberOwnerBadge } from "@/components/member-owner-badge";
+import { RefreshGroupButton } from "@/components/refresh-group-button";
 import { TruncatedTextTooltip } from "@/components/truncated-text-tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";

@@ -1,10 +1,19 @@
 "use client";
 
+import { useMemo, useRef, useState } from "react";
 import type { z } from "zod";
+import {
+  getMemberDisplayName,
+  memberMatchesSearch,
+} from "@/app/(private)/members/_components/members-table-helpers";
+import { SearchIcon, type SearchIconHandle } from "@/components/icons/search";
 import { MemberActionsToolbar } from "@/components/member-actions-toolbar";
 import { MemberOwnerBadge } from "@/components/member-owner-badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { telegramGroupChatMemberSchema } from "@/lib/zod/telegram-group-connection-schemas";
 
@@ -82,5 +91,106 @@ export function GroupMemberRow({
         onActionSuccess={onMemberUpdated}
       />
     </li>
+  );
+}
+
+function formatTrackedMembersHeading(activeCount: number, leftCount: number) {
+  const leftSuffix = leftCount > 0 ? `, ${leftCount} saíram` : "";
+  return `Membros rastreados (${activeCount} ativos${leftSuffix})`;
+}
+
+type GroupMembersListProps = {
+  groupId: string;
+  members: GroupMemberRowData[];
+  formatDateTime: (value: string) => string;
+  onMemberUpdated?: () => void;
+};
+
+export function GroupMembersList({
+  groupId,
+  members,
+  formatDateTime,
+  onMemberUpdated,
+}: GroupMembersListProps) {
+  const [search, setSearch] = useState("");
+  const searchIconRef = useRef<SearchIconHandle>(null);
+  const query = search.trim().toLowerCase();
+
+  const filteredMembers = useMemo(() => {
+    if (!query) {
+      return members;
+    }
+    return members.filter((member) => memberMatchesSearch(member, query));
+  }, [members, query]);
+
+  const activeCount = filteredMembers.filter(
+    (member) => member.status === "active",
+  ).length;
+  const leftCount = filteredMembers.filter(
+    (member) => member.status === "left",
+  ).length;
+  const isSearchEmpty = query.length > 0 && filteredMembers.length === 0;
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="relative w-full">
+        <SearchIcon
+          ref={searchIconRef}
+          className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
+          size={16}
+        />
+        <Input
+          placeholder="Pesquisar por membro ou ID"
+          type="search"
+          value={search}
+          className="pl-9"
+          onFocus={() => searchIconRef.current?.startAnimation()}
+          onBlur={() => searchIconRef.current?.stopAnimation()}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+      </div>
+
+      <h3 className="font-semibold text-foreground text-sm">
+        {formatTrackedMembersHeading(activeCount, leftCount)}
+        {query ? (
+          <span className="font-normal text-muted-foreground">
+            {" "}
+            · {filteredMembers.length} de {members.length}
+          </span>
+        ) : null}
+      </h3>
+
+      {isSearchEmpty ? (
+        <div className="flex flex-col items-start gap-2 rounded-lg border border-border bg-muted/30 px-3 py-4 text-xs">
+          <p className="text-muted-foreground">
+            Nenhum membro encontrado para &quot;{search.trim()}&quot;.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8"
+            onClick={() => setSearch("")}
+          >
+            Limpar busca
+          </Button>
+        </div>
+      ) : (
+        <TooltipProvider>
+          <ul className="space-y-2 pb-2">
+            {filteredMembers.map((member) => (
+              <GroupMemberRow
+                key={member.telegramUserId}
+                groupId={groupId}
+                member={member}
+                displayName={getMemberDisplayName(member)}
+                formatDateTime={formatDateTime}
+                onMemberUpdated={onMemberUpdated}
+              />
+            ))}
+          </ul>
+        </TooltipProvider>
+      )}
+    </div>
   );
 }

@@ -12,14 +12,41 @@ import { TelegramConnectionStatus } from '@prisma/client';
 import { GroupLimitService } from '../../lib/group-limit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { hashSensitiveValue } from '../../utils/utils';
+import {
+  DEFAULT_TELEGRAM_GROUP_WELCOME_MESSAGE,
+  type TelegramGroupBotSettingsPatchInput,
+} from '../../lib/zod/telegram-group-bot-settings-schemas';
+import type { TelegramGroupChatNoticeRequestInput } from '../../lib/zod/telegram-group-chat-notice-schemas';
 import type { TelegramGroupMemberBulkActionInput } from '../../lib/zod/telegram-member-actions-schemas';
 import type { TelegramBotEventInput } from './schemas/telegram-schemas';
 import {
   listMissingRequiredAdministratorRights,
-  type TelegramAdministratorRightsInput,
-} from '../../utils/utils';
+  noTelegramGroupAdministratorRights,
+  parseTelegramGroupAdministratorRights,
+  parseTelegramGroupAdministratorRightsPayload,
+  type TelegramGroupAdministratorRights,
+} from '../../lib/telegram-admin-rights';
 
 const DEFAULT_MEMBER_NOTICE_TEXT = 'Boa tarde';
+
+/** General topic thread id in Telegram forum supergroups. */
+const TELEGRAM_FORUM_GENERAL_TOPIC_THREAD_ID = 1;
+
+type TelegramGroupBotSettingsRow = {
+  enabled: boolean;
+  welcomeEnabled: boolean;
+  welcomeMessage: string;
+  privateMessageOnJoin: boolean;
+  notifyPermissionLoss: boolean;
+};
+
+type TelegramBotMembershipSnapshot = {
+  botStatus: string;
+  administratorRights: TelegramGroupAdministratorRights | null;
+  missingRequiredRightIds: ReturnType<
+    typeof listMissingRequiredAdministratorRights
+  >;
+};
 
 type TelegramMemberActionFailure = {
   telegramUserId: string;
@@ -179,6 +206,56 @@ export class TelegramService {
     };
   }
 
+  private defaultGroupBotSettings(): TelegramGroupBotSettingsRow {
+    return {
+      enabled: true,
+      welcomeEnabled: false,
+      welcomeMessage: DEFAULT_TELEGRAM_GROUP_WELCOME_MESSAGE,
+      privateMessageOnJoin: false,
+      notifyPermissionLoss: true,
+    };
+  }
+
+  private groupBotSettingsSelect() {
+    return {
+      enabled: true,
+      welcomeEnabled: true,
+      welcomeMessage: true,
+      privateMessageOnJoin: true,
+      notifyPermissionLoss: true,
+    } as const;
+  }
+
+  private mapGroupBotSettings(
+    settings: TelegramGroupBotSettingsRow,
+  ): TelegramGroupBotSettingsRow {
+    return {
+      enabled: settings.enabled,
+      welcomeEnabled: settings.welcomeEnabled,
+      welcomeMessage:
+        settings.welcomeMessage?.trim() ||
+        DEFAULT_TELEGRAM_GROUP_WELCOME_MESSAGE,
+      privateMessageOnJoin: settings.privateMessageOnJoin,
+      notifyPermissionLoss: settings.notifyPermissionLoss,
+    };
+  }
+
+  private async ensureGroupBotSettings(
+    telegramGroupId: string,
+  ): Promise<TelegramGroupBotSettingsRow> {
+    const settings = await this.prisma.telegramGroupBotSettings.upsert({
+      where: { telegramGroupId },
+      create: {
+        telegramGroupId,
+        ...this.defaultGroupBotSettings(),
+      },
+      update: {},
+      select: this.groupBotSettingsSelect(),
+    });
+
+    return this.mapGroupBotSettings(settings);
+  }
+
   async listGroups(userId: string) {
     const trackedMemberLimitPerGroup =
       await this.groupLimit.getMaxManagedMembersPerGroup(userId);
@@ -282,6 +359,143 @@ export class TelegramService {
         };
       }),
     );
+  }
+
+  async getGroup(userId: string, groupId: string) {
+    const trackedMemberLimitPerGroup =
+      await this.groupLimit.getMaxManagedMembersPerGroup(userId);
+
+    const group = await this.prisma.telegramGroups.findFirst({
+      where: { id: groupId, userId },
+      select: {
+        id: true,
+        telegramChatId: true,
+        title: true,
+        chatPhotoFileId: true,
+        type: true,
+        isForum: true,
+        botStatus: true,
+        connectedAt: true,
+        updatedAt: true,
+        addedByTelegramUserId: true,
+        addedByProfilePhotoFileId: true,
+        _count: {
+          select: {
+            members: { where: { leftAt: null } },
+          },
+        },
+      },
+    });
+
+    if (!group) {
+      throw new NotFoundException('Telegram group connection not found.');
+    }
+
+    const [settings, connectedBy, leftMemberCount, memberCount, permissions] =
+      await Promise.all([
+        this.ensureGroupBotSettings(group.id),
+        this.prisma.telegramAccounts.findFirst({
+          where: { userId, telegramUserId: group.addedByTelegramUserId },
+          select: {
+            telegramUserId: true,
+            firstName: true,
+            lastName: true,
+          },
+        }),
+        this.prisma.telegramGroupMembers.count({
+          where: { telegramGroupId: group.id, leftAt: { not: null } },
+        }),
+        this.getTelegramChatMemberCount(group.telegramChatId),
+        this.getTelegramBotMembershipSnapshot(group.telegramChatId),
+      ]);
+
+    return {
+      id: group.id,
+      telegramChatId: group.telegramChatId.trim(),
+      title: group.title,
+      chatPhotoUrl: group.chatPhotoFileId
+        ? `/api/telegram/groups/${group.id}/chat-photo`
+        : null,
+      type: group.type,
+      isForum: group.isForum,
+      botStatus: permissions?.botStatus ?? group.botStatus,
+      connectedAt: group.connectedAt,
+      updatedAt: group.updatedAt,
+      memberCount,
+      trackedMemberCount: group._count.members,
+      leftMemberCount,
+      trackedMemberLimitPerGroup,
+      trackedMemberLimitReached:
+        group._count.members >= trackedMemberLimitPerGroup,
+      connectedBy: connectedBy ?? null,
+      connectedByProfilePhotoUrl: group.addedByProfilePhotoFileId
+        ? `/api/telegram/groups/${group.id}/connector-profile-photo`
+        : null,
+      settings,
+      permissions,
+    };
+  }
+
+  async getGroupBotSettings(userId: string, groupId: string) {
+    const group = await this.prisma.telegramGroups.findFirst({
+      where: { id: groupId, userId },
+      select: { id: true },
+    });
+
+    if (!group) {
+      throw new NotFoundException('Telegram group connection not found.');
+    }
+
+    return this.ensureGroupBotSettings(group.id);
+  }
+
+  async updateGroupBotSettings(
+    userId: string,
+    groupId: string,
+    input: TelegramGroupBotSettingsPatchInput,
+  ) {
+    const group = await this.prisma.telegramGroups.findFirst({
+      where: { id: groupId, userId },
+      select: { id: true },
+    });
+
+    if (!group) {
+      throw new NotFoundException('Telegram group connection not found.');
+    }
+
+    const updated = await this.prisma.telegramGroupBotSettings.upsert({
+      where: { telegramGroupId: group.id },
+      create: {
+        telegramGroupId: group.id,
+        ...this.defaultGroupBotSettings(),
+        ...input,
+      },
+      update: input,
+      select: this.groupBotSettingsSelect(),
+    });
+
+    return this.mapGroupBotSettings(updated);
+  }
+
+  async getInternalGroupBotSettings(telegramChatId: string) {
+    const group = await this.prisma.telegramGroups.findUnique({
+      where: { telegramChatId: telegramChatId.trim() },
+      select: {
+        id: true,
+        telegramChatId: true,
+        title: true,
+      },
+    });
+
+    if (!group) {
+      return { connected: false, settings: null };
+    }
+
+    return {
+      connected: true,
+      group,
+      settings: await this.ensureGroupBotSettings(group.id),
+    };
   }
 
   async listGroupsForMembersView(userId: string) {
@@ -556,6 +770,56 @@ export class TelegramService {
     };
   }
 
+  async sendGroupChatNotice(
+    userId: string,
+    groupId: string,
+    input: TelegramGroupChatNoticeRequestInput,
+  ) {
+    const group = await this.prisma.telegramGroups.findFirst({
+      where: { id: groupId, userId },
+      select: {
+        id: true,
+        telegramChatId: true,
+        botStatus: true,
+        isForum: true,
+      },
+    });
+
+    if (!group) {
+      throw new NotFoundException('Telegram group connection not found.');
+    }
+
+    const botStatus = group.botStatus?.trim().toLowerCase() ?? '';
+    if (botStatus !== 'administrator' && botStatus !== 'creator') {
+      throw new BadRequestException(
+        'O bot precisa ser administrador do grupo para enviar avisos no chat.',
+      );
+    }
+
+    const text = input.text?.trim() || DEFAULT_MEMBER_NOTICE_TEXT;
+    const payload: Record<string, unknown> = {
+      chat_id: group.telegramChatId,
+      text,
+    };
+
+    if (group.isForum) {
+      payload.message_thread_id = TELEGRAM_FORUM_GENERAL_TOPIC_THREAD_ID;
+    }
+
+    const sendResult = await this.callTelegramBotMethodDetailed<unknown>(
+      'sendMessage',
+      payload,
+    );
+
+    if (!sendResult.ok) {
+      throw new BadRequestException(
+        this.mapTelegramGroupMessageFailureReason(sendResult.reason),
+      );
+    }
+
+    return { sent: true as const };
+  }
+
   async refreshGroupConnection(userId: string, groupId: string) {
     const group = await this.prisma.telegramGroups.findFirst({
       where: { id: groupId, userId },
@@ -592,6 +856,16 @@ export class TelegramService {
     const memberCount = await this.getTelegramChatMemberCount(
       updated.telegramChatId,
     );
+    const permissions = await this.getTelegramBotMembershipSnapshot(
+      updated.telegramChatId,
+    );
+
+    if (permissions) {
+      await this.prisma.telegramGroups.update({
+        where: { id: groupId },
+        data: { botStatus: permissions.botStatus },
+      });
+    }
 
     return {
       refreshed: true,
@@ -603,6 +877,8 @@ export class TelegramService {
         memberCount,
         telegramChatId: syncedChatId,
       },
+      botStatus: permissions?.botStatus ?? null,
+      permissions,
     };
   }
 
@@ -669,12 +945,72 @@ export class TelegramService {
       return this.handleChatForumUpdated(event);
     }
 
-    return this.connectGroupFromTelegramUser(
-      event.telegramUser,
-      event.chat,
-      event.botStatus,
-      event.administratorRights,
-    );
+    return this.handleBotChatMemberChanged(event);
+  }
+
+  private async handleBotChatMemberChanged(
+    event: Extract<TelegramBotEventInput, { eventType: 'bot_chat_member' }>,
+  ) {
+    const existingGroup = await this.prisma.telegramGroups.findUnique({
+      where: { telegramChatId: event.chat.id },
+      select: {
+        id: true,
+        userId: true,
+        telegramChatId: true,
+        title: true,
+        type: true,
+      },
+    });
+
+    if (!existingGroup) {
+      return this.connectGroupFromTelegramUser(
+        event.telegramUser,
+        event.chat,
+        event.botStatus,
+        event.administratorRights,
+      );
+    }
+
+    await this.prisma.telegramGroups.update({
+      where: { id: existingGroup.id },
+      data: {
+        title: event.chat.title,
+        type: event.chat.type,
+        botStatus: event.botStatus,
+      },
+    });
+    await this.ensureGroupBotSettings(existingGroup.id);
+
+    if (event.botStatus !== 'administrator' && event.botStatus !== 'creator') {
+      return {
+        status: TelegramConnectionStatus.WAITING_FOR_PERMISSIONS,
+        reason: 'bot_must_be_administrator',
+        group: existingGroup,
+      };
+    }
+
+    const missing =
+      event.botStatus === 'creator'
+        ? []
+        : listMissingRequiredAdministratorRights(
+            parseTelegramGroupAdministratorRightsPayload(
+              event.administratorRights,
+            ),
+          );
+
+    if (missing.length > 0) {
+      return {
+        status: TelegramConnectionStatus.WAITING_FOR_PERMISSIONS,
+        reason: 'bot_missing_required_admin_rights',
+        missingRequiredRightIds: missing,
+        group: existingGroup,
+      };
+    }
+
+    return {
+      status: TelegramConnectionStatus.CONNECTED,
+      group: existingGroup,
+    };
   }
 
   private async handleChatForumUpdated(
@@ -1128,6 +1464,58 @@ export class TelegramService {
     }
   }
 
+  private parseTelegramBotMemberSnapshot(
+    raw: Record<string, unknown>,
+  ): TelegramBotMembershipSnapshot {
+    const botStatus =
+      typeof raw.status === 'string' && raw.status.trim()
+        ? raw.status.trim()
+        : 'left';
+
+    const administratorRights = parseTelegramGroupAdministratorRights(
+      raw,
+      botStatus,
+    );
+
+    return {
+      botStatus,
+      administratorRights,
+      missingRequiredRightIds: listMissingRequiredAdministratorRights(
+        administratorRights ?? noTelegramGroupAdministratorRights(),
+      ),
+    };
+  }
+
+  private async getTelegramBotMembershipSnapshot(
+    telegramChatId: string,
+  ): Promise<TelegramBotMembershipSnapshot | null> {
+    const chatId = telegramChatId.trim();
+    if (!chatId) {
+      return null;
+    }
+
+    const bot = await this.callTelegramBotMethod<{ id: number | string }>(
+      'getMe',
+      {},
+    );
+    if (!bot?.id) {
+      return null;
+    }
+
+    const member = await this.callTelegramBotMethod<Record<string, unknown>>(
+      'getChatMember',
+      {
+        chat_id: chatId,
+        user_id: bot.id,
+      },
+    );
+    if (!member) {
+      return null;
+    }
+
+    return this.parseTelegramBotMemberSnapshot(member);
+  }
+
   private async leaveTelegramChat(
     telegramChatId: string,
   ): Promise<boolean | null> {
@@ -1227,7 +1615,7 @@ export class TelegramService {
     actor: TelegramActor,
     chat: TelegramChat,
     botStatus: string,
-    administratorRights: TelegramAdministratorRightsInput | undefined,
+    administratorRights: Partial<TelegramGroupAdministratorRights> | undefined,
   ) {
     const intent = await this.findValidIntentByToken(token);
 
@@ -1252,7 +1640,7 @@ export class TelegramService {
     actor: TelegramActor,
     chat: TelegramChat,
     botStatus: string,
-    administratorRights: TelegramAdministratorRightsInput | undefined,
+    administratorRights: Partial<TelegramGroupAdministratorRights> | undefined,
   ) {
     const intent = await this.prisma.telegramGroupConnectionIntents.findFirst({
       where: {
@@ -1312,7 +1700,7 @@ export class TelegramService {
     actor: TelegramActor,
     chat: TelegramChat,
     botStatus: string,
-    administratorRights: TelegramAdministratorRightsInput | undefined,
+    administratorRights: Partial<TelegramGroupAdministratorRights> | undefined,
   ) {
     const isElevated = botStatus === 'administrator' || botStatus === 'creator';
 
@@ -1358,16 +1746,15 @@ export class TelegramService {
           intentId: updated.id,
           expiresAt: updated.expiresAt,
           reason: 'bot_missing_required_admin_rights',
-          missingRequiredRightIds: listMissingRequiredAdministratorRights({
-            canManageChat: false,
-            canRestrictMembers: false,
-            canInviteUsers: false,
-          }),
+          missingRequiredRightIds: listMissingRequiredAdministratorRights(
+            noTelegramGroupAdministratorRights(),
+          ),
         };
       }
 
-      const missing =
-        listMissingRequiredAdministratorRights(administratorRights);
+      const missing = listMissingRequiredAdministratorRights(
+        parseTelegramGroupAdministratorRightsPayload(administratorRights),
+      );
 
       if (missing.length > 0) {
         const updated = await this.prisma.telegramGroupConnectionIntents.update(
@@ -1432,6 +1819,8 @@ export class TelegramService {
         type: true,
       },
     });
+
+    await this.ensureGroupBotSettings(group.id);
 
     await this.syncTelegramGroupRichMetadata(group.id, chat.id).catch(
       (err: unknown) => {
@@ -1618,6 +2007,24 @@ export class TelegramService {
       normalized.includes('user is deactivated')
     ) {
       return 'Não foi possível enviar no particular. O membro precisa ter enviado mensagem para o bot antes.';
+    }
+    return description;
+  }
+
+  private mapTelegramGroupMessageFailureReason(description: string): string {
+    const normalized = description.toLowerCase();
+    if (
+      normalized.includes('not enough rights') ||
+      normalized.includes('have no rights') ||
+      normalized.includes('need administrator')
+    ) {
+      return 'O bot não tem permissão para enviar mensagens neste grupo.';
+    }
+    if (normalized.includes('topic_closed')) {
+      return 'O tópico geral está fechado. Abra o tópico no Telegram e tente novamente.';
+    }
+    if (normalized.includes('chat not found')) {
+      return 'Grupo não encontrado no Telegram. Sincronize os dados do grupo.';
     }
     return description;
   }

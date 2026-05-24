@@ -1,7 +1,8 @@
 "use client";
 
-import { EllipsisVertical } from "lucide-react";
+import { EllipsisVertical, Settings2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useRefreshTelegramGroup } from "@/app/(private)/groups/_hooks/use-refresh-telegram-group";
 import { EyeIcon, type EyeIconHandle } from "@/components/icons/eye";
 import {
   RefreshCWIcon,
@@ -13,12 +14,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLinkItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { useRefreshTelegramGroup } from "../../_hooks/use-refresh-telegram-group";
-import { RemoveGroupDialog } from "./remove-group-dialog";
+import { RemoveGroupDialog } from "../../../../../components/remove-group-dialog";
 
 type GroupRowActionsMenuProps = {
   groupId: string;
@@ -98,6 +99,14 @@ export function GroupRowActionsMenu({
             />
             Ver detalhes
           </DropdownMenuItem>
+
+          <DropdownMenuLinkItem
+            href={`/groups/${groupId}/bot`}
+            className="cursor-pointer"
+          >
+            <Settings2 size={14} className="text-muted-foreground" />
+            Configurar bot
+          </DropdownMenuLinkItem>
 
           <DropdownMenuItem
             closeOnClick={false}

@@ -48,7 +48,7 @@ export async function postGroupMemberBulkAction(
   },
 ): Promise<TelegramGroupMemberBulkActionResultDto> {
   const response = await fetch(
-    `/api/telegram/groups/${encodeURIComponent(groupId)}/members/actions`,
+    `/api/telegram/groups/${encodeURIComponent(groupId)}/members/bulk-actions`,
     {
       method: "POST",
       headers: { "content-type": "application/json" },

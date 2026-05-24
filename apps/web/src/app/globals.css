@@ -149,7 +149,7 @@ body {
   --surface-container-high: #182130;
   --surface-container-highest: #1f2a3d;
 
-  --background: oklch(0.145 0 0);
+  --background: oklch(20.5% 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
@@ -160,7 +160,7 @@ body {
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0.04 255);
-  --muted-foreground: oklch(0.708 0.03 255);
+  --muted-foreground: oklch(70.8% 0 0);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.577 0.245 27.325);
@@ -294,7 +294,7 @@ body {
 }
 
 *::placeholder {
-  @apply text-gray-500;
+  @apply text-muted-foreground;
 }
 
 /* Sonner: espaço entre ícone e conteúdo do toast */
