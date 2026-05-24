@@ -302,3 +302,10 @@ body {
 .toaster {
   --toast-icon-margin-end: 0px !important;
 }
+
+/* Sidebar: width before React hydrates (reads localStorage in layout script) */
+@media (width >= 48rem) {
+  html[data-sidebar-state="collapsed"] [data-slot="sidebar"] {
+    width: 3.5rem;
+  }
+}
