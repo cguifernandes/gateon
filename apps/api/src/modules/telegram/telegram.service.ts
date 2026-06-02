@@ -762,6 +762,76 @@ export class TelegramService {
     };
   }
 
+  async refreshAllGroupConnections(userId: string) {
+    const groups = await this.prisma.telegramGroups.findMany({
+      where: { userId },
+      select: { id: true, title: true },
+      orderBy: { connectedAt: 'desc' },
+    });
+
+    if (groups.length === 0) {
+      return {
+        refreshed: false,
+        refreshedCount: 0,
+        failedCount: 0,
+        totalCount: 0,
+        failures: [] as Array<{
+          groupId: string;
+          title: string | null;
+          error: string;
+        }>,
+      };
+    }
+
+    const failures: Array<{
+      groupId: string;
+      title: string | null;
+      error: string;
+    }> = [];
+    let refreshedCount = 0;
+    const concurrency = 3;
+
+    for (let index = 0; index < groups.length; index += concurrency) {
+      const batch = groups.slice(index, index + concurrency);
+      const results = await Promise.allSettled(
+        batch.map((group) => this.refreshGroupConnection(userId, group.id)),
+      );
+
+      for (let batchIndex = 0; batchIndex < results.length; batchIndex++) {
+        const result = results[batchIndex];
+        const group = batch[batchIndex];
+
+        if (result.status === 'fulfilled') {
+          refreshedCount += 1;
+          continue;
+        }
+
+        const reason = result.reason;
+        const error =
+          reason &&
+          typeof reason === 'object' &&
+          'message' in reason &&
+          typeof (reason as { message?: unknown }).message === 'string'
+            ? (reason as { message: string }).message
+            : 'Não foi possível sincronizar o grupo.';
+
+        failures.push({
+          groupId: group.id,
+          title: group.title,
+          error,
+        });
+      }
+    }
+
+    return {
+      refreshed: refreshedCount > 0,
+      refreshedCount,
+      failedCount: failures.length,
+      totalCount: groups.length,
+      failures,
+    };
+  }
+
   async removeGroupConnection(userId: string, groupId: string) {
     const group = await this.prisma.telegramGroups.findFirst({
       where: { id: groupId, userId },
@@ -956,13 +1026,17 @@ export class TelegramService {
       },
       update: {
         name,
-        ...(input.iconColor !== undefined ? { iconColor: input.iconColor } : {}),
+        ...(input.iconColor !== undefined
+          ? { iconColor: input.iconColor }
+          : {}),
         ...(input.isClosed !== undefined ? { isClosed: input.isClosed } : {}),
       },
     });
   }
 
-  private async ensureGeneralForumTopic(telegramGroupId: string): Promise<void> {
+  private async ensureGeneralForumTopic(
+    telegramGroupId: string,
+  ): Promise<void> {
     await this.upsertStoredForumTopic({
       telegramGroupId,
       messageThreadId: 1,

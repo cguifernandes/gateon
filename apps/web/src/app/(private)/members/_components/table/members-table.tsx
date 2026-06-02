@@ -334,7 +334,7 @@ export function MembersTable({ groups }: MembersTableProps) {
                           />
                         </TableCell>
                         <TableCell className="py-3">
-                          <div className="flex min-w-0 gap-3">
+                          <div className="flex min-w-0 items-center gap-3">
                             <ImageComponent
                               src={
                                 group.chatPhotoUrl
@@ -345,13 +345,13 @@ export function MembersTable({ groups }: MembersTableProps) {
                                   : null
                               }
                               alt={group.title?.trim() || "Sem título"}
-                              width={38}
-                              height={38}
-                              sizes="38px"
-                              avatarFallbackClassName="text-lg"
-                              className="size-[38px] shrink-0 rounded-full border border-border object-cover"
+                              width={36}
+                              height={36}
+                              sizes="36px"
+                              avatarFallbackClassName="text-sm!"
+                              className="size-[36px] shrink-0 rounded-full border border-border object-cover"
                             />
-                            <div className="min-w-0 flex-1 overflow-hidden">
+                            <div className="min-w-0 flex-1 space-y-1 overflow-hidden">
                               <TruncatedTextTooltip
                                 text={group.title ?? "Grupo sem nome"}
                                 variant="truncate"
@@ -570,7 +570,6 @@ export function MembersTable({ groups }: MembersTableProps) {
           {totalMemberCount === 1 ? "" : "s"}
         </p>
       ) : null}
-
     </div>
   );
 }

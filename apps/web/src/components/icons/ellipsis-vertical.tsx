@@ -7,24 +7,33 @@ import { forwardRef } from "react";
 import { useIconAnimation } from "@/hooks/use-icon-animation";
 import { cn } from "@/lib/utils";
 
-export interface ChevronDownIconHandle {
+export interface EllipsisVerticalIconHandle {
   startAnimation: () => void;
   stopAnimation: () => void;
 }
 
-interface ChevronDownIconProps extends HTMLAttributes<HTMLDivElement> {
+interface EllipsisVerticalIconProps extends HTMLAttributes<HTMLDivElement> {
   size?: number;
   isAnimateOnView?: boolean;
   animateOnHover?: boolean;
   strokeWidth?: number;
 }
 
-const DEFAULT_TRANSITION: Transition = {
-  times: [0, 0.4, 1],
-  duration: 0.5,
+const DOT_VARIANTS = {
+  normal: { opacity: 1 },
+  animate: { opacity: [1, 0, 1] },
 };
 
-const ChevronDownIcon = forwardRef<ChevronDownIconHandle, ChevronDownIconProps>(
+const ELLIPSIS_DOTS = [
+  { id: "top", cy: 5 },
+  { id: "middle", cy: 12 },
+  { id: "bottom", cy: 19 },
+] as const;
+
+const EllipsisVerticalIcon = forwardRef<
+  EllipsisVerticalIconHandle,
+  EllipsisVerticalIconProps
+>(
   (
     {
       onMouseEnter,
@@ -55,7 +64,7 @@ const ChevronDownIcon = forwardRef<ChevronDownIconHandle, ChevronDownIconProps>(
         {...props}
       >
         <svg
-          aria-label="Chevron down icon"
+          aria-label="Ellipsis vertical icon"
           aria-hidden="true"
           fill="none"
           height={size}
@@ -67,21 +76,34 @@ const ChevronDownIcon = forwardRef<ChevronDownIconHandle, ChevronDownIconProps>(
           width={size}
           xmlns="http://www.w3.org/2000/svg"
         >
-          <motion.path
-            animate={controls}
-            d="m6 9 6 6 6-6"
-            transition={DEFAULT_TRANSITION}
-            variants={{
-              normal: { y: 0 },
-              animate: { y: [0, 2, 0] },
-            }}
-          />
+          {ELLIPSIS_DOTS.map((dot, index) => {
+            const transition: Transition = {
+              duration: 0.45,
+              ease: "easeInOut",
+              times: [0, 0.5, 1],
+              delay: index * 0.12,
+            };
+
+            return (
+              <motion.circle
+                key={dot.id}
+                animate={controls}
+                cx={12}
+                cy={dot.cy}
+                fill="currentColor"
+                r={2}
+                stroke="none"
+                transition={transition}
+                variants={DOT_VARIANTS}
+              />
+            );
+          })}
         </svg>
       </div>
     );
   },
 );
 
-ChevronDownIcon.displayName = "ChevronDownIcon";
+EllipsisVerticalIcon.displayName = "EllipsisVerticalIcon";
 
-export { ChevronDownIcon };
+export { EllipsisVerticalIcon };

@@ -6,7 +6,6 @@ import {
   Headers,
   NotFoundException,
   Param,
-  Patch,
   Post,
   Query,
   Req,
@@ -92,6 +91,17 @@ export class TelegramController {
     }
 
     return this.telegram.listGroupMembers(userId, groupId);
+  }
+
+  @Post('groups/refresh-all')
+  @UseGuards(AuthGuard)
+  refreshAllGroups(@Req() req: Request) {
+    const userId = req.authSession?.userId;
+    if (!userId) {
+      throw new UnauthorizedException();
+    }
+
+    return this.telegram.refreshAllGroupConnections(userId);
   }
 
   @Post('groups/:groupId/refresh')
@@ -227,5 +237,4 @@ export class TelegramController {
     const input = telegramBotEventSchema.parse(body);
     return this.telegram.handleBotEvent(input);
   }
-
 }

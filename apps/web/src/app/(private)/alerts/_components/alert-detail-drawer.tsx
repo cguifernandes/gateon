@@ -77,45 +77,28 @@ function AlertDetailDrawerBadges({ alert }: { alert: AlertSummaryDto }) {
     ? resolveAlertTriggerLabel(alert.triggerType)
     : null;
 
-  const statusDotClassName =
-    alert.status === "ACTIVE"
-      ? "bg-green-500"
-      : alert.status === "FAILED"
-        ? "bg-destructive"
-        : alert.status === "PAUSED"
-          ? "bg-amber-400"
-          : "bg-muted-foreground";
-
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <Badge
-        variant="secondary"
+        variant="outline"
         className={cn(
-          "gap-1.5 border-border/80 bg-muted/60",
           isActive &&
             "border-green-800/40 bg-green-950/50 text-green-400 dark:border-green-800 dark:bg-green-950/80",
+          alert.status === "DRAFT" && "bg-muted",
         )}
       >
-        <span
-          className={cn("size-2 shrink-0 rounded-full", statusDotClassName)}
-          aria-hidden
-        />
         {statusLabels[alert.status]}
       </Badge>
 
-      <Badge variant="outline" className="border-border/80 bg-muted/30">
+      <Badge variant="outline">
         {destinationLabels[alert.destinationType]}
       </Badge>
 
       {isAutomation && triggerLabel ? (
-        <Badge variant="outline" className="border-border/80 bg-muted/30">
-          {triggerLabel}
-        </Badge>
+        <Badge variant="outline">{triggerLabel}</Badge>
       ) : null}
 
-      <Badge variant="outline" className="border-border/80 bg-muted/30">
-        {alert.deliveryRate}% de entrega
-      </Badge>
+      <Badge variant="outline">{alert.deliveryRate}% de entrega</Badge>
     </div>
   );
 }

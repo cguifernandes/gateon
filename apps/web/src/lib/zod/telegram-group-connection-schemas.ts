@@ -160,6 +160,24 @@ export type RefreshTelegramGroupResultDto = z.infer<
   typeof refreshTelegramGroupResultSchema
 >;
 
+export const refreshAllTelegramGroupsResultSchema = z.object({
+  refreshed: z.boolean().optional(),
+  refreshedCount: z.number().int().nonnegative(),
+  failedCount: z.number().int().nonnegative(),
+  totalCount: z.number().int().nonnegative(),
+  failures: z.array(
+    z.object({
+      groupId: z.string(),
+      title: z.string().nullable(),
+      error: z.string(),
+    }),
+  ),
+});
+
+export type RefreshAllTelegramGroupsResultDto = z.infer<
+  typeof refreshAllTelegramGroupsResultSchema
+>;
+
 export const telegramGroupMemberActionSchema = z.enum([
   "notice",
   "remove",

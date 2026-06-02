@@ -1,13 +1,20 @@
 "use client";
 
-import { EllipsisVertical, Settings2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useRefreshTelegramGroup } from "@/app/(private)/groups/_hooks/use-refresh-telegram-group";
+import {
+  EllipsisVerticalIcon,
+  type EllipsisVerticalIconHandle,
+} from "@/components/icons/ellipsis-vertical";
 import { EyeIcon, type EyeIconHandle } from "@/components/icons/eye";
 import {
   RefreshCWIcon,
   type RefreshCWIconHandle,
 } from "@/components/icons/refresh-cw";
+import {
+  SettingsIcon,
+  type SettingsIconHandle,
+} from "@/components/icons/settings";
 import { XIcon, type XIconHandle } from "@/components/icons/x";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,17 +31,13 @@ import { RemoveGroupDialog } from "../../../../../components/remove-group-dialog
 type GroupRowActionsMenuProps = {
   groupId: string;
   groupTitle: string;
-  isForum: boolean;
   onViewMembers: () => void;
-  onQuickNotice: () => void;
 };
 
 export function GroupRowActionsMenu({
   groupId,
   groupTitle,
-  isForum,
   onViewMembers,
-  onQuickNotice,
 }: GroupRowActionsMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [removeOpen, setRemoveOpen] = useState(false);
@@ -43,7 +46,8 @@ export function GroupRowActionsMenu({
   const removeIconRef = useRef<XIconHandle>(null);
   const { refresh, isPending } = useRefreshTelegramGroup(groupId, groupTitle);
   const eyeIconRef = useRef<EyeIconHandle>(null);
-
+  const ellipsisVerticalIconRef = useRef<EllipsisVerticalIconHandle>(null);
+  const settingsIconRef = useRef<SettingsIconHandle>(null);
   useEffect(() => {
     if (isPending || !closeMenuAfterRefreshRef.current) {
       return;
@@ -77,9 +81,15 @@ export function GroupRowActionsMenu({
                 "size-8 text-muted-foreground hover:text-foreground",
                 triggerProps.className,
               )}
+              onMouseEnter={() =>
+                ellipsisVerticalIconRef.current?.startAnimation()
+              }
+              onMouseLeave={() =>
+                ellipsisVerticalIconRef.current?.stopAnimation()
+              }
               aria-label="Ações do grupo"
             >
-              <EllipsisVertical size={16} />
+              <EllipsisVerticalIcon ref={ellipsisVerticalIconRef} size={16} />
               <span className="sr-only">Ações do grupo</span>
             </Button>
           )}
@@ -106,35 +116,19 @@ export function GroupRowActionsMenu({
 
           <DropdownMenuLinkItem
             href={`/groups/${groupId}/bot`}
-            className="cursor-pointer"
+            className="cursor-pointer group"
+            onMouseEnter={() => settingsIconRef.current?.startAnimation()}
+            onMouseLeave={() => settingsIconRef.current?.stopAnimation()}
           >
-            <Settings2 size={14} className="text-muted-foreground" />
+            <SettingsIcon
+              ref={settingsIconRef}
+              size={14}
+              className={cn(
+                "text-muted-foreground group-hover:text-foreground transition-colors duration-200 ease-in-out",
+              )}
+            />
             Configurar bot
           </DropdownMenuLinkItem>
-
-          <DropdownMenuItem
-            onClick={() => {
-              setMenuOpen(false);
-              onQuickNotice();
-            }}
-            className="cursor-pointer"
-          >
-            <span className="text-muted-foreground">✉</span>
-            Enviar aviso rápido
-          </DropdownMenuItem>
-
-          {isForum ? (
-            <DropdownMenuItem
-              onClick={() => {
-                setMenuOpen(false);
-                onQuickNotice();
-              }}
-              className="cursor-pointer"
-            >
-              <span className="text-muted-foreground">#</span>
-              Enviar aviso em tópico
-            </DropdownMenuItem>
-          ) : null}
 
           <DropdownMenuSeparator />
 

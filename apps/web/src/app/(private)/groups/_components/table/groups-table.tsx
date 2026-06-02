@@ -1,6 +1,5 @@
 "use client";
 
-import { Send } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TelegramGroupTypeCell } from "@/app/(private)/groups/_components/table/telegram-group-type-badges";
@@ -12,7 +11,6 @@ import { QuickNoticeDialog } from "@/components/quick-notice-dialog";
 import { RemoveGroupDialog } from "@/components/remove-group-dialog";
 import { TruncatedTextTooltip } from "@/components/truncated-text-tooltip";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -33,6 +31,7 @@ import { cn, withCacheBuster } from "@/lib/utils";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
 import { useGroupsFiltersUrl } from "../../_hooks/use-groups-filters-url";
 import { GroupsFiltersPopover } from "../groups-filters-popover";
+import { RefreshAllGroupsButton } from "../refresh-all-groups-button";
 import { GroupsEmptyState } from "./group-empty-state";
 import { GroupMembersDrawer } from "./group-members-drawer";
 import { GroupRowActionsMenu } from "./group-row-actions-menu";
@@ -131,6 +130,7 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                 />
               </div>
               <GroupsFiltersPopover control={filtersPopover} />
+              <RefreshAllGroupsButton disabled={groups.length === 0} />
             </div>
             <AddGroupBotDialog />
           </div>
@@ -149,10 +149,10 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                   <TableHead className="hidden w-32 whitespace-nowrap px-2 text-center md:table-cell">
                     Conectado em
                   </TableHead>
-                  <TableHead className="w-32 whitespace-nowrap px-2 text-center">
+                  <TableHead className="w-40 whitespace-nowrap px-2 text-center">
                     Status
                   </TableHead>
-                  <TableHead className="w-48 px-2 text-center">
+                  <TableHead className="w-20 px-2 text-center">
                     <span className="sr-only">Ações</span>
                   </TableHead>
                 </TableRow>
@@ -280,28 +280,15 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                       </TableCell>
 
                       <TableCell
-                        className="w-48 px-1 text-center align-middle"
+                        className="px-1 text-center align-middle"
                         onClick={(event) => event.stopPropagation()}
                         onKeyDown={(event) => event.stopPropagation()}
                       >
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setQuickNoticeGroup(group)}
-                          >
-                            <Send className="size-3.5" />
-                            Enviar aviso
-                          </Button>
-                          <GroupRowActionsMenu
-                            groupId={group.id}
-                            groupTitle={group.title ?? ""}
-                            isForum={group.isForum}
-                            onViewMembers={() => setMembersDrawerGroup(group)}
-                            onQuickNotice={() => setQuickNoticeGroup(group)}
-                          />
-                        </div>
+                        <GroupRowActionsMenu
+                          groupId={group.id}
+                          groupTitle={group.title ?? ""}
+                          onViewMembers={() => setMembersDrawerGroup(group)}
+                        />
                       </TableCell>
                     </TableRow>
                   );
