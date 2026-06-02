@@ -441,8 +441,10 @@ export const DialogStackNext = ({
 
     return cloneElement(child, {
       onClick: (e: MouseEvent<HTMLButtonElement>) => {
-        handleNext();
         child.props.onClick?.(e);
+        if (!e.defaultPrevented) {
+          handleNext();
+        }
       },
       className: cn(className, child.props.className),
       ...props,
@@ -496,8 +498,10 @@ export const DialogStackPrevious = ({
 
     return cloneElement(child, {
       onClick: (e: MouseEvent<HTMLButtonElement>) => {
-        handlePrevious();
         child.props.onClick?.(e);
+        if (!e.defaultPrevented) {
+          handlePrevious();
+        }
       },
       className: cn(className, child.props.className),
       ...props,

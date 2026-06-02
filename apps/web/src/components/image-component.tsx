@@ -69,11 +69,7 @@ function ImageComponentInner({
     return (
       <Avatar
         aria-label={alt}
-        className={cn(
-          "border! ring-0 border-border",
-          containerClassName,
-          className,
-        )}
+        className={cn("ring-0", containerClassName, className)}
       >
         <AvatarFallback
           className={cn(

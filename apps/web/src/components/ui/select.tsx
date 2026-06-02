@@ -1,11 +1,16 @@
 "use client";
 
 import * as SelectPrimitive from "@radix-ui/react-select";
-import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 import type * as React from "react";
-
+import { useRef } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { CheckIcon } from "../icons/check";
+import {
+  ChevronDownIcon,
+  type ChevronDownIconHandle,
+} from "../icons/chevron-down";
+import { ChevronUpIcon, type ChevronUpIconHandle } from "../icons/chevron-up";
 
 function Select(props: React.ComponentProps<typeof SelectPrimitive.Root>) {
   return <SelectPrimitive.Root data-slot="select" {...props} />;
@@ -31,9 +36,13 @@ function SelectTrigger({
 }: React.ComponentProps<typeof SelectPrimitive.Trigger> & {
   size?: "sm" | "default";
 }) {
+  const refChevronDown = useRef<ChevronDownIconHandle>(null);
+
   return (
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
+      onMouseEnter={() => refChevronDown.current?.startAnimation()}
+      onMouseLeave={() => refChevronDown.current?.stopAnimation()}
       className={cn(
         buttonVariants({
           variant: "outline",
@@ -46,7 +55,12 @@ function SelectTrigger({
     >
       {children}
       <SelectPrimitive.Icon asChild>
-        <ChevronDownIcon className="size-4 opacity-50" />
+        <ChevronDownIcon
+          isAnimateOnView={false}
+          size={16}
+          className="opacity-50"
+          ref={refChevronDown}
+        />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   );
@@ -59,6 +73,9 @@ function SelectContent({
   align = "center",
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Content>) {
+  const refChevronUp = useRef<ChevronUpIconHandle>(null);
+  const refChevronDown = useRef<ChevronDownIconHandle>(null);
+
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
@@ -76,8 +93,18 @@ function SelectContent({
         align={align}
         {...props}
       >
-        <SelectPrimitive.ScrollUpButton className="flex cursor-default items-center justify-center py-1">
-          <ChevronUpIcon className="size-4" />
+        <SelectPrimitive.ScrollUpButton
+          onMouseEnter={() => refChevronUp.current?.startAnimation()}
+          onMouseLeave={() => refChevronUp.current?.stopAnimation()}
+          className="flex cursor-default items-center justify-center py-1"
+        >
+          <ChevronUpIcon
+            animateOnHover={false}
+            isAnimateOnView={false}
+            size={16}
+            className="opacity-50"
+            ref={refChevronUp}
+          />
         </SelectPrimitive.ScrollUpButton>
         <SelectPrimitive.Viewport
           className={cn(
@@ -88,8 +115,18 @@ function SelectContent({
         >
           {children}
         </SelectPrimitive.Viewport>
-        <SelectPrimitive.ScrollDownButton className="flex cursor-default items-center justify-center py-1">
-          <ChevronDownIcon className="size-4" />
+        <SelectPrimitive.ScrollDownButton
+          onMouseEnter={() => refChevronDown.current?.startAnimation()}
+          onMouseLeave={() => refChevronDown.current?.stopAnimation()}
+          className="flex cursor-default items-center justify-center py-1"
+        >
+          <ChevronDownIcon
+            animateOnHover={false}
+            isAnimateOnView={false}
+            size={16}
+            className="opacity-50"
+            ref={refChevronDown}
+          />
         </SelectPrimitive.ScrollDownButton>
       </SelectPrimitive.Content>
     </SelectPrimitive.Portal>
@@ -127,7 +164,7 @@ function SelectItem({
     >
       <span className="absolute right-2 flex size-3.5 items-center justify-center">
         <SelectPrimitive.ItemIndicator>
-          <CheckIcon className="size-4" />
+          <CheckIcon isAnimateOnView={false} size={14} />
         </SelectPrimitive.ItemIndicator>
       </span>
       <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>

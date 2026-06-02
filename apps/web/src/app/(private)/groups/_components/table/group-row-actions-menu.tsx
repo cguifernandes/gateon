@@ -24,13 +24,17 @@ import { RemoveGroupDialog } from "../../../../../components/remove-group-dialog
 type GroupRowActionsMenuProps = {
   groupId: string;
   groupTitle: string;
+  isForum: boolean;
   onViewMembers: () => void;
+  onQuickNotice: () => void;
 };
 
 export function GroupRowActionsMenu({
   groupId,
   groupTitle,
+  isForum,
   onViewMembers,
+  onQuickNotice,
 }: GroupRowActionsMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [removeOpen, setRemoveOpen] = useState(false);
@@ -107,6 +111,32 @@ export function GroupRowActionsMenu({
             <Settings2 size={14} className="text-muted-foreground" />
             Configurar bot
           </DropdownMenuLinkItem>
+
+          <DropdownMenuItem
+            onClick={() => {
+              setMenuOpen(false);
+              onQuickNotice();
+            }}
+            className="cursor-pointer"
+          >
+            <span className="text-muted-foreground">✉</span>
+            Enviar aviso rápido
+          </DropdownMenuItem>
+
+          {isForum ? (
+            <DropdownMenuItem
+              onClick={() => {
+                setMenuOpen(false);
+                onQuickNotice();
+              }}
+              className="cursor-pointer"
+            >
+              <span className="text-muted-foreground">#</span>
+              Enviar aviso em tópico
+            </DropdownMenuItem>
+          ) : null}
+
+          <DropdownMenuSeparator />
 
           <DropdownMenuItem
             closeOnClick={false}

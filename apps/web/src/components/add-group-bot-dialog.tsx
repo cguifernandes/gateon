@@ -666,6 +666,7 @@ export function AddGroupBotDialog() {
                 </div>
                 <DialogStackProgress steps={[...dialogProgressSteps]} />
               </DialogStackHeader>
+
               <div
                 className={cn(
                   "min-h-0 shrink-0 flex-1 h-full overflow-y-auto overscroll-contain p-6",
@@ -674,6 +675,7 @@ export function AddGroupBotDialog() {
               >
                 {step.content}
               </div>
+
               {showFooter && (
                 <DialogStackFooter className="mt-auto border-t border-border flex w-full shrink-0 justify-between">
                   {hasPrevious && (

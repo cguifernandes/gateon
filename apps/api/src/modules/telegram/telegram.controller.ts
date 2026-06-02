@@ -15,7 +15,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { telegramGroupBotSettingsPatchSchema } from '../../lib/zod/telegram-group-bot-settings-schemas';
 import { telegramGroupChatNoticeRequestSchema } from '../../lib/zod/telegram-group-chat-notice-schemas';
 import { telegramGroupMemberBulkActionSchema } from '../../lib/zod/telegram-member-actions-schemas';
 import { telegramBotEventSchema } from './schemas/telegram-schemas';
@@ -50,33 +49,6 @@ export class TelegramController {
     }
 
     return this.telegram.getGroup(userId, groupId);
-  }
-
-  @Get('groups/:groupId/bot-settings')
-  @UseGuards(AuthGuard)
-  getGroupBotSettings(@Req() req: Request, @Param('groupId') groupId: string) {
-    const userId = req.authSession?.userId;
-    if (!userId) {
-      throw new UnauthorizedException();
-    }
-
-    return this.telegram.getGroupBotSettings(userId, groupId);
-  }
-
-  @Patch('groups/:groupId/bot-settings')
-  @UseGuards(AuthGuard)
-  updateGroupBotSettings(
-    @Req() req: Request,
-    @Param('groupId') groupId: string,
-    @Body() body: unknown,
-  ) {
-    const userId = req.authSession?.userId;
-    if (!userId) {
-      throw new UnauthorizedException();
-    }
-
-    const input = telegramGroupBotSettingsPatchSchema.parse(body);
-    return this.telegram.updateGroupBotSettings(userId, groupId, input);
   }
 
   @Post('groups/:groupId/members/actions')
@@ -256,15 +228,4 @@ export class TelegramController {
     return this.telegram.handleBotEvent(input);
   }
 
-  @Get('internal/groups/:telegramChatId/bot-settings')
-  getInternalGroupBotSettings(
-    @Headers('x-gateon-bot-secret') botSecret: string | undefined,
-    @Param('telegramChatId') telegramChatId: string,
-  ) {
-    if (!this.telegram.isInternalSecretValid(botSecret)) {
-      throw new UnauthorizedException();
-    }
-
-    return this.telegram.getInternalGroupBotSettings(telegramChatId);
-  }
 }

@@ -105,6 +105,16 @@ const chatForumUpdatedEventSchema = z.object({
   title: optionalTextSchema,
 });
 
+/** Sync forum topic metadata from bot service messages (created/edited/closed/reopened). */
+const forumTopicUpsertEventSchema = z.object({
+  eventType: z.literal('forum_topic_upsert'),
+  chatId: telegramIdSchema,
+  messageThreadId: z.number().int().positive(),
+  name: z.string().trim().min(1).max(128).optional(),
+  iconColor: z.number().int().optional(),
+  isClosed: z.boolean().optional(),
+});
+
 export const telegramBotEventSchema = z.union([
   z.object({
     eventType: z.literal('private_start'),
@@ -116,6 +126,7 @@ export const telegramBotEventSchema = z.union([
   chatMemberEventSchema,
   chatMigratedEventSchema,
   chatForumUpdatedEventSchema,
+  forumTopicUpsertEventSchema,
 ]);
 
 export type TelegramBotEventInput = z.infer<typeof telegramBotEventSchema>;

@@ -60,7 +60,6 @@ export function MembersTable({ groups }: MembersTableProps) {
   const [selectedMemberKeys, setSelectedMemberKeys] = useState<Set<string>>(
     () => new Set(),
   );
-
   const query = search.trim().toLowerCase();
   const hasPopoverFilters = countActiveMembersUrlFilters(urlFilters) > 0;
 
@@ -510,7 +509,6 @@ export function MembersTable({ groups }: MembersTableProps) {
                                   displayName={displayName}
                                   isInactive={memberLeft}
                                   isOwner={member.isOwner}
-                                  variant="inline"
                                 />
                               </TableCell>
                             </TableRow>
@@ -572,6 +570,7 @@ export function MembersTable({ groups }: MembersTableProps) {
           {totalMemberCount === 1 ? "" : "s"}
         </p>
       ) : null}
+
     </div>
   );
 }

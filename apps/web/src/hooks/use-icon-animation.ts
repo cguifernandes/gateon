@@ -22,6 +22,12 @@ interface UseIconAnimationProps {
   onMouseLeave?: (e: MouseEvent<HTMLDivElement>) => void;
 }
 
+function runAfterMount(run: () => void | Promise<void>) {
+  requestAnimationFrame(() => {
+    void run();
+  });
+}
+
 export function useIconAnimation<T extends IconAnimationHandle>(
   ref: Ref<T>,
   {
@@ -33,37 +39,62 @@ export function useIconAnimation<T extends IconAnimationHandle>(
 ) {
   const controls = useAnimation();
   const isControlledRef = useRef(false);
+  const isMountedRef = useRef(false);
   const refElement = useRef<HTMLDivElement>(null);
   const isInView = useInView(refElement, { once: true, amount: 0.1 });
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useImperativeHandle(ref, () => {
     return {
       startAnimation: () => {
         isControlledRef.current = true;
-        return controls.start("animate");
+        runAfterMount(() => controls.start("animate"));
       },
       stopAnimation: () => {
         isControlledRef.current = true;
-        return controls.start("normal");
+        runAfterMount(() => controls.start("normal"));
       },
     } as unknown as T;
   }, [controls]);
 
   useEffect(() => {
-    if (!isControlledRef.current && isInView && isAnimateOnView) {
-      (async () => {
-        await controls.start("animate");
-        await controls.start("normal");
-      })();
+    if (
+      !isMountedRef.current ||
+      isControlledRef.current ||
+      !isInView ||
+      !isAnimateOnView
+    ) {
+      return;
     }
+
+    let cancelled = false;
+
+    runAfterMount(async () => {
+      if (cancelled || !isMountedRef.current) return;
+      await controls.start("animate");
+      if (cancelled || !isMountedRef.current) return;
+      await controls.start("normal");
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [controls, isInView, isAnimateOnView]);
 
   const handleMouseEnter = useCallback(
     (e: MouseEvent<HTMLDivElement>) => {
       if (isControlledRef.current) {
         onMouseEnter?.(e);
-      } else if (animateOnHover) {
-        void controls.start("animate");
+        return;
+      }
+      if (animateOnHover) {
+        runAfterMount(() => controls.start("animate"));
       } else {
         onMouseEnter?.(e);
       }
@@ -75,8 +106,10 @@ export function useIconAnimation<T extends IconAnimationHandle>(
     (e: MouseEvent<HTMLDivElement>) => {
       if (isControlledRef.current) {
         onMouseLeave?.(e);
-      } else if (animateOnHover) {
-        void controls.start("normal");
+        return;
+      }
+      if (animateOnHover) {
+        runAfterMount(() => controls.start("normal"));
       } else {
         onMouseLeave?.(e);
       }

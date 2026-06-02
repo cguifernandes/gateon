@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useTransition } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import {
   type TelegramGroupMemberBulkActionResultDto,
@@ -269,7 +269,9 @@ type UseMemberActionHandlerOptions = {
 
 export function useMemberActionHandler(options?: UseMemberActionHandlerOptions) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [pendingAction, setPendingAction] = useState<MemberBulkAction | null>(
+    null,
+  );
 
   const runAction = useCallback(
     (params: {
@@ -280,28 +282,37 @@ export function useMemberActionHandler(options?: UseMemberActionHandlerOptions) 
       actionLabel?: string;
       onAfterSuccess?: (action: MemberBulkAction) => void;
     }) => {
-      if (isPending) {
+      if (pendingAction !== null) {
         return;
       }
 
-      startTransition(async () => {
-        const { hadSuccess, result } = await runMemberActionsWithToasts({
-          action: params.action,
-          targets: params.targets,
-          onlyActive: params.onlyActive,
-          plural: params.plural,
-          actionLabel: params.actionLabel,
-        });
+      setPendingAction(params.action);
+      void (async () => {
+        try {
+          const { hadSuccess, result } = await runMemberActionsWithToasts({
+            action: params.action,
+            targets: params.targets,
+            onlyActive: params.onlyActive,
+            plural: params.plural,
+            actionLabel: params.actionLabel,
+          });
 
-        if (hadSuccess && result) {
-          params.onAfterSuccess?.(params.action);
-          options?.onActionSuccess?.();
-          router.refresh();
+          if (hadSuccess && result) {
+            params.onAfterSuccess?.(params.action);
+            options?.onActionSuccess?.();
+            router.refresh();
+          }
+        } finally {
+          setPendingAction(null);
         }
-      });
+      })();
     },
-    [isPending, options, router],
+    [options, pendingAction, router],
   );
 
-  return { runAction, isPending };
+  return {
+    runAction,
+    isPending: pendingAction !== null,
+    pendingAction,
+  };
 }

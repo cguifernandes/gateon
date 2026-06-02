@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BellRingIcon,
   HomeIcon,
   LayoutDashboardIcon,
   UserRoundCheckIcon,
@@ -32,6 +33,7 @@ const navItems = [
   { href: "/", label: "Site", Icon: HomeIcon },
   { href: "/groups", label: "Grupos", Icon: UsersIcon },
   { href: "/members", label: "Membros", Icon: UserRoundCheckIcon },
+  { href: "/alerts", label: "Alertas", Icon: BellRingIcon },
 ] as const;
 
 type SidebarNavLinkProps = {

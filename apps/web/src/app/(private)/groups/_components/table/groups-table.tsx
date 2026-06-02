@@ -1,13 +1,18 @@
 "use client";
 
+import { Send } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TelegramGroupTypeCell } from "@/app/(private)/groups/_components/table/telegram-group-type-badges";
 import StripeIcon from "@/assets/gateway/stripe-4.svg";
 import { AddGroupBotDialog } from "@/components/add-group-bot-dialog";
 import { SearchIcon, type SearchIconHandle } from "@/components/icons/search";
 import { ImageComponent } from "@/components/image-component";
+import { QuickNoticeDialog } from "@/components/quick-notice-dialog";
+import { RemoveGroupDialog } from "@/components/remove-group-dialog";
 import { TruncatedTextTooltip } from "@/components/truncated-text-tooltip";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -42,10 +47,15 @@ type GroupsTableProps = {
 };
 
 export function GroupsTable({ groups }: GroupsTableProps) {
+  const router = useRouter();
   const { search, setSearch, clearSearch, urlFilters, filtersPopover } =
     useGroupsFiltersUrl();
   const searchIconRef = useRef<SearchIconHandle>(null);
   const [membersDrawerGroup, setMembersDrawerGroup] =
+    useState<TelegramGroupSummaryDto | null>(null);
+  const [quickNoticeGroup, setQuickNoticeGroup] =
+    useState<TelegramGroupSummaryDto | null>(null);
+  const [removeGroupTarget, setRemoveGroupTarget] =
     useState<TelegramGroupSummaryDto | null>(null);
 
   useEffect(() => {
@@ -142,7 +152,7 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                   <TableHead className="w-32 whitespace-nowrap px-2 text-center">
                     Status
                   </TableHead>
-                  <TableHead className="w-16 px-2 text-center">
+                  <TableHead className="w-48 px-2 text-center">
                     <span className="sr-only">Ações</span>
                   </TableHead>
                 </TableRow>
@@ -270,15 +280,26 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                       </TableCell>
 
                       <TableCell
-                        className="w-16 px-1 text-center align-middle"
+                        className="w-48 px-1 text-center align-middle"
                         onClick={(event) => event.stopPropagation()}
                         onKeyDown={(event) => event.stopPropagation()}
                       >
-                        <div className="flex justify-center">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setQuickNoticeGroup(group)}
+                          >
+                            <Send className="size-3.5" />
+                            Enviar aviso
+                          </Button>
                           <GroupRowActionsMenu
                             groupId={group.id}
                             groupTitle={group.title ?? ""}
+                            isForum={group.isForum}
                             onViewMembers={() => setMembersDrawerGroup(group)}
+                            onQuickNotice={() => setQuickNoticeGroup(group)}
                           />
                         </div>
                       </TableCell>
@@ -312,8 +333,49 @@ export function GroupsTable({ groups }: GroupsTableProps) {
               onOpenChange={(open) => {
                 if (!open) setMembersDrawerGroup(null);
               }}
+              onRequestRemove={() => {
+                setRemoveGroupTarget(membersDrawerGroup);
+                setMembersDrawerGroup(null);
+              }}
             />
           ) : null}
+
+          <RemoveGroupDialog
+            groupId={removeGroupTarget?.id ?? ""}
+            groupTitle={removeGroupTarget?.title ?? ""}
+            open={removeGroupTarget !== null}
+            onOpenChange={(open) => {
+              if (!open) {
+                setRemoveGroupTarget(null);
+              }
+            }}
+            onRemoved={() => {
+              setRemoveGroupTarget(null);
+              setMembersDrawerGroup(null);
+              router.refresh();
+            }}
+          />
+
+          <QuickNoticeDialog
+            open={quickNoticeGroup !== null}
+            payload={
+              quickNoticeGroup
+                ? {
+                    type: "group",
+                    title:
+                      quickNoticeGroup.title ?? quickNoticeGroup.telegramChatId,
+                    groupId: quickNoticeGroup.id,
+                    isForum: quickNoticeGroup.isForum,
+                  }
+                : null
+            }
+            onOpenChange={(open) => {
+              if (!open) {
+                setQuickNoticeGroup(null);
+              }
+            }}
+            onSent={() => router.refresh()}
+          />
         </>
       )}
 

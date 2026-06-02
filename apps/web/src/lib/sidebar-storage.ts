@@ -2,9 +2,6 @@ export const SIDEBAR_OPEN_STORAGE_KEY = "gateon.sidebar.open";
 export const SIDEBAR_OPEN_CHANGE_EVENT = "gateon:sidebar-open-change";
 export const SIDEBAR_STATE_HTML_ATTR = "data-sidebar-state";
 
-/** Inline script: applies collapsed width before React paints (localStorage-only visits). */
-export const SIDEBAR_STATE_BOOTSTRAP_SCRIPT = `try{var v=localStorage.getItem("${SIDEBAR_OPEN_STORAGE_KEY}");if(v==="false")document.documentElement.setAttribute("${SIDEBAR_STATE_HTML_ATTR}","collapsed");else if(v==="true")document.documentElement.setAttribute("${SIDEBAR_STATE_HTML_ATTR}","expanded")}catch(e){}`;
-
 function syncSidebarStateHtmlAttribute(open: boolean): void {
   if (typeof document === "undefined") return;
   document.documentElement.setAttribute(

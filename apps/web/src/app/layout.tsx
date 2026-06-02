@@ -1,7 +1,12 @@
 import { GeistSans } from "geist/font/sans";
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import {
+  readSidebarOpenFromCookies,
+  SIDEBAR_STATE_HTML_ATTR,
+} from "@/lib/sidebar-storage";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -22,11 +27,17 @@ interface RootLayoutProps {
   children: React.ReactNode;
 }
 
-export default function RootLayout({ children }: RootLayoutProps) {
+export default async function RootLayout({ children }: RootLayoutProps) {
+  const cookieStore = await cookies();
+  const sidebarOpen = readSidebarOpenFromCookies(cookieStore);
+
   return (
     <html
       lang="pt-BR"
       suppressHydrationWarning
+      {...{
+        [SIDEBAR_STATE_HTML_ATTR]: sidebarOpen ? "expanded" : "collapsed",
+      }}
       className={cn(
         "h-full antialiased",
         fontInter.variable,

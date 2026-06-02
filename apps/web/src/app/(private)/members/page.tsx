@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { LoaderPage } from "@/components/loader-page";
 import { getTelegramGroupsForMembers } from "@/lib/server/get-telegram-groups-for-members";
 import { MemberSummaryStats } from "./_components/member-summary-stats";
 import { MembersTable } from "./_components/table/members-table";
@@ -37,11 +38,7 @@ export default async function MembersPage() {
           {error}
         </div>
       ) : (
-        <Suspense
-          fallback={
-            <div className="h-48 animate-pulse rounded-xl border border-border bg-muted/30" />
-          }
-        >
+        <Suspense fallback={<LoaderPage />}>
           <MembersTable groups={groups} />
         </Suspense>
       )}

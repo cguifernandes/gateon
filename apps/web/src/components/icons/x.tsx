@@ -80,7 +80,7 @@ const XIcon = forwardRef<XIconHandle, XIconProps>(
           <motion.path
             animate={controls}
             d="m6 6 12 12"
-            transition={{ delay: 0.2 }}
+            transition={{ delay: 0.1 }}
             variants={PATH_VARIANTS}
           />
         </svg>

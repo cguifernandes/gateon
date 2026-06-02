@@ -1,6 +1,6 @@
 import type { Bot, Context } from "grammy";
 import type { AppConfig } from "../config.js";
-import { sendTelegramBotEvent } from "../gateon-api.js";
+import { sendTelegramBotEvent, triggerTelegramAlerts } from "../gateon-api.js";
 
 /** Avoid spamming the API on every message; sync only when is_forum changes. */
 const lastForumStatusByChatId = new Map<string, boolean>();
@@ -21,6 +21,31 @@ async function notifyChatForumUpdated(
   } catch {
     // Gateon API unreachable or rejected the event
   }
+}
+
+async function notifyForumTopicUpsert(
+  config: AppConfig,
+  payload: {
+    chatId: string;
+    messageThreadId: number;
+    name?: string;
+    iconColor?: number;
+    isClosed?: boolean;
+  },
+): Promise<void> {
+  try {
+    await sendTelegramBotEvent(config, {
+      eventType: "forum_topic_upsert",
+      ...payload,
+    });
+  } catch {
+    // Gateon API unreachable or rejected the event
+  }
+}
+
+function getMessageThreadId(ctx: Context): number | undefined {
+  const threadId = ctx.message?.message_thread_id;
+  return typeof threadId === "number" && threadId > 0 ? threadId : undefined;
 }
 
 async function syncForumStatusIfChanged(
@@ -73,10 +98,50 @@ export function registerChatForumHandler(
       return;
     }
 
-    const title = "title" in ctx.chat ? ctx.chat.title : undefined;
-    lastForumStatusByChatId.set(String(ctx.chat.id), true);
+    const created = ctx.message?.forum_topic_created;
+    const messageThreadId = getMessageThreadId(ctx);
+    if (!created?.name || !messageThreadId) {
+      return;
+    }
 
-    await notifyChatForumUpdated(config, String(ctx.chat.id), true, title);
+    const title = "title" in ctx.chat ? ctx.chat.title : undefined;
+    const chatId = String(ctx.chat.id);
+    lastForumStatusByChatId.set(chatId, true);
+
+    await notifyChatForumUpdated(config, chatId, true, title);
+    await notifyForumTopicUpsert(config, {
+      chatId,
+      messageThreadId,
+      name: created.name,
+      iconColor: created.icon_color,
+      isClosed: false,
+    });
+
+    await triggerTelegramAlerts(config, {
+      triggerType: "FORUM_TOPIC_CREATED",
+      chatId,
+      messageThreadId,
+    }).catch((error) => {
+      console.error("[gateon/bot] FORUM_TOPIC_CREATED alert trigger failed", error);
+    });
+  });
+
+  bot.on("message:forum_topic_edited", async (ctx) => {
+    if (ctx.chat.type !== "supergroup") {
+      return;
+    }
+
+    const edited = ctx.message?.forum_topic_edited;
+    const messageThreadId = getMessageThreadId(ctx);
+    if (!messageThreadId || !edited?.name) {
+      return;
+    }
+
+    await notifyForumTopicUpsert(config, {
+      chatId: String(ctx.chat.id),
+      messageThreadId,
+      name: edited.name,
+    });
   });
 
   bot.on("message:forum_topic_closed", async (ctx) => {
@@ -84,7 +149,33 @@ export function registerChatForumHandler(
       return;
     }
 
+    const messageThreadId = getMessageThreadId(ctx);
+    if (messageThreadId) {
+      await notifyForumTopicUpsert(config, {
+        chatId: String(ctx.chat.id),
+        messageThreadId,
+        isClosed: true,
+      });
+    }
+
     await syncForumStatusIfChanged(config, ctx.chat);
+  });
+
+  bot.on("message:forum_topic_reopened", async (ctx) => {
+    if (ctx.chat.type !== "supergroup") {
+      return;
+    }
+
+    const messageThreadId = getMessageThreadId(ctx);
+    if (!messageThreadId) {
+      return;
+    }
+
+    await notifyForumTopicUpsert(config, {
+      chatId: String(ctx.chat.id),
+      messageThreadId,
+      isClosed: false,
+    });
   });
 
   bot.on("message:general_forum_topic_hidden", async (ctx) => {

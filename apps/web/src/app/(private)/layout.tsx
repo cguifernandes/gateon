@@ -1,11 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import Script from "next/script";
 import { getSessionUser } from "@/lib/server/get-session";
-import {
-  readSidebarOpenFromCookies,
-  SIDEBAR_STATE_BOOTSTRAP_SCRIPT,
-} from "@/lib/sidebar-storage";
+import { readSidebarOpenFromCookies } from "@/lib/sidebar-storage";
 import { DashboardProviders } from "./_components/dashboard-providers";
 import { DashboardShell } from "./_components/dashboard-shell";
 import { SessionValidator } from "./_components/session-validator";
@@ -27,9 +23,6 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex h-svh min-h-0 flex-col bg-linear-to-b from-surface-container to-surface-bright p-2 dark:from-slate-800 dark:to-slate-900">
-      <Script id="sidebar-state-bootstrap" strategy="beforeInteractive">
-        {SIDEBAR_STATE_BOOTSTRAP_SCRIPT}
-      </Script>
       <SessionValidator />
       <DashboardProviders>
         <DashboardShell user={user} sidebarDefaultOpen={sidebarDefaultOpen}>

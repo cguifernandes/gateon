@@ -1,10 +1,15 @@
 import type { Bot, Context } from "grammy";
 import type { AppConfig } from "../config.js";
-import { sendTelegramBotEvent } from "../gateon-api.js";
+import type { AlertTriggerType } from "../alert-triggers.js";
+import { sendTelegramBotEvent, triggerTelegramAlerts } from "../gateon-api.js";
 import { getActiveGroupBotSettings } from "../group-settings/is-bot-active.js";
 
 function isJoinStatus(status: string): boolean {
   return status === "member" || status === "administrator" || status === "creator";
+}
+
+function wasParticipating(status: string): boolean {
+  return isJoinStatus(status) || status === "restricted";
 }
 
 function formatDisplayName(user: {
@@ -19,6 +24,21 @@ function formatDisplayName(user: {
 
 function renderWelcomeMessage(template: string, name: string) {
   return template.replace(/\{name\}/g, name);
+}
+
+async function fireAutomationTrigger(
+  config: AppConfig,
+  triggerType: AlertTriggerType,
+  chatId: string,
+  telegramUserId: string,
+) {
+  await triggerTelegramAlerts(config, {
+    triggerType,
+    chatId,
+    telegramUserId,
+  }).catch((error) => {
+    console.error(`[gateon/bot] alert trigger failed (${triggerType})`, error);
+  });
 }
 
 export function registerChatMemberHandler(
@@ -43,44 +63,65 @@ export function registerChatMemberHandler(
     }
 
     const previousUser = update.old_chat_member.user;
+    const oldStatus = update.old_chat_member.status;
+    const newStatus = member.status;
+    const chatId = String(chat.id);
+    const telegramUserId = String(user.id);
 
     try {
       await sendTelegramBotEvent(config, {
         eventType: "chat_member",
         chat: {
-          id: String(chat.id),
+          id: chatId,
           title: "title" in chat ? chat.title : undefined,
           type: chat.type,
         },
         subjectUser: {
-          id: String(user.id),
+          id: telegramUserId,
           firstName: user.first_name ?? previousUser.first_name,
           lastName: user.last_name ?? previousUser.last_name,
           isBot: user.is_bot,
         },
-        newMemberStatus: member.status,
+        newMemberStatus: newStatus,
       });
 
-      if (!isJoinStatus(member.status)) {
-        return;
-      }
+      if (isJoinStatus(newStatus) && !isJoinStatus(oldStatus)) {
+        await fireAutomationTrigger(
+          config,
+          "MEMBER_JOINED",
+          chatId,
+          telegramUserId,
+        );
 
-      const settings = await getActiveGroupBotSettings(config, chat.id);
-      if (!settings) {
-        return;
-      }
+        const settings = await getActiveGroupBotSettings(config, chat.id);
+        if (settings) {
+          const message = renderWelcomeMessage(
+            settings.welcomeMessage,
+            formatDisplayName(user),
+          );
 
-      const message = renderWelcomeMessage(
-        settings.welcomeMessage,
-        formatDisplayName(user),
-      );
+          if (settings.welcomeEnabled) {
+            await ctx.api.sendMessage(chat.id, message);
+          }
 
-      if (settings.welcomeEnabled) {
-        await ctx.api.sendMessage(chat.id, message);
-      }
-
-      if (settings.privateMessageOnJoin) {
-        await ctx.api.sendMessage(user.id, message).catch(() => undefined);
+          if (settings.privateMessageOnJoin) {
+            await ctx.api.sendMessage(user.id, message).catch(() => undefined);
+          }
+        }
+      } else if (newStatus === "left" && wasParticipating(oldStatus)) {
+        await fireAutomationTrigger(
+          config,
+          "MEMBER_LEFT",
+          chatId,
+          telegramUserId,
+        );
+      } else if (newStatus === "kicked") {
+        await fireAutomationTrigger(
+          config,
+          "MEMBER_BANNED",
+          chatId,
+          telegramUserId,
+        );
       }
     } catch (err) {
       console.error("[gateon/bot] chat_member event failed", err);

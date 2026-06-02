@@ -25,6 +25,8 @@ model Users {
   telegramAccounts               TelegramAccounts[]
   telegramGroupConnectionIntents TelegramGroupConnectionIntents[]
   telegramGroups                 TelegramGroups[]
+  telegramAlerts                 TelegramAlerts[]
+  telegramAlertTemplates         TelegramAlertTemplates[]
 }
 
 model Accounts {
@@ -109,26 +111,44 @@ model TelegramGroupConnectionIntents {
 }
 
 model TelegramGroups {
-  id                             String   @id @default(cuid())
-  userId                         String
-  telegramChatId                 String   @unique
-  title                          String?
-  chatPhotoFileId                String?
-  type                           String
-  isForum                        Boolean  @default(false)
-  addedByTelegramUserId          String
-  botStatus                      String
-  addedByProfilePhotoFileId      String?
-  connectedAt                    DateTime @default(now())
-  createdAt                      DateTime @default(now())
-  updatedAt                      DateTime @updatedAt
+  id                        String   @id @default(cuid())
+  userId                    String
+  telegramChatId            String   @unique
+  title                     String?
+  chatPhotoFileId           String?
+  type                      String
+  isForum                   Boolean  @default(false)
+  addedByTelegramUserId     String
+  botStatus                 String
+  addedByProfilePhotoFileId String?
+  connectedAt               DateTime @default(now())
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
 
-  user     Users                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  members  TelegramGroupMembers[]
-  settings TelegramGroupBotSettings?
+  user        Users                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  members     TelegramGroupMembers[]
+  settings    TelegramGroupBotSettings?
+  alerts      TelegramAlerts[]
+  forumTopics TelegramForumTopics[]
 
   @@index([userId])
   @@index([addedByTelegramUserId])
+}
+
+model TelegramForumTopics {
+  id              String   @id @default(cuid())
+  telegramGroupId String
+  messageThreadId Int
+  name            String
+  iconColor       Int?
+  isClosed        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  group TelegramGroups @relation(fields: [telegramGroupId], references: [id], onDelete: Cascade)
+
+  @@unique([telegramGroupId, messageThreadId])
+  @@index([telegramGroupId])
 }
 
 model TelegramGroupBotSettings {
@@ -165,4 +185,133 @@ model TelegramGroupMembers {
   @@unique([telegramGroupId, telegramUserId])
   @@index([telegramGroupId])
   @@index([telegramGroupId, leftAt])
+}
+
+enum AlertStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  FAILED
+}
+
+enum AlertDestinationType {
+  GROUP
+  TOPIC
+  MEMBERS
+  QUICK_ALERT
+  AUTOMATION
+}
+
+enum AlertTriggerType {
+  MEMBER_JOINED
+  MEMBER_LEFT
+  MEMBER_BANNED
+  FORUM_TOPIC_CREATED
+}
+
+enum AlertRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  PARTIAL
+  FAILED
+  CANCELLED
+}
+
+enum AlertDeliveryStatus {
+  SENT
+  FAILED
+  SKIPPED
+}
+
+model TelegramAlerts {
+  id              String               @id @default(cuid())
+  userId          String
+  telegramGroupId String?
+  name            String
+  internalTitle   String?
+  status          AlertStatus          @default(DRAFT)
+  destinationType AlertDestinationType
+  messageThreadId Int?
+  content         Json
+  options         Json
+  triggerType     AlertTriggerType?
+  triggerConfig   Json?
+  deliveryRate    Float                @default(0)
+  lastRunAt       DateTime?
+  createdByUserId String
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  user    Users                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group   TelegramGroups?        @relation(fields: [telegramGroupId], references: [id], onDelete: SetNull)
+  targets TelegramAlertTargets[]
+  runs    TelegramAlertRuns[]
+
+  @@index([userId, status])
+  @@index([telegramGroupId])
+  @@index([destinationType])
+}
+
+model TelegramAlertTargets {
+  id             String   @id @default(cuid())
+  alertId        String
+  telegramUserId String
+  createdAt      DateTime @default(now())
+
+  alert TelegramAlerts @relation(fields: [alertId], references: [id], onDelete: Cascade)
+
+  @@unique([alertId, telegramUserId])
+  @@index([telegramUserId])
+}
+
+model TelegramAlertTemplates {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  category  String
+  content   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, category])
+}
+
+model TelegramAlertRuns {
+  id             String         @id @default(cuid())
+  alertId        String
+  status         AlertRunStatus @default(PENDING)
+  estimatedCount Int            @default(0)
+  successCount   Int            @default(0)
+  failCount      Int            @default(0)
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  error          String?        @db.Text
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  alert      TelegramAlerts            @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  deliveries TelegramAlertDeliveries[]
+
+  @@index([alertId, createdAt])
+  @@index([status])
+}
+
+model TelegramAlertDeliveries {
+  id             String              @id @default(cuid())
+  runId          String
+  telegramUserId String?
+  chatId         String?
+  threadId       Int?
+  status         AlertDeliveryStatus
+  error          String?             @db.Text
+  sentAt         DateTime?
+  createdAt      DateTime            @default(now())
+
+  run TelegramAlertRuns @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId, status])
+  @@index([telegramUserId])
 }

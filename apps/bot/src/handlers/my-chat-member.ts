@@ -54,6 +54,7 @@ export function registerMyChatMemberHandler(
     const reasonMessage = replyForTelegramConnectionReason(
       result.reason,
       result.missingRequiredRightIds,
+      result.group ? "existing_group" : "connection",
     );
     if (reasonMessage) {
       if (result.group) {

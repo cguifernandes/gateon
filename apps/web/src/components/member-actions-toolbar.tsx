@@ -1,22 +1,17 @@
 "use client";
 
-import { type ButtonHTMLAttributes, type ReactNode, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { BanIcon, type BanIconHandle } from "@/components/icons/ban";
+import { BellIcon, type BellIconHandle } from "@/components/icons/bell";
+import { CopyIcon, type CopyIconHandle } from "@/components/icons/copy";
+import { UserMinusIcon, type UserMinusIconHandle } from "@/components/icons/user-minus";
+import { ToolbarIconButton } from "@/components/toolbar-icon-button";
 import {
   createMemberActionTarget,
   useMemberActionHandler,
 } from "@/lib/member-actions";
 import { cn } from "@/lib/utils";
-import { BanIcon, type BanIconHandle } from "./icons/ban";
-import { BellIcon, type BellIconHandle } from "./icons/bell";
-import { CopyIcon, type CopyIconHandle } from "./icons/copy";
-import { UserMinusIcon, type UserMinusIconHandle } from "./icons/user-minus";
 
 type MemberActionsToolbarProps = {
   groupId: string;
@@ -29,13 +24,6 @@ type MemberActionsToolbarProps = {
   onActionSuccess?: () => void;
 };
 
-type MemberActionButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  label: string;
-  onClick: () => void;
-  variant?: "ghost" | "destructive";
-  children: ReactNode;
-};
-
 async function copyTelegramUserId(telegramUserId: string) {
   try {
     await navigator.clipboard.writeText(telegramUserId);
@@ -43,44 +31,6 @@ async function copyTelegramUserId(telegramUserId: string) {
   } catch {
     toast.error("Não foi possível copiar o ID.");
   }
-}
-
-function MemberActionButton({
-  label,
-  onClick,
-  variant = "ghost",
-  children,
-  disabled,
-  ...props
-}: MemberActionButtonProps) {
-  return (
-    <Tooltip>
-      <TooltipTrigger
-        render={(triggerProps) => (
-          <Button
-            {...triggerProps}
-            type="button"
-            variant={variant}
-            size="icon-xs"
-            className={triggerProps.className}
-            aria-label={label}
-            disabled={disabled}
-            onClick={(event) => {
-              triggerProps.onClick?.(event);
-              onClick();
-              event.currentTarget.blur();
-            }}
-            {...props}
-          >
-            {children}
-          </Button>
-        )}
-      />
-      <TooltipContent side="top" sideOffset={6}>
-        {label}
-      </TooltipContent>
-    </Tooltip>
-  );
 }
 
 export function MemberActionsToolbar({
@@ -93,9 +43,11 @@ export function MemberActionsToolbar({
   className,
   onActionSuccess,
 }: MemberActionsToolbarProps) {
-  const { runAction, isPending } = useMemberActionHandler({
+  const { runAction, pendingAction } = useMemberActionHandler({
     onActionSuccess,
   });
+
+  const isBusy = pendingAction !== null;
 
   const target = useMemo(
     () =>
@@ -124,6 +76,8 @@ export function MemberActionsToolbar({
     });
   }
 
+  const showMemberActions = !isInactive && !isOwner;
+
   return (
     <div
       role="toolbar"
@@ -135,65 +89,56 @@ export function MemberActionsToolbar({
         className,
       )}
     >
-      {!isInactive && !isOwner ? (
+      {showMemberActions ? (
         <>
-          <MemberActionButton
+          <ToolbarIconButton
             label="Remover do grupo"
             variant="destructive"
-            disabled={isPending}
+            size="icon-xs"
+            loading={pendingAction === "remove"}
+            disabled={isBusy}
             onClick={() => handleMemberAction("remove", { onlyActive: true })}
-            onMouseEnter={() => {
-              userMinusIconRef.current?.startAnimation();
-            }}
-            onMouseLeave={() => {
-              userMinusIconRef.current?.stopAnimation();
-            }}
+            onMouseEnter={() => userMinusIconRef.current?.startAnimation()}
+            onMouseLeave={() => userMinusIconRef.current?.stopAnimation()}
           >
             <UserMinusIcon ref={userMinusIconRef} size={16} />
-          </MemberActionButton>
-          <MemberActionButton
+          </ToolbarIconButton>
+          <ToolbarIconButton
             label="Banir usuário"
             variant="destructive"
-            disabled={isPending}
+            size="icon-xs"
+            loading={pendingAction === "ban"}
+            disabled={isBusy}
             onClick={() => handleMemberAction("ban", { onlyActive: true })}
-            onMouseEnter={() => {
-              banIconRef.current?.startAnimation();
-            }}
-            onMouseLeave={() => {
-              banIconRef.current?.stopAnimation();
-            }}
+            onMouseEnter={() => banIconRef.current?.startAnimation()}
+            onMouseLeave={() => banIconRef.current?.stopAnimation()}
           >
             <BanIcon ref={banIconRef} size={16} />
-          </MemberActionButton>
+          </ToolbarIconButton>
         </>
       ) : null}
 
-      <MemberActionButton
+      <ToolbarIconButton
         label="Enviar aviso"
-        disabled={isPending}
+        size="icon-xs"
+        loading={pendingAction === "notice"}
+        disabled={isBusy}
         onClick={() => handleMemberAction("notice")}
-        onMouseEnter={() => {
-          bellIconRef.current?.startAnimation();
-        }}
-        onMouseLeave={() => {
-          bellIconRef.current?.stopAnimation();
-        }}
+        onMouseEnter={() => bellIconRef.current?.startAnimation()}
+        onMouseLeave={() => bellIconRef.current?.stopAnimation()}
       >
         <BellIcon ref={bellIconRef} size={16} />
-      </MemberActionButton>
-      <MemberActionButton
+      </ToolbarIconButton>
+      <ToolbarIconButton
         label="Copiar ID do Telegram"
-        disabled={isPending}
+        size="icon-xs"
+        disabled={isBusy}
         onClick={() => void copyTelegramUserId(telegramUserId)}
-        onMouseEnter={() => {
-          copyIconRef.current?.startAnimation();
-        }}
-        onMouseLeave={() => {
-          copyIconRef.current?.stopAnimation();
-        }}
+        onMouseEnter={() => copyIconRef.current?.startAnimation()}
+        onMouseLeave={() => copyIconRef.current?.stopAnimation()}
       >
         <CopyIcon ref={copyIconRef} size={16} />
-      </MemberActionButton>
+      </ToolbarIconButton>
     </div>
   );
 }

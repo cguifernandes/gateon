@@ -22,23 +22,11 @@ export function TelegramGroupTypeBadges({
 
   return (
     <div className={cn("flex flex-wrap items-center gap-1", className)}>
-      <Badge
-        variant="outline"
-        className={cn(
-          "shrink-0 text-[10px] font-medium text-muted-foreground",
-          badgeClassName,
-        )}
-      >
+      <Badge variant="outline" className={cn(badgeClassName)}>
         {typeLabel}
       </Badge>
       {forumLabel ? (
-        <Badge
-          variant="outline"
-          className={cn(
-            "shrink-0 text-[10px] font-medium text-primary",
-            badgeClassName,
-          )}
-        >
+        <Badge variant="outline" className={cn(badgeClassName)}>
           {forumLabel}
         </Badge>
       ) : null}
@@ -56,12 +44,7 @@ export function TelegramGroupTypeCell({
     <div className="flex min-w-0 flex-col items-center gap-1">
       <span className="text-xs font-medium text-foreground">{typeLabel}</span>
       {forumLabel ? (
-        <Badge
-          variant="outline"
-          className="shrink-0 text-[10px] font-medium text-primary"
-        >
-          {forumLabel}
-        </Badge>
+        <Badge variant="outline">{forumLabel}</Badge>
       ) : (
         <span className="text-[10px] text-muted-foreground">Sem tópicos</span>
       )}

@@ -12,11 +12,8 @@ import { TelegramConnectionStatus } from '@prisma/client';
 import { GroupLimitService } from '../../lib/group-limit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { hashSensitiveValue } from '../../utils/utils';
-import {
-  DEFAULT_TELEGRAM_GROUP_WELCOME_MESSAGE,
-  type TelegramGroupBotSettingsPatchInput,
-} from '../../lib/zod/telegram-group-bot-settings-schemas';
 import type { TelegramGroupChatNoticeRequestInput } from '../../lib/zod/telegram-group-chat-notice-schemas';
+import { GroupBotSettingsService } from '../group-bot-settings/group-bot-settings.service';
 import type { TelegramGroupMemberBulkActionInput } from '../../lib/zod/telegram-member-actions-schemas';
 import type { TelegramBotEventInput } from './schemas/telegram-schemas';
 import {
@@ -31,14 +28,6 @@ const DEFAULT_MEMBER_NOTICE_TEXT = 'Boa tarde';
 
 /** General topic thread id in Telegram forum supergroups. */
 const TELEGRAM_FORUM_GENERAL_TOPIC_THREAD_ID = 1;
-
-type TelegramGroupBotSettingsRow = {
-  enabled: boolean;
-  welcomeEnabled: boolean;
-  welcomeMessage: string;
-  privateMessageOnJoin: boolean;
-  notifyPermissionLoss: boolean;
-};
 
 type TelegramBotMembershipSnapshot = {
   botStatus: string;
@@ -103,6 +92,7 @@ export class TelegramService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly groupLimit: GroupLimitService,
+    private readonly groupBotSettings: GroupBotSettingsService,
   ) {}
 
   isInternalSecretValid(candidate: string | undefined): boolean {
@@ -204,56 +194,6 @@ export class TelegramService {
       status: member.leftAt ? ('left' as const) : ('active' as const),
       isOwner: member.isOwner,
     };
-  }
-
-  private defaultGroupBotSettings(): TelegramGroupBotSettingsRow {
-    return {
-      enabled: true,
-      welcomeEnabled: false,
-      welcomeMessage: DEFAULT_TELEGRAM_GROUP_WELCOME_MESSAGE,
-      privateMessageOnJoin: false,
-      notifyPermissionLoss: true,
-    };
-  }
-
-  private groupBotSettingsSelect() {
-    return {
-      enabled: true,
-      welcomeEnabled: true,
-      welcomeMessage: true,
-      privateMessageOnJoin: true,
-      notifyPermissionLoss: true,
-    } as const;
-  }
-
-  private mapGroupBotSettings(
-    settings: TelegramGroupBotSettingsRow,
-  ): TelegramGroupBotSettingsRow {
-    return {
-      enabled: settings.enabled,
-      welcomeEnabled: settings.welcomeEnabled,
-      welcomeMessage:
-        settings.welcomeMessage?.trim() ||
-        DEFAULT_TELEGRAM_GROUP_WELCOME_MESSAGE,
-      privateMessageOnJoin: settings.privateMessageOnJoin,
-      notifyPermissionLoss: settings.notifyPermissionLoss,
-    };
-  }
-
-  private async ensureGroupBotSettings(
-    telegramGroupId: string,
-  ): Promise<TelegramGroupBotSettingsRow> {
-    const settings = await this.prisma.telegramGroupBotSettings.upsert({
-      where: { telegramGroupId },
-      create: {
-        telegramGroupId,
-        ...this.defaultGroupBotSettings(),
-      },
-      update: {},
-      select: this.groupBotSettingsSelect(),
-    });
-
-    return this.mapGroupBotSettings(settings);
   }
 
   async listGroups(userId: string) {
@@ -393,7 +333,7 @@ export class TelegramService {
 
     const [settings, connectedBy, leftMemberCount, memberCount, permissions] =
       await Promise.all([
-        this.ensureGroupBotSettings(group.id),
+        this.groupBotSettings.ensureForGroup(group.id),
         this.prisma.telegramAccounts.findFirst({
           where: { userId, telegramUserId: group.addedByTelegramUserId },
           select: {
@@ -433,68 +373,6 @@ export class TelegramService {
         : null,
       settings,
       permissions,
-    };
-  }
-
-  async getGroupBotSettings(userId: string, groupId: string) {
-    const group = await this.prisma.telegramGroups.findFirst({
-      where: { id: groupId, userId },
-      select: { id: true },
-    });
-
-    if (!group) {
-      throw new NotFoundException('Telegram group connection not found.');
-    }
-
-    return this.ensureGroupBotSettings(group.id);
-  }
-
-  async updateGroupBotSettings(
-    userId: string,
-    groupId: string,
-    input: TelegramGroupBotSettingsPatchInput,
-  ) {
-    const group = await this.prisma.telegramGroups.findFirst({
-      where: { id: groupId, userId },
-      select: { id: true },
-    });
-
-    if (!group) {
-      throw new NotFoundException('Telegram group connection not found.');
-    }
-
-    const updated = await this.prisma.telegramGroupBotSettings.upsert({
-      where: { telegramGroupId: group.id },
-      create: {
-        telegramGroupId: group.id,
-        ...this.defaultGroupBotSettings(),
-        ...input,
-      },
-      update: input,
-      select: this.groupBotSettingsSelect(),
-    });
-
-    return this.mapGroupBotSettings(updated);
-  }
-
-  async getInternalGroupBotSettings(telegramChatId: string) {
-    const group = await this.prisma.telegramGroups.findUnique({
-      where: { telegramChatId: telegramChatId.trim() },
-      select: {
-        id: true,
-        telegramChatId: true,
-        title: true,
-      },
-    });
-
-    if (!group) {
-      return { connected: false, settings: null };
-    }
-
-    return {
-      connected: true,
-      group,
-      settings: await this.ensureGroupBotSettings(group.id),
     };
   }
 
@@ -802,7 +680,9 @@ export class TelegramService {
       text,
     };
 
-    if (group.isForum) {
+    if (input.messageThreadId) {
+      payload.message_thread_id = input.messageThreadId;
+    } else if (group.isForum) {
       payload.message_thread_id = TELEGRAM_FORUM_GENERAL_TOPIC_THREAD_ID;
     }
 
@@ -945,6 +825,10 @@ export class TelegramService {
       return this.handleChatForumUpdated(event);
     }
 
+    if (event.eventType === 'forum_topic_upsert') {
+      return this.handleForumTopicUpsert(event);
+    }
+
     return this.handleBotChatMemberChanged(event);
   }
 
@@ -979,7 +863,7 @@ export class TelegramService {
         botStatus: event.botStatus,
       },
     });
-    await this.ensureGroupBotSettings(existingGroup.id);
+    await this.groupBotSettings.ensureForGroup(existingGroup.id);
 
     if (event.botStatus !== 'administrator' && event.botStatus !== 'creator') {
       return {
@@ -1011,6 +895,166 @@ export class TelegramService {
       status: TelegramConnectionStatus.CONNECTED,
       group: existingGroup,
     };
+  }
+
+  private async handleForumTopicUpsert(
+    event: Extract<TelegramBotEventInput, { eventType: 'forum_topic_upsert' }>,
+  ): Promise<{ ok: true; applied: boolean }> {
+    const group = await this.prisma.telegramGroups.findUnique({
+      where: { telegramChatId: event.chatId },
+      select: { id: true, isForum: true },
+    });
+
+    if (!group?.isForum) {
+      return { ok: true, applied: false };
+    }
+
+    await this.upsertStoredForumTopic({
+      telegramGroupId: group.id,
+      messageThreadId: event.messageThreadId,
+      name: event.name,
+      iconColor: event.iconColor,
+      isClosed: event.isClosed,
+    });
+
+    return { ok: true, applied: true };
+  }
+
+  private async upsertStoredForumTopic(input: {
+    telegramGroupId: string;
+    messageThreadId: number;
+    name?: string;
+    iconColor?: number;
+    isClosed?: boolean;
+  }): Promise<void> {
+    const fallbackName = `Tópico ${input.messageThreadId}`;
+    const existing = await this.prisma.telegramForumTopics.findUnique({
+      where: {
+        telegramGroupId_messageThreadId: {
+          telegramGroupId: input.telegramGroupId,
+          messageThreadId: input.messageThreadId,
+        },
+      },
+      select: { name: true },
+    });
+
+    const name = input.name?.trim() || existing?.name || fallbackName;
+
+    await this.prisma.telegramForumTopics.upsert({
+      where: {
+        telegramGroupId_messageThreadId: {
+          telegramGroupId: input.telegramGroupId,
+          messageThreadId: input.messageThreadId,
+        },
+      },
+      create: {
+        telegramGroupId: input.telegramGroupId,
+        messageThreadId: input.messageThreadId,
+        name,
+        iconColor: input.iconColor,
+        isClosed: input.isClosed ?? false,
+      },
+      update: {
+        name,
+        ...(input.iconColor !== undefined ? { iconColor: input.iconColor } : {}),
+        ...(input.isClosed !== undefined ? { isClosed: input.isClosed } : {}),
+      },
+    });
+  }
+
+  private async ensureGeneralForumTopic(telegramGroupId: string): Promise<void> {
+    await this.upsertStoredForumTopic({
+      telegramGroupId,
+      messageThreadId: 1,
+      name: 'Geral',
+      isClosed: false,
+    });
+  }
+
+  private async listStoredForumTopics(telegramGroupId: string): Promise<
+    {
+      messageThreadId: number;
+      name: string;
+      iconColor?: number;
+      isClosed: boolean;
+      createdAt: string;
+    }[]
+  > {
+    const rows = await this.prisma.telegramForumTopics.findMany({
+      where: { telegramGroupId },
+      orderBy: [{ isClosed: 'asc' }, { createdAt: 'desc' }],
+      select: {
+        messageThreadId: true,
+        name: true,
+        iconColor: true,
+        isClosed: true,
+        createdAt: true,
+      },
+    });
+
+    return rows.map((row) => ({
+      messageThreadId: row.messageThreadId,
+      name: row.name,
+      iconColor: row.iconColor ?? undefined,
+      isClosed: row.isClosed,
+      createdAt: row.createdAt.toISOString(),
+    }));
+  }
+
+  private async syncForumTopicsFromTelegram(
+    telegramChatId: string,
+    telegramGroupId: string,
+  ): Promise<void> {
+    type TelegramForumTopicRow = {
+      message_thread_id: number;
+      name: string;
+      icon_color?: number;
+      is_closed?: boolean;
+    };
+
+    let offsetTopic = 0;
+    let offsetId = 0;
+    let offsetDate = 0;
+
+    for (let page = 0; page < 20; page += 1) {
+      const result = await this.callTelegramBotMethodDetailed<{
+        topics?: TelegramForumTopicRow[];
+      }>('getForumTopics', {
+        chat_id: telegramChatId,
+        offset_date: offsetDate,
+        offset_id: offsetId,
+        offset_topic_id: offsetTopic,
+        limit: 100,
+      });
+
+      if (!result.ok) {
+        return;
+      }
+
+      const batch = result.result.topics ?? [];
+      if (batch.length === 0) {
+        return;
+      }
+
+      for (const topic of batch) {
+        await this.upsertStoredForumTopic({
+          telegramGroupId,
+          messageThreadId: topic.message_thread_id,
+          name: topic.name,
+          iconColor: topic.icon_color,
+          isClosed: topic.is_closed === true,
+        });
+      }
+
+      if (batch.length < 100) {
+        return;
+      }
+
+      const last = batch[batch.length - 1];
+      offsetTopic = last.message_thread_id;
+      offsetId = last.message_thread_id;
+      offsetDate = 0;
+    }
   }
 
   private async handleChatForumUpdated(
@@ -1099,6 +1143,10 @@ export class TelegramService {
         isForum: true,
       },
     });
+
+    if (resolvedForum) {
+      await this.ensureGeneralForumTopic(group.id);
+    }
 
     return {
       id: updated.id,
@@ -1820,7 +1868,7 @@ export class TelegramService {
       },
     });
 
-    await this.ensureGroupBotSettings(group.id);
+    await this.groupBotSettings.ensureForGroup(group.id);
 
     await this.syncTelegramGroupRichMetadata(group.id, chat.id).catch(
       (err: unknown) => {
@@ -1941,6 +1989,117 @@ export class TelegramService {
     }
 
     return this.downloadTelegramFileById(row.profilePhotoFileId);
+  }
+
+  async sendAlertToChat(params: {
+    chatId: string;
+    text: string;
+    messageThreadId?: number | null;
+    silent?: boolean;
+    pinMessage?: boolean;
+    replyMarkup?: Record<string, unknown>;
+  }): Promise<{ ok: true } | { ok: false; reason: string }> {
+    const payload: Record<string, unknown> = {
+      chat_id: params.chatId,
+      text: params.text,
+      disable_notification: params.silent === true,
+    };
+
+    if (params.messageThreadId) {
+      payload.message_thread_id = params.messageThreadId;
+    }
+
+    if (params.replyMarkup) {
+      payload.reply_markup = params.replyMarkup;
+    }
+
+    const sendResult = await this.callTelegramBotMethodDetailed<{
+      message_id?: number;
+    }>('sendMessage', payload);
+
+    if (!sendResult.ok) {
+      return {
+        ok: false,
+        reason: this.mapTelegramGroupMessageFailureReason(sendResult.reason),
+      };
+    }
+
+    if (params.pinMessage && sendResult.result.message_id) {
+      await this.callTelegramBotMethodDetailed('pinChatMessage', {
+        chat_id: params.chatId,
+        message_id: sendResult.result.message_id,
+        disable_notification: params.silent === true,
+      });
+    }
+
+    return { ok: true };
+  }
+
+  async sendAlertDm(params: {
+    telegramUserId: string;
+    text: string;
+    silent?: boolean;
+    replyMarkup?: Record<string, unknown>;
+  }): Promise<{ ok: true } | { ok: false; reason: string }> {
+    const userId = this.parseTelegramUserId(params.telegramUserId);
+    if (userId === null) {
+      return { ok: false, reason: 'ID do Telegram inválido.' };
+    }
+
+    const payload: Record<string, unknown> = {
+      chat_id: userId,
+      text: params.text,
+      disable_notification: params.silent === true,
+    };
+
+    if (params.replyMarkup) {
+      payload.reply_markup = params.replyMarkup;
+    }
+
+    const sendResult = await this.callTelegramBotMethodDetailed<unknown>(
+      'sendMessage',
+      payload,
+    );
+
+    if (!sendResult.ok) {
+      return {
+        ok: false,
+        reason: this.mapTelegramDmFailureReason(sendResult.reason),
+      };
+    }
+
+    return { ok: true };
+  }
+
+  async listForumTopics(
+    userId: string,
+    groupId: string,
+  ): Promise<
+    {
+      messageThreadId: number;
+      name: string;
+      iconColor?: number;
+      isClosed: boolean;
+      createdAt: string;
+    }[]
+  > {
+    const group = await this.prisma.telegramGroups.findFirst({
+      where: { id: groupId, userId },
+      select: { telegramChatId: true, isForum: true },
+    });
+
+    if (!group) {
+      throw new NotFoundException('Telegram group connection not found.');
+    }
+
+    if (!group.isForum) {
+      return [];
+    }
+
+    await this.ensureGeneralForumTopic(groupId);
+    await this.syncForumTopicsFromTelegram(group.telegramChatId, groupId);
+
+    return this.listStoredForumTopics(groupId);
   }
 
   private async callTelegramBotMethod<T>(

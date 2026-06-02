@@ -1,6 +1,5 @@
 "use client";
 
-import { ChevronDownIcon } from "lucide-react";
 import * as React from "react";
 import {
   type ChevronProps,
@@ -29,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import type { IconAnimationHandle } from "@/hooks/use-icon-animation";
 import { cn } from "@/lib/utils";
+import { ChevronDownIcon } from "../icons/chevron-down";
 
 type NavMonthChevronHandle = IconAnimationHandle;
 
@@ -81,7 +81,10 @@ const CalendarChevron = React.forwardRef<
 
   return (
     <ChevronDownIcon
-      className={cn("size-3.5 text-muted-foreground opacity-80", className)}
+      size={size}
+      animateOnHover={false}
+      isAnimateOnView={false}
+      className={cn("text-muted-foreground opacity-80", className)}
       style={style}
     />
   );
@@ -282,7 +285,7 @@ function Calendar({
           defaultClassNames.range_end,
         ),
         today: cn(
-          "rounded-(--cell-radius) bg-muted text-foreground data-[selected=true]:rounded-none",
+          "rounded-(--cell-radius) bg-primary/10! text-primary! data-[selected=true]:rounded-none",
           defaultClassNames.today,
         ),
         outside: cn(
@@ -342,6 +345,13 @@ function CalendarDayButton({
   ...props
 }: React.ComponentProps<typeof DayButton> & { locale?: Partial<Locale> }) {
   const defaultClassNames = getDefaultClassNames();
+  const isToday = Boolean(modifiers.today);
+  const isSelected =
+    Boolean(modifiers.selected) ||
+    Boolean(modifiers.range_start) ||
+    Boolean(modifiers.range_end) ||
+    Boolean(modifiers.range_middle);
+  const shouldHighlightToday = isToday && !isSelected;
 
   const ref = React.useRef<HTMLButtonElement>(null);
   React.useEffect(() => {
@@ -350,7 +360,6 @@ function CalendarDayButton({
 
   return (
     <Button
-      variant="ghost"
       size="icon"
       data-day={day.date.toLocaleDateString(locale?.code)}
       data-selected-single={
@@ -363,16 +372,19 @@ function CalendarDayButton({
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
       className={cn(
-        "relative isolate z-10 flex bg-transparent hover:bg-accent aspect-square text-xs size-auto w-full min-w-(--cell-size) flex-col",
+        "relative isolate z-10 flex bg-transparent text-muted-foreground aspect-square text-xs hover:bg-transparent! size-auto w-full min-w-(--cell-size) flex-col",
         "gap-1 border-0 leading-none font-normal group-data-[focused=true]/day:relative",
         "data-[range-end=true]:rounded-(--cell-radius)",
-        "data-[range-end=true]:rounded-r-(--cell-radius) data-[range-end=true]:bg-primary",
-        "data-[range-end=true]:text-primary-foreground data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-muted data-[range-middle=true]:dark:bg-muted/60!",
+        "data-[range-end=true]:rounded-r-(--cell-radius) data-[range-end=true]:bg-primary data-[range-end=true]:hover:bg-primary!",
+        "data-[range-end=true]:text-primary-foreground data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-muted!",
         "data-[range-middle=true]:text-foreground data-[range-start=true]:rounded-(--cell-radius)",
         "data-[range-start=true]:rounded-l-(--cell-radius) data-[range-start=true]:bg-primary",
-        "data-[range-start=true]:text-primary-foreground data-[selected-single=true]:bg-primary",
+        "data-[range-start=true]:text-primary-foreground data-[selected-single=true]:bg-primary data-[range-start=true]:hover:bg-primary!",
         "data-[selected-single=true]:text-primary-foreground dark:hover:text-foreground [&>span]:text-xs [&>span]:opacity-70",
         defaultClassNames.day,
+        shouldHighlightToday
+          ? "bg-primary/10! text-primary! hover:bg-primary/10! dark:hover:bg-primary/10!"
+          : undefined,
         className,
       )}
       {...props}

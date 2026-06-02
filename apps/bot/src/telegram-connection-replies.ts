@@ -21,11 +21,22 @@ function formatPermissionList(ids: string[]): string {
   return `${labels.slice(0, -1).join(", ")} e ${labels.at(-1)}`;
 }
 
+export type TelegramConnectionReplyContext = "connection" | "existing_group";
+
 export function replyForTelegramConnectionReason(
   reason: string | undefined,
   missingIds: string[] | undefined,
+  context: TelegramConnectionReplyContext = "connection",
 ): string | null {
   if (reason === "bot_must_be_administrator") {
+    if (context === "existing_group") {
+      return [
+        "O bot não é administrador neste grupo.",
+        "",
+        "Para enviar alertas e automações, promova o Gateon em Configurações do grupo → Administradores e ative as permissões necessárias para publicar mensagens.",
+      ].join("\n");
+    }
+
     return [
       "Grupo identificado.",
       "",

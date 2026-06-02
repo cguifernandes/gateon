@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { LoaderPage } from "@/components/loader-page";
 import { DEFAULT_PLAN_ID, getMaxGroupsForPlan } from "@/lib/plan-limits";
 import { getTelegramGroups } from "@/lib/server/get-telegram-groups";
 import { cn } from "@/lib/utils";
@@ -41,11 +42,7 @@ export default async function GroupsPage() {
           {error}
         </div>
       ) : (
-        <Suspense
-          fallback={
-            <div className="h-48 animate-pulse rounded-xl border border-border bg-muted/30" />
-          }
-        >
+        <Suspense fallback={<LoaderPage />}>
           <GroupsTable groups={groups} />
         </Suspense>
       )}

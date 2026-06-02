@@ -1,4 +1,5 @@
 import type { AppConfig } from "./config.js";
+import type { AlertTriggerType } from "./alert-triggers.js";
 
 type TelegramUserPayload = {
   id: string;
@@ -56,6 +57,14 @@ type TelegramBotEvent =
       chatId: string;
       isForum: boolean;
       title?: string;
+    }
+  | {
+      eventType: "forum_topic_upsert";
+      chatId: string;
+      messageThreadId: number;
+      name?: string;
+      iconColor?: number;
+      isClosed?: boolean;
     };
 
 export type TelegramBotEventResult = {
@@ -96,4 +105,33 @@ export async function sendTelegramBotEvent(
   }
 
   return (await response.json()) as TelegramBotEventResult;
+}
+
+export async function triggerTelegramAlerts(
+  config: AppConfig,
+  event: {
+    triggerType: AlertTriggerType;
+    chatId: string;
+    telegramUserId?: string;
+    messageThreadId?: number;
+  },
+): Promise<void> {
+  const response = await fetch(
+    `${config.GATEON_API_BASE_URL}/alerts/internal/trigger`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-gateon-bot-secret": config.TELEGRAM_BOT_INTERNAL_SECRET,
+      },
+      body: JSON.stringify(event),
+    },
+  );
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(
+      `Gateon API rejected alert trigger (${response.status}): ${detail}`,
+    );
+  }
 }

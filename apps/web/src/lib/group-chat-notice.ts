@@ -7,13 +7,14 @@ import {
 export async function postGroupChatNotice(
   groupId: string,
   text: string = DEFAULT_MEMBER_NOTICE_TEXT,
+  messageThreadId?: number,
 ): Promise<TelegramGroupChatNoticeResultDto> {
   const response = await fetch(
     `/api/telegram/groups/${encodeURIComponent(groupId)}/chat-notice`,
     {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, messageThreadId }),
     },
   );
 

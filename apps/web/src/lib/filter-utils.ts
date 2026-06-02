@@ -1,4 +1,5 @@
 import type { DateRangeValue } from "@/components/filters-popever";
+import type { AlertsUrlFiltersState } from "@/lib/alerts-url-filters";
 import type { GroupsUrlFiltersState } from "@/lib/groups-url-filters";
 import type { MembersUrlFiltersState } from "@/lib/members-url-filters";
 
@@ -28,12 +29,31 @@ export const EMPTY_GROUPS_URL_FILTERS: GroupsUrlFiltersState = {
   connectedRange: undefined,
 };
 
+export const EMPTY_ALERTS_URL_FILTERS: AlertsUrlFiltersState = {
+  status: "all",
+  destination: "all",
+  groupId: "all",
+  createdRange: undefined,
+};
+
 export const EMPTY_MEMBERS_URL_FILTERS: MembersUrlFiltersState = {
   memberStatus: "all",
   joinedRange: undefined,
   leftRange: undefined,
   telegramChatIds: [],
 };
+
+export function areAlertsUrlFiltersEqual(
+  a: AlertsUrlFiltersState,
+  b: AlertsUrlFiltersState,
+): boolean {
+  return (
+    a.status === b.status &&
+    a.destination === b.destination &&
+    a.groupId === b.groupId &&
+    areDateRangesEqual(a.createdRange, b.createdRange)
+  );
+}
 
 export function areGroupsUrlFiltersEqual(
   a: GroupsUrlFiltersState,
@@ -76,6 +96,28 @@ export function countActiveGroupsUrlFilters(state: GroupsUrlFiltersState): numbe
   }
 
   if (state.connectedRange?.from !== undefined) {
+    count += 1;
+  }
+
+  return count;
+}
+
+export function countActiveAlertsUrlFilters(state: AlertsUrlFiltersState): number {
+  let count = 0;
+
+  if (state.status !== "all") {
+    count += 1;
+  }
+
+  if (state.destination !== "all") {
+    count += 1;
+  }
+
+  if (state.groupId !== "all") {
+    count += 1;
+  }
+
+  if (state.createdRange?.from !== undefined) {
     count += 1;
   }
 

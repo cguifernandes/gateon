@@ -1,5 +1,15 @@
+"use client";
+
 import { Accordion as AccordionPrimitive } from "@base-ui/react/accordion";
-import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+import { useRef } from "react";
+import {
+  ChevronDownIcon,
+  type ChevronDownIconHandle,
+} from "@/components/icons/chevron-down";
+import {
+  ChevronUpIcon,
+  type ChevronUpIconHandle,
+} from "@/components/icons/chevron-up";
 import { cn } from "@/lib/utils";
 
 function Accordion({ className, ...props }: AccordionPrimitive.Root.Props) {
@@ -16,7 +26,14 @@ function AccordionItem({ className, ...props }: AccordionPrimitive.Item.Props) {
   return (
     <AccordionPrimitive.Item
       data-slot="accordion-item"
-      className={cn("not-last:border-b", className)}
+      className={cn(
+        "not-last:border-b rounded-xl px-3 cursor-pointer border border-border bg-background transition-all",
+        "hover:bg-muted/50 hover:text-foreground",
+        "dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+        "has-[[data-slot=accordion-trigger][aria-expanded=true]]:bg-muted has-[[data-slot=accordion-trigger][aria-expanded=true]]:text-foreground",
+        "dark:has-[[data-slot=accordion-trigger][aria-expanded=true]]:bg-input/50",
+        className,
+      )}
       {...props}
     />
   );
@@ -25,26 +42,49 @@ function AccordionItem({ className, ...props }: AccordionPrimitive.Item.Props) {
 function AccordionTrigger({
   className,
   children,
+  onMouseEnter,
+  onMouseLeave,
   ...props
 }: AccordionPrimitive.Trigger.Props) {
+  const chevronDownRef = useRef<ChevronDownIconHandle>(null);
+  const chevronUpRef = useRef<ChevronUpIconHandle>(null);
+
   return (
     <AccordionPrimitive.Header className="flex">
       <AccordionPrimitive.Trigger
         data-slot="accordion-trigger"
+        onMouseEnter={(event) => {
+          onMouseEnter?.(event);
+          chevronDownRef.current?.startAnimation();
+          chevronUpRef.current?.startAnimation();
+        }}
+        onMouseLeave={(event) => {
+          onMouseLeave?.(event);
+          chevronDownRef.current?.stopAnimation();
+          chevronUpRef.current?.stopAnimation();
+        }}
         className={cn(
-          "group/accordion-trigger relative flex flex-1 items-start justify-between rounded-lg border border-transparent py-2.5 text-left text-sm font-medium transition-all outline-none hover:underline focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:after:border-ring aria-disabled:pointer-events-none aria-disabled:opacity-50 **:data-[slot=accordion-trigger-icon]:ml-auto **:data-[slot=accordion-trigger-icon]:size-4 **:data-[slot=accordion-trigger-icon]:text-muted-foreground",
+          "group/accordion-trigger relative flex flex-1 items-center justify-between rounded-lg border border-transparent py-2.5 text-left text-sm font-medium transition-all outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:after:border-ring aria-disabled:pointer-events-none aria-disabled:opacity-50 **:data-[slot=accordion-trigger-icon]:ml-auto **:data-[slot=accordion-trigger-icon]:shrink-0 **:data-[slot=accordion-trigger-icon]:text-muted-foreground",
           className,
         )}
         {...props}
       >
         {children}
         <ChevronDownIcon
+          ref={chevronDownRef}
           data-slot="accordion-trigger-icon"
-          className="pointer-events-none shrink-0 group-aria-expanded/accordion-trigger:hidden"
+          isAnimateOnView={false}
+          animateOnHover={false}
+          size={16}
+          className="pointer-events-none group-aria-expanded/accordion-trigger:hidden"
         />
         <ChevronUpIcon
+          ref={chevronUpRef}
           data-slot="accordion-trigger-icon"
-          className="pointer-events-none hidden shrink-0 group-aria-expanded/accordion-trigger:inline"
+          isAnimateOnView={false}
+          animateOnHover={false}
+          size={16}
+          className="pointer-events-none hidden group-aria-expanded/accordion-trigger:inline"
         />
       </AccordionPrimitive.Trigger>
     </AccordionPrimitive.Header>

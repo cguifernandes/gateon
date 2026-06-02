@@ -46,7 +46,6 @@ import {
   type TelegramGroupSummaryDto,
   telegramGroupMembersListResponseSchema,
 } from "@/lib/zod/telegram-group-connection-schemas";
-import { RemoveGroupDialog } from "../../../../../components/remove-group-dialog";
 import { type GroupMemberRowData, GroupMembersList } from "./group-member-row";
 
 function formatDateTime(value: string) {
@@ -104,7 +103,7 @@ function MembersInfoCallout() {
             <span className="font-medium text-foreground">Gerenciados</span> —
             perfis que o bot registrou e que ainda estão no grupo. São os da
             lista{" "}
-            <span className="font-medium text-foreground">
+            <span className="font-medium font-heading text-foreground">
               Membros rastreados
             </span>
             , contam no limite do plano e, ao sair, deixam de aparecer e passam
@@ -212,6 +211,7 @@ type GroupMembersDrawerProps = {
   group: TelegramGroupSummaryDto;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  onRequestRemove?: () => void;
   showTrigger?: boolean;
 };
 
@@ -219,6 +219,7 @@ export function GroupMembersDrawer({
   group,
   open: openProp,
   onOpenChange,
+  onRequestRemove,
   showTrigger = true,
 }: GroupMembersDrawerProps) {
   const [internalOpen, setInternalOpen] = useState(false);
@@ -231,7 +232,6 @@ export function GroupMembersDrawer({
   );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [removeOpen, setRemoveOpen] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const xIconRef = useRef<XIconHandle>(null);
   const refreshIconRef = useRef<RefreshCWIconHandle>(null);
@@ -464,7 +464,7 @@ export function GroupMembersDrawer({
                     <Badge
                       variant="outline"
                       className={cn(
-                        "shrink-0 text-[10px] font-medium",
+                        "shrink-0 font-medium",
                         botDisplay.className,
                       )}
                     >
@@ -555,7 +555,7 @@ export function GroupMembersDrawer({
                     variant="destructive"
                     className="flex h-auto flex-col items-center justify-center gap-1 py-3 text-sm"
                     disabled={isSyncing || isLoading || isSendingGroupNotice}
-                    onClick={() => setRemoveOpen(true)}
+                    onClick={() => onRequestRemove?.()}
                     onMouseEnter={() => removeIconRef.current?.startAnimation()}
                     onMouseLeave={() => removeIconRef.current?.stopAnimation()}
                   >
@@ -580,7 +580,7 @@ export function GroupMembersDrawer({
           >
             <MembersInfoCallout />
 
-            <div className="flex flex-col gap-6 border-t border-border p-6">
+            <div className="flex flex-col gap-6 p-6 pt-0">
               {showSummary ? <MembersSummaryGrid summary={summary} /> : null}
 
               <MembersMainContent
@@ -593,14 +593,6 @@ export function GroupMembersDrawer({
           </div>
         </div>
       </DrawerContent>
-
-      <RemoveGroupDialog
-        groupId={group.id}
-        groupTitle={groupTitle}
-        open={removeOpen}
-        onOpenChange={setRemoveOpen}
-        onRemoved={() => handleOpenChange(false)}
-      />
     </Drawer>
   );
 }
