@@ -95,3 +95,4 @@ export function getUserInitials(user: PublicUserDto) {
 
 export const BOT_TELEGRAM_LINK = "https://t.me/GateonBot";
 export const BOT_TELEGRAM_USERNAME = "@GateonBot";
+export const EMAIL_SUPPORT = "contato@gateon.com.br";

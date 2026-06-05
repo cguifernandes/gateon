@@ -27,8 +27,10 @@ export function DashboardShell({
         <AppSidebar />
         <SidebarInset className="min-h-0 overflow-hidden rounded-br-xl">
           <Header user={user} />
-          <main className="min-h-0 flex-1 overflow-y-auto bg-background overscroll-contain relative">
-            <Container className="p-4">{children}</Container>
+          <main className="relative flex min-h-0 flex-1 flex-col overflow-y-auto bg-background overscroll-contain">
+            <Container className="flex min-h-0 flex-1 flex-col p-4">
+              {children}
+            </Container>
           </main>
         </SidebarInset>
       </div>

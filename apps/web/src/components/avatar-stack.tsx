@@ -82,7 +82,7 @@ export function AvatarStack({
                 type="button"
                 aria-label={item.name}
                 className={cn(
-                  "relative inline-flex size-9 shrink-0 overflow-hidden rounded-full ring-2 ring-card transition-transform hover:z-20 hover:scale-110",
+                  "relative inline-flex size-9 shrink-0 overflow-hidden rounded-full border border-border transition-transform hover:z-20 hover:scale-110",
                   index > 0 && "-ml-2",
                   avatarClassName,
                 )}

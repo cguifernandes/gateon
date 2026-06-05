@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useController, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { useRefreshTelegramGroup } from "@/app/(private)/groups/_hooks/use-refresh-telegram-group";
 import { RemoveGroupDialog } from "@/components/remove-group-dialog";
@@ -42,7 +42,28 @@ export function BotConfigForm({ group }: BotConfigFormProps) {
     defaultValues: group.settings,
   });
 
-  const values = form.watch();
+  const enabled = useController({ control: form.control, name: "enabled" });
+  const welcomeEnabled = useController({
+    control: form.control,
+    name: "welcomeEnabled",
+  });
+  const privateMessageOnJoin = useController({
+    control: form.control,
+    name: "privateMessageOnJoin",
+  });
+  const notifyPermissionLoss = useController({
+    control: form.control,
+    name: "notifyPermissionLoss",
+  });
+  const welcomeMessage = useController({
+    control: form.control,
+    name: "welcomeMessage",
+  });
+
+  const welcomeMessageValue = useWatch({
+    control: form.control,
+    name: "welcomeMessage",
+  });
 
   async function handleSubmit(valuesToSave: TelegramGroupBotSettingsDto) {
     try {
@@ -93,78 +114,39 @@ export function BotConfigForm({ group }: BotConfigFormProps) {
         className="relative flex flex-col gap-6 pb-20"
         onSubmit={form.handleSubmit(handleSubmit)}
       >
-        <div className="flex flex-col gap-3">
-          <BotConfigHeader group={group} />
-          <BotConfigQuickActions group={group} />
-        </div>
+        <BotConfigHeader group={group} />
+        <BotConfigQuickActions
+          group={group}
+          isRefreshing={isRefreshing}
+          onRefreshPermissions={refresh}
+        />
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="space-y-6">
-            <Controller
-              control={form.control}
-              name="enabled"
-              render={({ field: enabled }) => (
-                <Controller
-                  control={form.control}
-                  name="welcomeEnabled"
-                  render={({ field: welcomeEnabled }) => (
-                    <Controller
-                      control={form.control}
-                      name="privateMessageOnJoin"
-                      render={({ field: privateMessageOnJoin }) => (
-                        <Controller
-                          control={form.control}
-                          name="welcomeMessage"
-                          render={({ field: welcomeMessage }) => (
-                            <Controller
-                              control={form.control}
-                              name="notifyPermissionLoss"
-                              render={({ field: notifyPermissionLoss }) => (
-                                <>
-                                  <BotConfigGeneralSection
-                                    fields={{
-                                      enabled,
-                                      welcomeEnabled,
-                                      privateMessageOnJoin,
-                                      notifyPermissionLoss,
-                                      welcomeMessage,
-                                    }}
-                                    errors={form.formState.errors}
-                                  />
-                                  <BotConfigPermissionsSection
-                                    group={group}
-                                    isRefreshing={isRefreshing}
-                                    onRefreshPermissions={refresh}
-                                  />
-                                  <BotConfigNotificationsSection
-                                    fields={{
-                                      enabled,
-                                      welcomeEnabled,
-                                      privateMessageOnJoin,
-                                      notifyPermissionLoss,
-                                      welcomeMessage,
-                                    }}
-                                  />
-                                  <BotConfigDangerZone
-                                    onDisconnect={() => setRemoveOpen(true)}
-                                  />
-                                </>
-                              )}
-                            />
-                          )}
-                        />
-                      )}
-                    />
-                  )}
-                />
-              )}
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+          <div className="space-y-4">
+            <BotConfigGeneralSection
+              fields={{
+                enabled: enabled.field,
+                welcomeEnabled: welcomeEnabled.field,
+                privateMessageOnJoin: privateMessageOnJoin.field,
+                welcomeMessage: welcomeMessage.field,
+              }}
+              errors={form.formState.errors}
             />
+            <BotConfigPermissionsSection
+              group={group}
+              isRefreshing={isRefreshing}
+              onRefreshPermissions={refresh}
+            />
+            <BotConfigNotificationsSection
+              field={notifyPermissionLoss.field}
+            />
+            <BotConfigDangerZone onDisconnect={() => setRemoveOpen(true)} />
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-4">
             <BotConfigStatusPanel group={group} />
             <WelcomePreview
-              message={renderWelcomePreview(values.welcomeMessage)}
+              message={renderWelcomePreview(welcomeMessageValue)}
             />
           </div>
         </div>

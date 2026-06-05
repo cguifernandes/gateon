@@ -24,46 +24,40 @@ import type { TelegramGroupDetailDto } from "@/lib/zod/telegram-group-connection
 import { buildBotPermissionItems } from "./bot-config-utils";
 import { BotSettingSwitch } from "./bot-setting-switch";
 
-type BotConfigSectionProps = {
-  group: TelegramGroupDetailDto;
-  values: TelegramGroupBotSettingsDto;
-  fields: {
-    enabled: ControllerRenderProps<TelegramGroupBotSettingsDto, "enabled">;
-    welcomeEnabled: ControllerRenderProps<
-      TelegramGroupBotSettingsDto,
-      "welcomeEnabled"
-    >;
-    privateMessageOnJoin: ControllerRenderProps<
-      TelegramGroupBotSettingsDto,
-      "privateMessageOnJoin"
-    >;
-    notifyPermissionLoss: ControllerRenderProps<
-      TelegramGroupBotSettingsDto,
-      "notifyPermissionLoss"
-    >;
-    welcomeMessage: ControllerRenderProps<
-      TelegramGroupBotSettingsDto,
-      "welcomeMessage"
-    >;
-  };
-  errors: Partial<
-    Record<keyof TelegramGroupBotSettingsDto, { message?: string }>
+type GeneralFields = {
+  enabled: ControllerRenderProps<TelegramGroupBotSettingsDto, "enabled">;
+  welcomeEnabled: ControllerRenderProps<
+    TelegramGroupBotSettingsDto,
+    "welcomeEnabled"
   >;
-  onRefreshPermissions: () => void;
-  isRefreshing: boolean;
+  privateMessageOnJoin: ControllerRenderProps<
+    TelegramGroupBotSettingsDto,
+    "privateMessageOnJoin"
+  >;
+  welcomeMessage: ControllerRenderProps<
+    TelegramGroupBotSettingsDto,
+    "welcomeMessage"
+  >;
 };
+
+type GeneralErrors = Partial<
+  Record<keyof TelegramGroupBotSettingsDto, { message?: string }>
+>;
 
 export function BotConfigGeneralSection({
   fields,
   errors,
-}: Pick<BotConfigSectionProps, "fields" | "errors">) {
+}: {
+  fields: GeneralFields;
+  errors: GeneralErrors;
+}) {
   const welcomeMessageId = useId();
 
   return (
-    <Card className="rounded-3xl">
+    <Card className="rounded-xl">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Power size={18} /> Configurações gerais
+          <Power size={16} /> Configurações gerais
         </CardTitle>
         <CardDescription>
           Controle o comportamento principal do bot neste grupo.
@@ -129,31 +123,31 @@ export function BotConfigPermissionsSection({
   group,
   onRefreshPermissions,
   isRefreshing,
-}: Pick<
-  BotConfigSectionProps,
-  "group" | "onRefreshPermissions" | "isRefreshing"
->) {
+}: {
+  group: TelegramGroupDetailDto;
+  onRefreshPermissions: () => void;
+  isRefreshing: boolean;
+}) {
   return (
-    <Card className="rounded-3xl">
+    <Card className="rounded-xl">
       <CardHeader>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
             <CardTitle className="flex items-center gap-2">
-              <Shield size={18} /> VER SE AS Permissões TAO IGUAL NO TELEGRAM do
-              bot
+              <Shield size={16} /> Permissões do bot
             </CardTitle>
             <CardDescription>
-              Status das permissões de administrador do bot no Telegram (via API
-              getChatMember).
+              Permissões de administrador concedidas ao bot no Telegram.
             </CardDescription>
           </div>
           <Button
             type="button"
             variant="outline"
+            size="sm"
             disabled={isRefreshing}
             onClick={onRefreshPermissions}
           >
-            Atualizar permissões
+            Atualizar
           </Button>
         </div>
       </CardHeader>
@@ -167,13 +161,18 @@ export function BotConfigPermissionsSection({
 }
 
 export function BotConfigNotificationsSection({
-  fields,
-}: Pick<BotConfigSectionProps, "fields">) {
+  field,
+}: {
+  field: ControllerRenderProps<
+    TelegramGroupBotSettingsDto,
+    "notifyPermissionLoss"
+  >;
+}) {
   return (
-    <Card className="rounded-3xl">
+    <Card className="rounded-xl">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Bell size={18} /> Notificações
+          <Bell size={16} /> Notificações
         </CardTitle>
         <CardDescription>
           Receba alertas quando a saúde da integração mudar.
@@ -181,8 +180,8 @@ export function BotConfigNotificationsSection({
       </CardHeader>
       <CardContent>
         <BotSettingSwitch
-          checked={fields.notifyPermissionLoss.value}
-          onCheckedChange={fields.notifyPermissionLoss.onChange}
+          checked={field.value}
+          onCheckedChange={field.onChange}
           title="Avisar quando o bot perder permissões"
           description="Mostra um alerta no grupo quando permissões obrigatórias forem removidas."
           tooltip="Ajuda o administrador a corrigir permissões antes da automação parar."
@@ -199,10 +198,10 @@ export function BotConfigDangerZone({
   onDisconnect: () => void;
 }) {
   return (
-    <Card className="rounded-3xl border-destructive/30 bg-destructive/5">
+    <Card className="rounded-xl border-destructive/30 bg-destructive/5">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-destructive">
-          <AlertTriangle size={18} /> Zona de perigo
+          <AlertTriangle size={16} /> Zona de perigo
         </CardTitle>
         <CardDescription>
           Ações que interrompem a integração do bot com este grupo.
@@ -227,17 +226,17 @@ export function BotConfigDangerZone({
 
 export function WelcomePreview({ message }: { message: string }) {
   return (
-    <Card className="rounded-3xl">
+    <Card className="rounded-xl">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <MessageSquareText size={18} /> Preview
+          <MessageSquareText size={16} /> Preview da mensagem
         </CardTitle>
         <CardDescription>
           Como a mensagem aparece para novos membros.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="rounded-2xl border border-border bg-muted/40 p-4 text-sm leading-relaxed">
+        <div className="rounded-xl border border-border bg-muted/40 p-4 text-sm leading-relaxed">
           {message}
         </div>
       </CardContent>

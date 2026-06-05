@@ -81,7 +81,7 @@ export function AlertCard({
                   />
                 </span>
                 <div className="flex shrink-0 flex-wrap items-center gap-1">
-                  <Badge variant="outline">
+                  <Badge variant="outline" className="text-[10px]">
                     {destinationLabels[alert.destinationType]}
                   </Badge>
                 </div>

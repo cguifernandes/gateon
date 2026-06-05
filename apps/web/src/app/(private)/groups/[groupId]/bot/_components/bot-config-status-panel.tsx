@@ -22,38 +22,63 @@ export function BotConfigStatusPanel({ group }: BotConfigStatusPanelProps) {
   const hasRequiredPermissions = missingCount === 0;
 
   return (
-    <div className="space-y-4 lg:sticky lg:top-4">
-      <Card className="rounded-3xl">
+    <div className="lg:sticky lg:top-4">
+      <Card className="rounded-xl">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity size={18} /> Status do grupo
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Activity size={16} /> Status da integração
           </CardTitle>
           <CardDescription>
-            Saúde operacional da integração com o Telegram.
+            {hasRequiredPermissions ? (
+              <span className="flex items-center gap-1.5 text-green-600 dark:text-green-400">
+                <CheckCircle2 size={13} />
+                Bot com permissões completas
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-yellow-600 dark:text-yellow-400">
+                <ShieldAlert size={13} />
+                {missingCount}{" "}
+                {missingCount === 1
+                  ? "permissão pendente"
+                  : "permissões pendentes"}
+              </span>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <StatusRow
-            label="Bot"
-            value={status.label}
-            className={status.className}
-            dotClassName={status.dotClassName}
-          />
-          <StatusRow
-            label="Permissões"
-            value={
-              hasRequiredPermissions ? "Saudável" : `${missingCount} pendente`
-            }
-            className={
-              hasRequiredPermissions
-                ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400"
-                : "border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-400"
-            }
-            dotClassName={
-              hasRequiredPermissions ? "bg-green-500" : "bg-yellow-500"
-            }
-          />
-          <div className="grid gap-2 rounded-2xl border border-border bg-background/70 p-3 text-sm">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-muted-foreground text-sm">Bot</span>
+            <Badge variant="outline" className={cn("gap-1.5", status.className)}>
+              <span
+                aria-hidden
+                className={cn("size-1.5 rounded-full", status.dotClassName)}
+              />
+              {status.label}
+            </Badge>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-muted-foreground text-sm">Permissões</span>
+            <Badge
+              variant="outline"
+              className={cn(
+                "gap-1.5",
+                hasRequiredPermissions
+                  ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400"
+                  : "border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-400",
+              )}
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  "size-1.5 rounded-full",
+                  hasRequiredPermissions ? "bg-green-500" : "bg-yellow-500",
+                )}
+              />
+              {hasRequiredPermissions ? "Saudável" : `${missingCount} pendente`}
+            </Badge>
+          </div>
+
+          <div className="mt-1 grid gap-2 rounded-xl border border-border bg-background/70 p-3 text-sm">
             <PanelLine
               label="Tipo"
               value={formatTelegramGroupType(group.type, group.isForum)}
@@ -69,51 +94,6 @@ export function BotConfigStatusPanel({ group }: BotConfigStatusPanelProps) {
           </div>
         </CardContent>
       </Card>
-
-      <Card className="rounded-3xl">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            {hasRequiredPermissions ? (
-              <CheckCircle2 className="text-green-500" size={18} />
-            ) : (
-              <ShieldAlert className="text-yellow-500" size={18} />
-            )}
-            Saúde da integração
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground text-sm leading-relaxed">
-            {hasRequiredPermissions
-              ? "O bot está com as permissões essenciais para automatizar este grupo."
-              : "Revalide as permissões e ajuste o bot como administrador no Telegram."}
-          </p>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function StatusRow({
-  label,
-  value,
-  className,
-  dotClassName,
-}: {
-  label: string;
-  value: string;
-  className: string;
-  dotClassName: string;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="text-muted-foreground text-sm">{label}</span>
-      <Badge variant="outline" className={cn("gap-1.5", className)}>
-        <span
-          aria-hidden
-          className={cn("size-1.5 rounded-full", dotClassName)}
-        />
-        {value}
-      </Badge>
     </div>
   );
 }

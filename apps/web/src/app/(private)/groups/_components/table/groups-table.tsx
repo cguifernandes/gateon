@@ -191,7 +191,7 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                             width={38}
                             height={38}
                             sizes="38px"
-                            avatarFallbackClassName="text-lg"
+                            avatarFallbackClassName="text-sm!"
                             className="size-[38px] shrink-0 rounded-full border border-border object-cover"
                           />
                           <div className="min-w-0 flex-1 overflow-hidden">
