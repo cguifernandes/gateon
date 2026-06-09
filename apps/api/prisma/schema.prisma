@@ -155,9 +155,6 @@ model TelegramGroupBotSettings {
   id                   String   @id @default(cuid())
   telegramGroupId      String   @unique
   enabled              Boolean  @default(true)
-  welcomeEnabled       Boolean  @default(false)
-  welcomeMessage       String   @default("Bem-vindo, {name}! Sua entrada no grupo foi registrada com sucesso.") @db.Text
-  privateMessageOnJoin Boolean  @default(false)
   notifyPermissionLoss Boolean  @default(true)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
@@ -207,6 +204,8 @@ enum AlertTriggerType {
   MEMBER_LEFT
   MEMBER_BANNED
   FORUM_TOPIC_CREATED
+  MEMBER_JOINED_GROUP_MESSAGE
+  MEMBER_LEFT_PRIVATE_MESSAGE
 }
 
 enum AlertRunStatus {

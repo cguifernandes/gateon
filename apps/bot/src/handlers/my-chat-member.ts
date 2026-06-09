@@ -69,7 +69,7 @@ export function registerMyChatMemberHandler(
       return;
     }
 
-    if (result.status === "CONNECTED") {
+    if (result.status === "CONNECTED" && result.intentId) {
       await ctx.api.sendMessage(
         update.chat.id,
         "Conexao concluida com sucesso. O Gateon ja pode gerenciar este grupo.",

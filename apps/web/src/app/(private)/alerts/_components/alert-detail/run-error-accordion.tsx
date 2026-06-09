@@ -17,11 +17,7 @@ export function AlertRunErrorAccordion({
   failureGroups,
 }: AlertRunErrorAccordionProps) {
   if (failureGroups.length === 0) {
-    return (
-      <p className="text-center text-muted-foreground text-sm">
-        Nenhum erro registrado nesta execução.
-      </p>
-    );
+    return null;
   }
 
   return (

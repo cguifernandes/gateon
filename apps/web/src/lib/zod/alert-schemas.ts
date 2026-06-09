@@ -44,7 +44,14 @@ export const alertDestinationTypeSchema = z.enum(
 );
 
 export const alertTriggerTypeSchema = z.enum(
-  ["MEMBER_JOINED", "MEMBER_LEFT", "MEMBER_BANNED", "FORUM_TOPIC_CREATED"],
+  [
+    "MEMBER_JOINED",
+    "MEMBER_LEFT",
+    "MEMBER_BANNED",
+    "FORUM_TOPIC_CREATED",
+    "MEMBER_JOINED_GROUP_MESSAGE",
+    "MEMBER_LEFT_PRIVATE_MESSAGE",
+  ],
   { message: alertMessages.invalidTrigger },
 );
 
@@ -53,16 +60,31 @@ export const alertTriggerLabels = {
   MEMBER_LEFT: "Membro saiu do grupo",
   MEMBER_BANNED: "Membro removido ou banido",
   FORUM_TOPIC_CREATED: "Novo tópico no fórum",
+  MEMBER_JOINED_GROUP_MESSAGE: "Mensagem de boas-vindas",
+  MEMBER_LEFT_PRIVATE_MESSAGE: "Mensagem de despedida",
 } as const satisfies Record<z.infer<typeof alertTriggerTypeSchema>, string>;
+
+export const memberAutomationTriggerTypes = [
+  "MEMBER_JOINED",
+  "MEMBER_LEFT",
+  "MEMBER_BANNED",
+  "MEMBER_JOINED_GROUP_MESSAGE",
+  "MEMBER_LEFT_PRIVATE_MESSAGE",
+] as const satisfies ReadonlyArray<z.infer<typeof alertTriggerTypeSchema>>;
 
 export const automationTriggerDescriptions = {
   MEMBER_JOINED:
-    "Dispara quando alguém entra no grupo (membro, administrador ou criador).",
-  MEMBER_LEFT: "Dispara quando um membro sai voluntariamente do grupo.",
+    "Dispara quando alguém entra no grupo. A mensagem é enviada no chat do grupo.",
+  MEMBER_LEFT:
+    "Dispara quando um membro sai voluntariamente. A mensagem é enviada no chat do grupo.",
   MEMBER_BANNED:
     "Dispara quando um membro é removido ou banido (status expulso no Telegram).",
   FORUM_TOPIC_CREATED:
     "Dispara quando um novo tópico é criado em um grupo com fórum habilitado.",
+  MEMBER_JOINED_GROUP_MESSAGE:
+    "Envia uma mensagem de boas-vindas no chat do grupo quando alguém entra.",
+  MEMBER_LEFT_PRIVATE_MESSAGE:
+    "Envia uma mensagem no privado do membro quando ele sai do grupo. O Telegram só entrega se ele já conversou com o bot.",
 } as const satisfies Record<z.infer<typeof alertTriggerTypeSchema>, string>;
 
 export const alertTableSelectionSourceSchema = z.enum(["MEMBERS", "GROUPS"], {

@@ -113,6 +113,7 @@ export async function triggerTelegramAlerts(
     triggerType: AlertTriggerType;
     chatId: string;
     telegramUserId?: string;
+    telegramUserDisplayName?: string;
     messageThreadId?: number;
   },
 ): Promise<void> {

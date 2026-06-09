@@ -22,20 +22,18 @@ function formatDisplayName(user: {
   return fullName || (user.username ? `@${user.username}` : String(user.id));
 }
 
-function renderWelcomeMessage(template: string, name: string) {
-  return template.replace(/\{name\}/g, name);
-}
-
 async function fireAutomationTrigger(
   config: AppConfig,
   triggerType: AlertTriggerType,
   chatId: string,
   telegramUserId: string,
+  telegramUserDisplayName: string,
 ) {
   await triggerTelegramAlerts(config, {
     triggerType,
     chatId,
     telegramUserId,
+    telegramUserDisplayName,
   }).catch((error) => {
     console.error(`[gateon/bot] alert trigger failed (${triggerType})`, error);
   });
@@ -67,6 +65,7 @@ export function registerChatMemberHandler(
     const newStatus = member.status;
     const chatId = String(chat.id);
     const telegramUserId = String(user.id);
+    const telegramUserDisplayName = formatDisplayName(user);
 
     try {
       await sendTelegramBotEvent(config, {
@@ -85,35 +84,40 @@ export function registerChatMemberHandler(
         newMemberStatus: newStatus,
       });
 
+      const settings = await getActiveGroupBotSettings(config, chat.id);
+      if (!settings) {
+        return;
+      }
+
       if (isJoinStatus(newStatus) && !isJoinStatus(oldStatus)) {
         await fireAutomationTrigger(
           config,
           "MEMBER_JOINED",
           chatId,
           telegramUserId,
+          telegramUserDisplayName,
         );
-
-        const settings = await getActiveGroupBotSettings(config, chat.id);
-        if (settings) {
-          const message = renderWelcomeMessage(
-            settings.welcomeMessage,
-            formatDisplayName(user),
-          );
-
-          if (settings.welcomeEnabled) {
-            await ctx.api.sendMessage(chat.id, message);
-          }
-
-          if (settings.privateMessageOnJoin) {
-            await ctx.api.sendMessage(user.id, message).catch(() => undefined);
-          }
-        }
+        await fireAutomationTrigger(
+          config,
+          "MEMBER_JOINED_GROUP_MESSAGE",
+          chatId,
+          telegramUserId,
+          telegramUserDisplayName,
+        );
       } else if (newStatus === "left" && wasParticipating(oldStatus)) {
         await fireAutomationTrigger(
           config,
           "MEMBER_LEFT",
           chatId,
           telegramUserId,
+          telegramUserDisplayName,
+        );
+        await fireAutomationTrigger(
+          config,
+          "MEMBER_LEFT_PRIVATE_MESSAGE",
+          chatId,
+          telegramUserId,
+          telegramUserDisplayName,
         );
       } else if (newStatus === "kicked") {
         await fireAutomationTrigger(
@@ -121,6 +125,7 @@ export function registerChatMemberHandler(
           "MEMBER_BANNED",
           chatId,
           telegramUserId,
+          telegramUserDisplayName,
         );
       }
     } catch (err) {

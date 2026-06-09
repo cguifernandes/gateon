@@ -1,13 +1,18 @@
-import type {
-  BotPermissionChecklistItem,
-  BotPermissionStatus,
-} from "@/components/bot-permissions-checklist";
 import {
   TELEGRAM_ADMINISTRATOR_RIGHT_DEFINITIONS,
   type TelegramAdministratorRightKey,
   type TelegramGroupAdministratorRights,
 } from "@/lib/telegram-admin-rights";
 import type { TelegramGroupDetailDto } from "@/lib/zod/telegram-group-connection-schemas";
+
+export type BotPermissionStatus = "active" | "missing" | "attention";
+
+export type BotPermissionChecklistItem = {
+  id: string;
+  title: string;
+  description: string;
+  status: BotPermissionStatus;
+};
 
 type PermissionSnapshot = NonNullable<TelegramGroupDetailDto["permissions"]>;
 
@@ -34,8 +39,12 @@ export function buildBotPermissionItems(
     permissions?.administratorRights ?? null;
 
   const ordered = [
-    ...TELEGRAM_ADMINISTRATOR_RIGHT_DEFINITIONS.filter((d) => d.requiredForGateon),
-    ...TELEGRAM_ADMINISTRATOR_RIGHT_DEFINITIONS.filter((d) => !d.requiredForGateon),
+    ...TELEGRAM_ADMINISTRATOR_RIGHT_DEFINITIONS.filter(
+      (d) => d.requiredForGateon,
+    ),
+    ...TELEGRAM_ADMINISTRATOR_RIGHT_DEFINITIONS.filter(
+      (d) => !d.requiredForGateon,
+    ),
   ];
 
   return ordered.map((definition) => ({
@@ -68,15 +77,4 @@ export function formatTelegramGroupType(type: string, isForum: boolean) {
     return "Grupo";
   }
   return type;
-}
-
-export function buildTelegramGroupUrl(telegramChatId: string) {
-  if (telegramChatId.startsWith("-100")) {
-    return `https://t.me/c/${telegramChatId.slice(4)}`;
-  }
-  return null;
-}
-
-export function renderWelcomePreview(message: string) {
-  return message.replace(/\{name\}/g, "Marina");
 }

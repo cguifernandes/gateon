@@ -2,16 +2,10 @@ import { timingSafeEqual } from 'node:crypto';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-  DEFAULT_TELEGRAM_GROUP_WELCOME_MESSAGE,
-  type TelegramGroupBotSettingsPatchInput,
-} from './schemas/group-bot-settings-schemas';
+import type { TelegramGroupBotSettingsPatchInput } from './schemas/group-bot-settings-schemas';
 
 type TelegramGroupBotSettingsRow = {
   enabled: boolean;
-  welcomeEnabled: boolean;
-  welcomeMessage: string;
-  privateMessageOnJoin: boolean;
   notifyPermissionLoss: boolean;
 };
 
@@ -117,9 +111,6 @@ export class GroupBotSettingsService {
   private defaultSettings(): TelegramGroupBotSettingsRow {
     return {
       enabled: true,
-      welcomeEnabled: false,
-      welcomeMessage: DEFAULT_TELEGRAM_GROUP_WELCOME_MESSAGE,
-      privateMessageOnJoin: false,
       notifyPermissionLoss: true,
     };
   }
@@ -127,9 +118,6 @@ export class GroupBotSettingsService {
   private settingsSelect() {
     return {
       enabled: true,
-      welcomeEnabled: true,
-      welcomeMessage: true,
-      privateMessageOnJoin: true,
       notifyPermissionLoss: true,
     } as const;
   }
@@ -139,11 +127,6 @@ export class GroupBotSettingsService {
   ): TelegramGroupBotSettingsRow {
     return {
       enabled: settings.enabled,
-      welcomeEnabled: settings.welcomeEnabled,
-      welcomeMessage:
-        settings.welcomeMessage?.trim() ||
-        DEFAULT_TELEGRAM_GROUP_WELCOME_MESSAGE,
-      privateMessageOnJoin: settings.privateMessageOnJoin,
       notifyPermissionLoss: settings.notifyPermissionLoss,
     };
   }

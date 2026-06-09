@@ -144,9 +144,9 @@ export function AlertsClient({ initialData, groups }: AlertsClientProps) {
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           key={`active-${data.stats.activeCount}`}
-          title="Alertas ativos"
+          title="Automações ativas"
           value={data.stats.activeCount.toString()}
-          description="Alertas publicados e prontos para disparo manual ou por automação."
+          description="Automações publicadas e prontas para disparo por eventos do grupo."
         />
         <StatCard
           key={`sent-${data.stats.sentToday}`}

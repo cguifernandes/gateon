@@ -1,5 +1,5 @@
 export const ALERT_DELIVERY_BOT_NOT_ADMIN_MESSAGE =
-  'Não foi possível enviar o alerta: o bot precisa ser administrador do grupo com permissão para enviar mensagens.';
+  'O bot precisa ser administrador do grupo com permissão para enviar mensagens.';
 
 export const ALERT_DELIVERY_NO_TARGETS_MESSAGE =
   'Este alerta não tem destinatários configurados para envio.';

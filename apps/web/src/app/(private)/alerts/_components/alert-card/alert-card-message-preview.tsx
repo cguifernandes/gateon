@@ -25,8 +25,7 @@ export function AlertCardMessagePreview({
   const destinationItems = buildDestinationItems(alert, groups);
   const destinationsLabel = resolveDestinationsLabel(alert);
   const messageTitle = alert.content.title?.trim() || "Mensagem sem título";
-  const messageBody =
-    alert.content.body?.trim() || "Sem conteúdo de mensagem.";
+  const messageBody = alert.content.body?.trim() || "Sem conteúdo de mensagem.";
   const previewButtons = (alert.content.inlineButtons ?? [])
     .map((button) => button.text.trim())
     .filter(Boolean)
@@ -42,18 +41,11 @@ export function AlertCardMessagePreview({
           <div className="flex flex-col gap-1">
             <p className="text-foreground text-xs">{destinationsLabel}</p>
 
-            <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
-              {alert.triggerType ? (
-                <span className="font-light text-muted-foreground text-xs">
-                  {resolveAlertTriggerLabel(alert.triggerType)}
-                </span>
-              ) : null}
+            {alert.triggerType ? (
               <span className="font-light text-muted-foreground text-xs">
-                {alert.recipientCount != null
-                  ? `${alert.recipientCount} destinatário(s)`
-                  : "Sem destinatários"}
+                {resolveAlertTriggerLabel(alert.triggerType)}
               </span>
-            </div>
+            ) : null}
           </div>
           {destinationItems.length > 0 ? (
             <AvatarStack

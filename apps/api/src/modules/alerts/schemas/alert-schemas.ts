@@ -55,7 +55,14 @@ export const alertDestinationTypeSchema = z.enum(
 );
 
 export const alertTriggerTypeSchema = z.enum(
-  ['MEMBER_JOINED', 'MEMBER_LEFT', 'MEMBER_BANNED', 'FORUM_TOPIC_CREATED'],
+  [
+    'MEMBER_JOINED',
+    'MEMBER_LEFT',
+    'MEMBER_BANNED',
+    'FORUM_TOPIC_CREATED',
+    'MEMBER_JOINED_GROUP_MESSAGE',
+    'MEMBER_LEFT_PRIVATE_MESSAGE',
+  ],
   { message: alertMessages.invalidTrigger },
 );
 
@@ -268,6 +275,7 @@ export const alertInternalTriggerSchema = z.object({
   triggerType: alertTriggerTypeSchema,
   chatId: z.string().trim().min(1, alertMessages.chatIdRequired),
   telegramUserId: z.string().trim().optional(),
+  telegramUserDisplayName: z.string().trim().optional(),
   messageThreadId: z.coerce.number().int().positive().optional(),
 });
 

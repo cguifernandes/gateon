@@ -2,9 +2,6 @@ import type { AppConfig } from "../config.js";
 
 export type GroupBotSettings = {
   enabled: boolean;
-  welcomeEnabled: boolean;
-  welcomeMessage: string;
-  privateMessageOnJoin: boolean;
   notifyPermissionLoss: boolean;
 };
 

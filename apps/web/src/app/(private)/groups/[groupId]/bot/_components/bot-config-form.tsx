@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useController, useForm, useWatch } from "react-hook-form";
+import { useController, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { useRefreshTelegramGroup } from "@/app/(private)/groups/_hooks/use-refresh-telegram-group";
 import { RemoveGroupDialog } from "@/components/remove-group-dialog";
@@ -13,17 +13,14 @@ import {
 } from "@/lib/zod/telegram-group-bot-settings-schemas";
 import type { TelegramGroupDetailDto } from "@/lib/zod/telegram-group-connection-schemas";
 import { BotConfigHeader } from "./bot-config-header";
-import { BotConfigQuickActions } from "./bot-config-quick-actions";
+import { BotConfigRefreshButton } from "./bot-config-refresh-button";
 import { BotConfigSaveBar } from "./bot-config-save-bar";
 import {
   BotConfigDangerZone,
   BotConfigGeneralSection,
-  BotConfigNotificationsSection,
   BotConfigPermissionsSection,
-  WelcomePreview,
 } from "./bot-config-sections";
 import { BotConfigStatusPanel } from "./bot-config-status-panel";
-import { renderWelcomePreview } from "./bot-config-utils";
 
 type BotConfigFormProps = {
   group: TelegramGroupDetailDto;
@@ -43,26 +40,9 @@ export function BotConfigForm({ group }: BotConfigFormProps) {
   });
 
   const enabled = useController({ control: form.control, name: "enabled" });
-  const welcomeEnabled = useController({
-    control: form.control,
-    name: "welcomeEnabled",
-  });
-  const privateMessageOnJoin = useController({
-    control: form.control,
-    name: "privateMessageOnJoin",
-  });
   const notifyPermissionLoss = useController({
     control: form.control,
     name: "notifyPermissionLoss",
-  });
-  const welcomeMessage = useController({
-    control: form.control,
-    name: "welcomeMessage",
-  });
-
-  const welcomeMessageValue = useWatch({
-    control: form.control,
-    name: "welcomeMessage",
   });
 
   async function handleSubmit(valuesToSave: TelegramGroupBotSettingsDto) {
@@ -114,40 +94,30 @@ export function BotConfigForm({ group }: BotConfigFormProps) {
         className="relative flex flex-col gap-6 pb-20"
         onSubmit={form.handleSubmit(handleSubmit)}
       >
-        <BotConfigHeader group={group} />
-        <BotConfigQuickActions
+        <BotConfigHeader
           group={group}
-          isRefreshing={isRefreshing}
-          onRefreshPermissions={refresh}
+          actions={
+            <BotConfigRefreshButton
+              isRefreshing={isRefreshing}
+              onRefresh={refresh}
+            />
+          }
         />
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
-          <div className="space-y-4">
+        <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+          <div className="min-w-0 space-y-4">
             <BotConfigGeneralSection
               fields={{
                 enabled: enabled.field,
-                welcomeEnabled: welcomeEnabled.field,
-                privateMessageOnJoin: privateMessageOnJoin.field,
-                welcomeMessage: welcomeMessage.field,
+                notifyPermissionLoss: notifyPermissionLoss.field,
               }}
-              errors={form.formState.errors}
             />
-            <BotConfigPermissionsSection
-              group={group}
-              isRefreshing={isRefreshing}
-              onRefreshPermissions={refresh}
-            />
-            <BotConfigNotificationsSection
-              field={notifyPermissionLoss.field}
-            />
+            <BotConfigPermissionsSection group={group} />
             <BotConfigDangerZone onDisconnect={() => setRemoveOpen(true)} />
           </div>
 
-          <div className="space-y-4">
+          <div className="min-w-0 space-y-4">
             <BotConfigStatusPanel group={group} />
-            <WelcomePreview
-              message={renderWelcomePreview(welcomeMessageValue)}
-            />
           </div>
         </div>
 

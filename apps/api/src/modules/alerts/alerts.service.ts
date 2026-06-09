@@ -37,6 +37,8 @@ type RunAlertOptions = {
   /** When set (event-triggered automation), deliver only to this Telegram chat. */
   scopeToTelegramChatId?: string;
   scopeToMessageThreadId?: number;
+  scopeToTelegramUserId?: string;
+  scopeToMemberDisplayName?: string;
   /** When true (default), user-initiated runs throw if nothing was delivered. */
   throwOnTotalFailure?: boolean;
 };
@@ -92,7 +94,11 @@ export class AlertsService {
           },
         }),
         this.prisma.telegramAlerts.count({
-          where: { userId, status: AlertStatus.ACTIVE },
+          where: {
+            userId,
+            status: AlertStatus.ACTIVE,
+            destinationType: AlertDestinationType.AUTOMATION,
+          },
         }),
         this.prisma.telegramAlertDeliveries.count({
           where: {
@@ -382,7 +388,10 @@ export class AlertsService {
     const options = alert.options as AlertOptionsInput;
     const content = alert.content as AlertContentInput;
     const replyMarkup = this.buildReplyMarkup(content.inlineButtons);
-    const text = this.buildMessageText(content);
+    const text = this.renderAutomationMessageText(
+      this.buildMessageText(content),
+      runOptions,
+    );
     const waitMs = this.resolveWaitMs(options.rateLimitPerMinute);
 
     const chatTargets = targets.filter(
@@ -547,6 +556,8 @@ export class AlertsService {
       await this.runAlert(alertId, {
         scopeToTelegramChatId: input.chatId,
         scopeToMessageThreadId: input.messageThreadId,
+        scopeToTelegramUserId: input.telegramUserId,
+        scopeToMemberDisplayName: input.telegramUserDisplayName,
         throwOnTotalFailure: false,
       });
     }
@@ -559,6 +570,7 @@ export class AlertsService {
       destinationType: AlertDestinationType;
       telegramGroupId: string | null;
       messageThreadId: number | null;
+      triggerType?: string | null;
       triggerConfig?: unknown;
       group: { telegramChatId: string; botStatus: string } | null;
       targets: { telegramUserId: string }[];
@@ -573,16 +585,29 @@ export class AlertsService {
         alert.destinationType === AlertDestinationType.AUTOMATION &&
         options?.scopeToTelegramChatId
       ) {
-        return [
-          {
+        const deliverToPrivate =
+          alert.triggerType === 'MEMBER_LEFT_PRIVATE_MESSAGE';
+        const targets: DeliveryTarget[] = [];
+
+        if (!deliverToPrivate) {
+          targets.push({
             kind: 'chat',
             chatId: options.scopeToTelegramChatId,
             threadId:
               options.scopeToMessageThreadId ??
               alert.messageThreadId ??
               undefined,
-          },
-        ];
+          });
+        }
+
+        if (deliverToPrivate && options.scopeToTelegramUserId) {
+          targets.push({
+            kind: 'member',
+            telegramUserId: options.scopeToTelegramUserId,
+          });
+        }
+
+        return targets;
       }
 
       const groupIds = this.getStoredGroupIds(alert);
@@ -635,6 +660,14 @@ export class AlertsService {
 
   private buildMessageText(content: AlertContentInput) {
     return content.title ? `${content.title}\n\n${content.body}` : content.body;
+  }
+
+  private renderAutomationMessageText(
+    text: string,
+    runOptions?: RunAlertOptions,
+  ) {
+    const memberName = runOptions?.scopeToMemberDisplayName?.trim() || 'Membro';
+    return text.replace(/\{name\}/g, memberName);
   }
 
   private buildReplyMarkup(buttons?: { text: string; url: string }[]) {

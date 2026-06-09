@@ -1,4 +1,3 @@
-import { Activity, CheckCircle2, ShieldAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -7,7 +6,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getBotConfigStatusDisplay } from "@/lib/telegram-bot-status";
+import {
+  getBotConfigStatusDisplay,
+  getBotPermissionsHealthDisplay,
+} from "@/lib/telegram-bot-status";
 import { cn } from "@/lib/utils";
 import type { TelegramGroupDetailDto } from "@/lib/zod/telegram-group-connection-schemas";
 import { formatDate, formatTelegramGroupType } from "./bot-config-utils";
@@ -20,23 +22,23 @@ export function BotConfigStatusPanel({ group }: BotConfigStatusPanelProps) {
   const status = getBotConfigStatusDisplay(group.botStatus);
   const missingCount = group.permissions?.missingRequiredRightIds.length ?? 0;
   const hasRequiredPermissions = missingCount === 0;
+  const permissionsHealth = getBotPermissionsHealthDisplay(
+    hasRequiredPermissions,
+    missingCount,
+  );
 
   return (
-    <div className="lg:sticky lg:top-4">
+    <div className="xl:sticky xl:top-4">
       <Card className="rounded-xl">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <Activity size={16} /> Status da integração
-          </CardTitle>
+          <CardTitle>Status da integração</CardTitle>
           <CardDescription>
             {hasRequiredPermissions ? (
               <span className="flex items-center gap-1.5 text-green-600 dark:text-green-400">
-                <CheckCircle2 size={13} />
                 Bot com permissões completas
               </span>
             ) : (
               <span className="flex items-center gap-1.5 text-yellow-600 dark:text-yellow-400">
-                <ShieldAlert size={13} />
                 {missingCount}{" "}
                 {missingCount === 1
                   ? "permissão pendente"
@@ -48,47 +50,64 @@ export function BotConfigStatusPanel({ group }: BotConfigStatusPanelProps) {
         <CardContent className="space-y-3">
           <div className="flex items-center justify-between gap-3">
             <span className="text-muted-foreground text-sm">Bot</span>
-            <Badge variant="outline" className={cn("gap-1.5", status.className)}>
-              <span
-                aria-hidden
-                className={cn("size-1.5 rounded-full", status.dotClassName)}
-              />
+            <Badge
+              variant={status.variant}
+              className={cn("shrink-0 gap-1.5 font-medium", status.className)}
+            >
+              {status.dotClassName ? (
+                <span
+                  aria-hidden
+                  className={cn("size-1.5 rounded-full", status.dotClassName)}
+                />
+              ) : null}
               {status.label}
             </Badge>
           </div>
           <div className="flex items-center justify-between gap-3">
             <span className="text-muted-foreground text-sm">Permissões</span>
             <Badge
-              variant="outline"
+              variant={permissionsHealth.variant}
               className={cn(
-                "gap-1.5",
-                hasRequiredPermissions
-                  ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400"
-                  : "border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-400",
+                "shrink-0 gap-1.5 font-medium",
+                permissionsHealth.className,
               )}
             >
-              <span
-                aria-hidden
-                className={cn(
-                  "size-1.5 rounded-full",
-                  hasRequiredPermissions ? "bg-green-500" : "bg-yellow-500",
-                )}
-              />
-              {hasRequiredPermissions ? "Saudável" : `${missingCount} pendente`}
+              {permissionsHealth.dotClassName ? (
+                <span
+                  aria-hidden
+                  className={cn(
+                    "size-1.5 rounded-full",
+                    permissionsHealth.dotClassName,
+                  )}
+                />
+              ) : null}
+              {permissionsHealth.label}
             </Badge>
           </div>
 
-          <div className="mt-1 grid gap-2 rounded-xl border border-border bg-background/70 p-3 text-sm">
+          <div className="mt-1 grid gap-3 rounded-xl border border-border bg-background p-3 text-sm">
             <PanelLine
               label="Tipo"
               value={formatTelegramGroupType(group.type, group.isForum)}
             />
             <PanelLine
-              label="Membros rastreados"
-              value={group.trackedMemberCount.toLocaleString("pt-BR")}
+              label="Total no grupo"
+              value={
+                group.memberCount != null
+                  ? group.memberCount.toLocaleString("pt-BR")
+                  : "Indisponível"
+              }
             />
             <PanelLine
-              label="Última sync"
+              label="Gerenciados"
+              value={`${group.trackedMemberCount.toLocaleString("pt-BR")} / ${group.trackedMemberLimitPerGroup.toLocaleString("pt-BR")}`}
+            />
+            <PanelLine
+              label="Conectado em"
+              value={formatDate(group.connectedAt)}
+            />
+            <PanelLine
+              label="Última sincronização"
               value={formatDate(group.updatedAt)}
             />
           </div>

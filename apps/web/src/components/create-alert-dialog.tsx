@@ -61,7 +61,6 @@ import {
   useDialogStackNavigation,
 } from "@/components/kibo-ui/dialog-stack";
 import { TruncatedTextTooltip } from "@/components/truncated-text-tooltip";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -89,6 +88,7 @@ import {
   alertTriggerLabels,
   alertUpsertSchema,
   automationTriggerDescriptions,
+  memberAutomationTriggerTypes,
 } from "@/lib/zod/alert-schemas";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
 
@@ -269,7 +269,7 @@ const destinationOptions: AlertDestinationOption[] = [
     value: "AUTOMATION",
     title: "Automação",
     description:
-      "Automatize o envio de mensagens com base em eventos do grupo.",
+      "Mensagens automáticas disparadas por eventos do grupo, como entrada, saída ou novo tópico.",
     icon: BadgeAlertIcon,
   },
 ];
@@ -287,10 +287,22 @@ const automationTriggerOptions: {
     icon: UsersIcon,
   },
   {
+    value: "MEMBER_JOINED_GROUP_MESSAGE",
+    title: "Mensagem de boas-vindas",
+    description: automationTriggerDescriptions.MEMBER_JOINED_GROUP_MESSAGE,
+    icon: UsersIcon,
+  },
+  {
     value: "MEMBER_LEFT",
     title: "Membro saiu",
     description: automationTriggerDescriptions.MEMBER_LEFT,
     icon: UserRoundMinusIcon,
+  },
+  {
+    value: "MEMBER_LEFT_PRIVATE_MESSAGE",
+    title: "Mensagem de despedida",
+    description: automationTriggerDescriptions.MEMBER_LEFT_PRIVATE_MESSAGE,
+    icon: MessageCircleIcon,
   },
   {
     value: "MEMBER_BANNED",
@@ -940,12 +952,14 @@ function AutomationEventSelectField({
                     />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <span className="block truncate font-medium text-foreground! text-sm">
-                      {title}
-                    </span>
-                    <p className="truncate text-muted-foreground text-xs">
-                      {description}
-                    </p>
+                    <TruncatedTextTooltip
+                      text={title}
+                      className="font-medium text-foreground! text-sm"
+                    />
+                    <TruncatedTextTooltip
+                      text={description}
+                      className="text-muted-foreground text-xs"
+                    />
                   </div>
                 </label>
               </li>
@@ -1174,6 +1188,12 @@ function DetailsStep({ form, groups }: DetailsStepProps) {
   const topicError = errors.triggerConfig?.targetMessageThreadIds?.message;
   const membersError = errors.targetTelegramUserIds?.message;
   const triggerTypeError = errors.triggerType?.message;
+  const triggerType = useWatch({ control: form.control, name: "triggerType" });
+  const supportsMemberNamePlaceholder =
+    triggerType != null &&
+    memberAutomationTriggerTypes.includes(
+      triggerType as (typeof memberAutomationTriggerTypes)[number],
+    );
 
   return (
     <div>
@@ -1304,6 +1324,12 @@ function DetailsStep({ form, groups }: DetailsStepProps) {
                 }}
               />
               <FieldError>{bodyError}</FieldError>
+              {supportsMemberNamePlaceholder ? (
+                <FieldDescription id={`${fieldIds}-content-body-hint`}>
+                  Use <code>{"{name}"}</code> para inserir o nome de quem
+                  disparou o evento.
+                </FieldDescription>
+              ) : null}
             </Field>
 
             <Field data-invalid={imageUrlError ? true : undefined}>

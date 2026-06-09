@@ -13,33 +13,41 @@ export type TelegramBotMemberStatus =
 
 export type BotStatusDisplayKind = "active" | "warning" | "inactive" | "error";
 
-const DISPLAY: Record<
-  BotStatusDisplayKind,
-  { label: string; className: string; dotClassName: string }
-> = {
+export type BotStatusBadgeVariant =
+  | "outline"
+  | "destructive"
+  | "alert"
+  | "ghost";
+
+export type BotStatusDisplay = {
+  label: string;
+  variant: BotStatusBadgeVariant;
+  className?: string;
+  dotClassName?: string;
+};
+
+const DISPLAY: Record<BotStatusDisplayKind, BotStatusDisplay> = {
   active: {
     label: "Ativo",
+    variant: "outline",
     className:
       "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400",
     dotClassName: "bg-green-500",
   },
   warning: {
     label: "Permissões pendentes",
-    className:
-      "border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-400",
-    dotClassName: "bg-yellow-500",
+    variant: "alert",
   },
   inactive: {
     label: "Inativo",
+    variant: "ghost",
     className:
       "border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400",
     dotClassName: "bg-zinc-400",
   },
   error: {
     label: "Removido",
-    className:
-      "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400",
-    dotClassName: "bg-red-500",
+    variant: "destructive",
   },
 };
 
@@ -94,6 +102,25 @@ export function getBotConfigStatusDisplay(rawStatus: string) {
   return {
     ...DISPLAY[kind],
     label: CONFIG_LABELS[kind],
+  };
+}
+
+export function getBotPermissionsHealthDisplay(
+  hasRequiredPermissions: boolean,
+  missingCount = 0,
+): BotStatusDisplay {
+  if (hasRequiredPermissions) {
+    return {
+      label: "Saudável",
+      variant: "outline",
+      className: DISPLAY.active.className,
+      dotClassName: DISPLAY.active.dotClassName,
+    };
+  }
+
+  return {
+    label: `${missingCount} pendente`,
+    variant: "alert",
   };
 }
 

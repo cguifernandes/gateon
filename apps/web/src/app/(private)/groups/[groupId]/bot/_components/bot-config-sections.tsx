@@ -1,15 +1,12 @@
 "use client";
 
-import {
-  AlertTriangle,
-  Bell,
-  MessageSquareText,
-  Power,
-  Shield,
-} from "lucide-react";
-import { useId } from "react";
+import { AlertTriangle } from "lucide-react";
+import type { ComponentType } from "react";
 import type { ControllerRenderProps } from "react-hook-form";
-import { BotPermissionsChecklist } from "@/components/bot-permissions-checklist";
+import { BadgeAlertIcon } from "@/components/icons/badge-alert";
+import { CircleCheckIcon } from "@/components/icons/circle-check";
+import { CircleErrorIcon } from "@/components/icons/circle-error";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,49 +15,72 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import type { TelegramGroupBotSettingsDto } from "@/lib/zod/telegram-group-bot-settings-schemas";
 import type { TelegramGroupDetailDto } from "@/lib/zod/telegram-group-connection-schemas";
-import { buildBotPermissionItems } from "./bot-config-utils";
+import {
+  type BotPermissionStatus,
+  buildBotPermissionItems,
+} from "./bot-config-utils";
 import { BotSettingSwitch } from "./bot-setting-switch";
+
+type BotPermissionStatusIcon = ComponentType<{
+  className?: string;
+  size?: number;
+  isAnimateOnView?: boolean;
+  animateOnHover?: boolean;
+}>;
+
+const STATUS_DISPLAY: Record<
+  BotPermissionStatus,
+  {
+    label: string;
+    variant: "outline" | "destructive" | "alert";
+    className?: string;
+    dotClassName?: string;
+    icon: BotPermissionStatusIcon;
+    iconClassName: string;
+  }
+> = {
+  active: {
+    label: "Ativa",
+    variant: "outline",
+    className:
+      "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400",
+    dotClassName: "bg-green-500",
+    icon: CircleCheckIcon,
+    iconClassName: "text-green-500",
+  },
+  missing: {
+    label: "Ausente",
+    variant: "destructive",
+    icon: CircleErrorIcon,
+    iconClassName: "text-destructive",
+  },
+  attention: {
+    label: "Necessita atenção",
+    variant: "alert",
+    icon: BadgeAlertIcon,
+    iconClassName: "text-amber-600 dark:text-amber-400",
+  },
+};
 
 type GeneralFields = {
   enabled: ControllerRenderProps<TelegramGroupBotSettingsDto, "enabled">;
-  welcomeEnabled: ControllerRenderProps<
+  notifyPermissionLoss: ControllerRenderProps<
     TelegramGroupBotSettingsDto,
-    "welcomeEnabled"
-  >;
-  privateMessageOnJoin: ControllerRenderProps<
-    TelegramGroupBotSettingsDto,
-    "privateMessageOnJoin"
-  >;
-  welcomeMessage: ControllerRenderProps<
-    TelegramGroupBotSettingsDto,
-    "welcomeMessage"
+    "notifyPermissionLoss"
   >;
 };
 
-type GeneralErrors = Partial<
-  Record<keyof TelegramGroupBotSettingsDto, { message?: string }>
->;
-
-export function BotConfigGeneralSection({
-  fields,
-  errors,
-}: {
-  fields: GeneralFields;
-  errors: GeneralErrors;
-}) {
-  const welcomeMessageId = useId();
-
+export function BotConfigGeneralSection({ fields }: { fields: GeneralFields }) {
   return (
     <Card className="rounded-xl">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Power size={16} /> Configurações gerais
-        </CardTitle>
+        <CardTitle>Configurações gerais</CardTitle>
         <CardDescription>
-          Controle o comportamento principal do bot neste grupo.
+          Controle se o bot permanece ativo neste grupo. Mensagens automáticas
+          são configuradas em Alertas.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -68,125 +88,89 @@ export function BotConfigGeneralSection({
           checked={fields.enabled.value}
           onCheckedChange={fields.enabled.onChange}
           title="Bot ativado"
-          description="Mantém as automações essenciais ligadas para este grupo."
-          tooltip="Desligar pausa mensagens automáticas, mas não remove a integração."
-          recommended
+          description="Define se o Gateon executa automações neste grupo."
+          tooltip="Desativar pausa alertas e rotinas automáticas. O grupo permanece conectado ao painel e você pode reativar quando quiser."
         />
         <BotSettingSwitch
-          checked={fields.welcomeEnabled.value}
-          onCheckedChange={fields.welcomeEnabled.onChange}
-          title="Enviar mensagem de boas-vindas"
-          description="Publica uma mensagem no grupo quando um novo membro entra."
-          tooltip="Use {name} para personalizar com o nome do membro."
-        />
-        <BotSettingSwitch
-          checked={fields.privateMessageOnJoin.value}
-          onCheckedChange={fields.privateMessageOnJoin.onChange}
-          title="Mensagem privada ao entrar"
-          description="Tenta enviar uma mensagem no privado para orientar o novo membro."
-          tooltip="O Telegram só permite DM se o usuário já iniciou conversa com o bot."
-        />
-
-        <div className="space-y-2 rounded-xl border border-border bg-background/70 p-3">
-          <label
-            htmlFor={welcomeMessageId}
-            className="font-medium text-foreground text-sm"
-          >
-            Mensagem de boas-vindas personalizada
-          </label>
-          <Textarea
-            id={welcomeMessageId}
-            value={fields.welcomeMessage.value}
-            onChange={fields.welcomeMessage.onChange}
-            onBlur={fields.welcomeMessage.onBlur}
-            name={fields.welcomeMessage.name}
-            rows={4}
-            aria-invalid={Boolean(errors.welcomeMessage)}
-            placeholder="Bem-vindo, {name}!"
-          />
-          {errors.welcomeMessage?.message ? (
-            <p className="text-destructive text-xs">
-              {errors.welcomeMessage.message}
-            </p>
-          ) : (
-            <p className="text-muted-foreground text-xs">
-              Dica: use <code>{"{name}"}</code> para inserir o nome do membro.
-            </p>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-export function BotConfigPermissionsSection({
-  group,
-  onRefreshPermissions,
-  isRefreshing,
-}: {
-  group: TelegramGroupDetailDto;
-  onRefreshPermissions: () => void;
-  isRefreshing: boolean;
-}) {
-  return (
-    <Card className="rounded-xl">
-      <CardHeader>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-1">
-            <CardTitle className="flex items-center gap-2">
-              <Shield size={16} /> Permissões do bot
-            </CardTitle>
-            <CardDescription>
-              Permissões de administrador concedidas ao bot no Telegram.
-            </CardDescription>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={isRefreshing}
-            onClick={onRefreshPermissions}
-          >
-            Atualizar
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <BotPermissionsChecklist
-          items={buildBotPermissionItems(group.permissions)}
-        />
-      </CardContent>
-    </Card>
-  );
-}
-
-export function BotConfigNotificationsSection({
-  field,
-}: {
-  field: ControllerRenderProps<
-    TelegramGroupBotSettingsDto,
-    "notifyPermissionLoss"
-  >;
-}) {
-  return (
-    <Card className="rounded-xl">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Bell size={16} /> Notificações
-        </CardTitle>
-        <CardDescription>
-          Receba alertas quando a saúde da integração mudar.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <BotSettingSwitch
-          checked={field.value}
-          onCheckedChange={field.onChange}
+          checked={fields.notifyPermissionLoss.value}
+          onCheckedChange={fields.notifyPermissionLoss.onChange}
           title="Avisar quando o bot perder permissões"
           description="Mostra um alerta no grupo quando permissões obrigatórias forem removidas."
           tooltip="Ajuda o administrador a corrigir permissões antes da automação parar."
-          recommended
         />
+      </CardContent>
+    </Card>
+  );
+}
+
+type BotConfigPermissionsSectionProps = {
+  group: TelegramGroupDetailDto;
+};
+
+export function BotConfigPermissionsSection({
+  group,
+}: BotConfigPermissionsSectionProps) {
+  const items = buildBotPermissionItems(group.permissions);
+
+  return (
+    <Card className="rounded-xl">
+      <CardHeader>
+        <CardTitle>Permissões do bot</CardTitle>
+        <CardDescription>
+          Permissões de administrador concedidas ao bot no Telegram.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ul className="space-y-2">
+          {items.map((item) => {
+            const display = STATUS_DISPLAY[item.status];
+            const Icon = display.icon;
+
+            return (
+              <li
+                key={item.id}
+                className="flex gap-3 rounded-xl border border-border bg-card px-3 py-3"
+              >
+                <span className="inline-flex size-9 items-center justify-center rounded-full bg-muted">
+                  <Icon
+                    className={display.iconClassName}
+                    size={18}
+                    isAnimateOnView
+                    animateOnHover
+                  />
+                </span>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-medium leading-tight font-heading text-foreground text-sm">
+                      {item.title}
+                    </p>
+                    <Badge
+                      variant={display.variant}
+                      className={cn(
+                        "shrink-0 gap-1.5 font-medium",
+                        display.className,
+                      )}
+                    >
+                      {display.dotClassName ? (
+                        <span
+                          aria-hidden
+                          className={cn(
+                            "size-1.5 rounded-full",
+                            display.dotClassName,
+                          )}
+                        />
+                      ) : null}
+                      {display.label}
+                    </Badge>
+                  </div>
+                  <p className="text-muted-foreground text-sm text-light leading-snug">
+                    {item.description}
+                  </p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       </CardContent>
     </Card>
   );
@@ -198,15 +182,7 @@ export function BotConfigDangerZone({
   onDisconnect: () => void;
 }) {
   return (
-    <Card className="rounded-xl border-destructive/30 bg-destructive/5">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-destructive">
-          <AlertTriangle size={16} /> Zona de perigo
-        </CardTitle>
-        <CardDescription>
-          Ações que interrompem a integração do bot com este grupo.
-        </CardDescription>
-      </CardHeader>
+    <Card className="rounded-xl border-destructive! ring-destructive/30 bg-destructive/5">
       <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <p className="font-medium text-foreground text-sm">
@@ -219,26 +195,6 @@ export function BotConfigDangerZone({
         <Button type="button" variant="destructive" onClick={onDisconnect}>
           Desconectar
         </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
-export function WelcomePreview({ message }: { message: string }) {
-  return (
-    <Card className="rounded-xl">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <MessageSquareText size={16} /> Preview da mensagem
-        </CardTitle>
-        <CardDescription>
-          Como a mensagem aparece para novos membros.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="rounded-xl border border-border bg-muted/40 p-4 text-sm leading-relaxed">
-          {message}
-        </div>
       </CardContent>
     </Card>
   );
