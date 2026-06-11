@@ -7,6 +7,7 @@ require(join(__dirname, '../../scripts/load-env.cjs'));
 import { setDefaultResultOrder } from 'node:dns';
 import { NestFactory } from '@nestjs/core';
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { AppModule } from './app.module';
 
@@ -19,6 +20,11 @@ async function bootstrap() {
   }
 
   const app = await NestFactory.create(AppModule);
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'same-site' },
+    }),
+  );
   app.use(cookieParser());
   const webBaseUrl = process.env.WEB_BASE_URL ?? 'http://localhost:3000';
   app.enableCors({

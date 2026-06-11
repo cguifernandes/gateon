@@ -28,6 +28,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.0",
-    "turbo": "^2.5.3"
+    "turbo": "^2.9.18"
   }
 }

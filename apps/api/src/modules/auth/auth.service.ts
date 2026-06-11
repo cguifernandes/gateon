@@ -8,7 +8,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import type { Sessions, Users } from '@prisma/client';
 import * as argon2 from 'argon2';
-import type { Request, Response } from 'express';
+import type { CookieOptions, Request, Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   DEFAULT_SESSION_TTL_DAYS,
@@ -65,6 +65,17 @@ export class AuthService {
 
   private newToken(): string {
     return randomBytes(32).toString('base64url');
+  }
+
+  private sessionCookieOptions(expires?: Date): CookieOptions {
+    return {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+      ...(expires ? { expires } : {}),
+      domain: process.env.COOKIE_DOMAIN || undefined,
+    };
   }
 
   private sessionMetadataTtlMs(): number {
@@ -360,14 +371,11 @@ export class AuthService {
       },
     });
     const { session, rawToken } = await this.createSession(user.id, req);
-    res.cookie(SESSION_COOKIE_NAME, rawToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      expires: session.expiresAt,
-      domain: process.env.COOKIE_DOMAIN || undefined,
-    });
+    res.cookie(
+      SESSION_COOKIE_NAME,
+      rawToken,
+      this.sessionCookieOptions(session.expiresAt),
+    );
     return { user: toPublicUser(session.user) };
   }
 
@@ -394,27 +402,18 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
     const { session, rawToken } = await this.createSession(account.userId, req);
-    res.cookie(SESSION_COOKIE_NAME, rawToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      expires: session.expiresAt,
-      domain: process.env.COOKIE_DOMAIN || undefined,
-    });
+    res.cookie(
+      SESSION_COOKIE_NAME,
+      rawToken,
+      this.sessionCookieOptions(session.expiresAt),
+    );
     return { user: toPublicUser(session.user) };
   }
 
   async logout(req: Request, res: Response): Promise<{ ok: true }> {
     const token = req.cookies?.[SESSION_COOKIE_NAME] as string | undefined;
     await this.revokeByToken(token);
-    res.clearCookie(SESSION_COOKIE_NAME, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      domain: process.env.COOKIE_DOMAIN || undefined,
-    });
+    res.clearCookie(SESSION_COOKIE_NAME, this.sessionCookieOptions());
     return { ok: true };
   }
 
@@ -422,23 +421,14 @@ export class AuthService {
     const token = req.cookies?.[SESSION_COOKIE_NAME] as string | undefined;
     const rotated = await this.rotateSession(token, req);
     if (!rotated) {
-      res.clearCookie(SESSION_COOKIE_NAME, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        domain: process.env.COOKIE_DOMAIN || undefined,
-      });
+      res.clearCookie(SESSION_COOKIE_NAME, this.sessionCookieOptions());
       throw new UnauthorizedException('Session expired');
     }
-    res.cookie(SESSION_COOKIE_NAME, rotated.rawToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      expires: rotated.session.expiresAt,
-      domain: process.env.COOKIE_DOMAIN || undefined,
-    });
+    res.cookie(
+      SESSION_COOKIE_NAME,
+      rotated.rawToken,
+      this.sessionCookieOptions(rotated.session.expiresAt),
+    );
     return { user: toPublicUser(rotated.session.user) };
   }
 
@@ -472,14 +462,11 @@ export class AuthService {
     const profile = await this.fetchGoogleUserProfile(accessToken);
     const user = await this.linkOrCreateGoogleUser(profile);
     const { session, rawToken } = await this.createSession(user.id, req);
-    res.cookie(SESSION_COOKIE_NAME, rawToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      expires: session.expiresAt,
-      domain: process.env.COOKIE_DOMAIN || undefined,
-    });
+    res.cookie(
+      SESSION_COOKIE_NAME,
+      rawToken,
+      this.sessionCookieOptions(session.expiresAt),
+    );
   }
 
   private async linkOrCreateGoogleUser(

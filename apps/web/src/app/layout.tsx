@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { PrivacyConsentBanner } from "@/components/privacy-consent-banner";
 import {
   readSidebarOpenFromCookies,
   SIDEBAR_STATE_HTML_ATTR,
@@ -48,6 +49,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
       <body className="min-h-full flex flex-col text-foreground">
         <ThemeProvider>
           <TooltipProvider>{children}</TooltipProvider>
+          <PrivacyConsentBanner />
           <Toaster />
         </ThemeProvider>
       </body>
