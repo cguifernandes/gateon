@@ -40,6 +40,14 @@ export function isMemberLeft(member: MemberSummary) {
   return member.status === "left";
 }
 
+export function sortMembersActiveFirst(members: MemberSummary[]) {
+  return [...members].sort((a, b) => {
+    const aLeft = isMemberLeft(a) ? 1 : 0;
+    const bLeft = isMemberLeft(b) ? 1 : 0;
+    return aLeft - bLeft;
+  });
+}
+
 export function isMemberOwner(member: MemberSummary) {
   return member.isOwner;
 }

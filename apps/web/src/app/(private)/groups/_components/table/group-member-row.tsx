@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { getTrackedMemberStatusDisplay } from "@/lib/telegram-bot-status";
 import { cn } from "@/lib/utils";
 import type { telegramGroupChatMemberSchema } from "@/lib/zod/telegram-group-connection-schemas";
 
@@ -41,6 +42,9 @@ export function GroupMemberRow({
   onMemberUpdated,
 }: GroupMemberRowProps) {
   const isInactive = member.status === "left";
+  const statusDisplay = getTrackedMemberStatusDisplay(
+    isInactive ? "left" : "active",
+  );
 
   return (
     <li className="group relative rounded-lg border border-border bg-card p-2.5">
@@ -67,9 +71,7 @@ export function GroupMemberRow({
               variant="outline"
               className={cn(
                 "h-4 w-max shrink-0 gap-1.5 px-1.5 text-[10px] font-medium whitespace-nowrap",
-                isInactive
-                  ? "border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400"
-                  : "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400",
+                statusDisplay.className,
               )}
             >
               {isInactive ? "Saiu" : "Ativo"}

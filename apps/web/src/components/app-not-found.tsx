@@ -407,7 +407,7 @@ function SuggestedAlertCard({ alert, groups }: SuggestedAlertCardProps) {
                 alert.deliveryRate >= 80
                   ? "text-green-500"
                   : alert.deliveryRate >= 60
-                    ? "text-amber-600 dark:text-amber-300"
+                    ? "text-amber-600 dark:text-amber-400"
                     : "text-destructive",
               )}
             >

@@ -134,25 +134,27 @@ export function GroupsTable({ groups }: GroupsTableProps) {
             </div>
             <AddGroupBotDialog />
           </div>
-          <div className="overflow-hidden rounded-md border border-border bg-background shadow-xs">
-            <Table className="table-fixed">
+          <div className="overflow-x-auto rounded-md border border-border bg-background shadow-xs">
+            <Table className="w-full min-w-max table-auto">
               <TableHeader>
                 <TableRow className="bg-muted hover:bg-muted!">
-                  <TableHead className="w-full">Grupo</TableHead>
-                  <TableHead className="w-[220px]">Membros</TableHead>
-                  <TableHead className="hidden w-32 whitespace-nowrap px-2 text-center sm:table-cell">
+                  <TableHead className="min-w-60">Grupo</TableHead>
+                  <TableHead className="w-55 min-w-55">
+                    Membros
+                  </TableHead>
+                  <TableHead className="hidden w-32 min-w-32 whitespace-nowrap px-2 text-center sm:table-cell">
                     Tipo
                   </TableHead>
-                  <TableHead className="hidden w-32 whitespace-nowrap px-2 text-center lg:table-cell">
+                  <TableHead className="hidden w-32 min-w-32 whitespace-nowrap px-2 text-center lg:table-cell">
                     Gateway
                   </TableHead>
-                  <TableHead className="hidden w-32 whitespace-nowrap px-2 text-center md:table-cell">
+                  <TableHead className="hidden w-36 min-w-36 whitespace-nowrap px-2 text-center md:table-cell">
                     Conectado em
                   </TableHead>
-                  <TableHead className="w-40 whitespace-nowrap px-2 text-center">
+                  <TableHead className="w-40 min-w-40 whitespace-nowrap px-2 text-center">
                     Status
                   </TableHead>
-                  <TableHead className="w-20 px-2 text-center">
+                  <TableHead className="w-20 min-w-20 px-2 text-center">
                     <span className="sr-only">Ações</span>
                   </TableHead>
                 </TableRow>
@@ -176,7 +178,7 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                       tabIndex={0}
                       aria-label={`Ver membros de ${group.title ?? "grupo"}`}
                     >
-                      <TableCell className="w-92 align-top">
+                      <TableCell className="min-w-60 align-top">
                         <div className="flex min-w-0 gap-3">
                           <ImageComponent
                             src={
@@ -207,7 +209,7 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                         </div>
                       </TableCell>
 
-                      <TableCell className="w-[220px]">
+                      <TableCell className="w-55 min-w-55">
                         <div className="flex min-w-0 flex-col gap-1">
                           <div className="flex items-baseline justify-between gap-1 text-[11px]">
                             <span className="text-muted-foreground">
@@ -240,14 +242,14 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                         </div>
                       </TableCell>
 
-                      <TableCell className="hidden w-36 align-middle sm:table-cell">
+                      <TableCell className="hidden w-32 min-w-32 align-middle sm:table-cell">
                         <TelegramGroupTypeCell
                           type={group.type}
                           isForum={group.isForum}
                         />
                       </TableCell>
 
-                      <TableCell className="hidden w-28 text-center whitespace-nowrap lg:table-cell">
+                      <TableCell className="hidden w-32 min-w-32 text-center whitespace-nowrap lg:table-cell">
                         <ImageComponent
                           src={StripeIcon.src}
                           alt="Stripe"
@@ -258,13 +260,13 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                         />
                       </TableCell>
 
-                      <TableCell className="hidden w-36 text-center whitespace-nowrap align-middle md:table-cell">
+                      <TableCell className="hidden w-36 min-w-36 text-center whitespace-nowrap align-middle md:table-cell">
                         <span className="text-xs text-muted-foreground">
                           {formatDate(group.connectedAt)}
                         </span>
                       </TableCell>
 
-                      <TableCell className="w-28 max-w-28 px-2 align-middle">
+                      <TableCell className="w-40 min-w-40 px-2 align-middle">
                         <div className="flex min-w-0 justify-center">
                           <Badge
                             variant="outline"
@@ -280,7 +282,7 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                       </TableCell>
 
                       <TableCell
-                        className="px-1 text-center align-middle"
+                        className="w-20 min-w-20 px-1 text-center align-middle"
                         onClick={(event) => event.stopPropagation()}
                         onKeyDown={(event) => event.stopPropagation()}
                       >

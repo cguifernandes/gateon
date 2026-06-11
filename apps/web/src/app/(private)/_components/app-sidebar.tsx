@@ -1,20 +1,33 @@
 "use client";
 
-import {
-  BellRingIcon,
-  HomeIcon,
-  LayoutDashboardIcon,
-  UserRoundCheckIcon,
-  UsersIcon,
-} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { type ReactNode, type RefObject, useRef } from "react";
 import { GateonLogo } from "@/components/gateon-logo";
+import { BellIcon, type BellIconHandle } from "@/components/icons/bell";
+import {
+  FileTextIcon,
+  type FileTextIconHandle,
+} from "@/components/icons/file-text";
+import {
+  MonitorIcon,
+  type MonitorIconHandle,
+} from "@/components/icons/monitor";
+import {
+  SettingsIcon,
+  type SettingsIconHandle,
+} from "@/components/icons/settings";
+import { UsersIcon, type UsersIconHandle } from "@/components/icons/users";
+import {
+  UserRoundCheckIcon,
+  type UserRoundCheckIconHandle,
+} from "@/components/icons/user-round-check";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
@@ -28,19 +41,172 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-const navItems = [
-  { href: "/dashboard", label: "Visão geral", Icon: LayoutDashboardIcon },
-  { href: "/", label: "Site", Icon: HomeIcon },
-  { href: "/groups", label: "Grupos", Icon: UsersIcon },
-  { href: "/members", label: "Membros", Icon: UserRoundCheckIcon },
-  { href: "/alerts", label: "Alertas", Icon: BellRingIcon },
-] as const;
+type AnimatedIconHandle = {
+  startAnimation: () => void;
+  stopAnimation: () => void;
+};
+
+type AnimatedIconKey = "dashboard" | "groups" | "alerts" | "settings" | "terms" | "members";
+
+type NavItem =
+  | {
+      href: string;
+      label: string;
+      kind: "animated";
+      iconKey: AnimatedIconKey;
+    }
+  | {
+      href: string;
+      label: string;
+      kind: "lucide";
+      Icon: LucideIcon;
+    };
+
+type NavSection = {
+  label: string;
+  items: NavItem[];
+};
+
+const navSections: NavSection[] = [
+  {
+    label: "Navegação",
+    items: [
+      {
+        href: "/dashboard",
+        label: "Dashboard",
+        kind: "animated",
+        iconKey: "dashboard",
+      },
+      {
+        href: "/groups",
+        label: "Grupos",
+        kind: "animated",
+        iconKey: "groups",
+      },
+      {
+        href: "/members",
+        label: "Membros",
+        kind: "animated",
+        iconKey: "members",
+      },
+      {
+        href: "/alerts",
+        label: "Alertas",
+        kind: "animated",
+        iconKey: "alerts",
+      },
+    ],
+  },
+  {
+    label: "Conta",
+    items: [
+      {
+        href: "/settings",
+        label: "Configurações",
+        kind: "animated",
+        iconKey: "settings",
+      },
+    ],
+  },
+  {
+    label: "Legal",
+    items: [
+      {
+        href: "/terms",
+        label: "Termos",
+        kind: "animated",
+        iconKey: "terms",
+      },
+    ],
+  },
+];
+
+function getNavIconClassName(isActive: boolean) {
+  return cn(
+    "shrink-0 transition-colors duration-200 ease-in-out",
+    isActive
+      ? "text-sidebar-accent-foreground"
+      : "text-muted-foreground group-hover:text-foreground",
+  );
+}
+
+function SidebarAnimatedIcon({
+  iconKey,
+  iconRef,
+  className,
+}: {
+  iconKey: AnimatedIconKey;
+  iconRef: RefObject<AnimatedIconHandle | null>;
+  className?: string;
+}) {
+  switch (iconKey) {
+    case "dashboard":
+      return (
+        <MonitorIcon
+          ref={iconRef as RefObject<MonitorIconHandle | null>}
+          size={16}
+          isAnimateOnView={false}
+          className={className}
+        />
+      );
+    case "groups":
+      return (
+        <UsersIcon
+          ref={iconRef as RefObject<UsersIconHandle | null>}
+          size={16}
+          isAnimateOnView={false}
+          className={className}
+        />
+      );
+    case "alerts":
+      return (
+        <BellIcon
+          ref={iconRef as RefObject<BellIconHandle | null>}
+          size={16}
+          isAnimateOnView={false}
+          animateOnHover={false}
+          className={className}
+        />
+      );
+    case "settings":
+      return (
+        <SettingsIcon
+          ref={iconRef as RefObject<SettingsIconHandle | null>}
+          size={16}
+          isAnimateOnView={false}
+          className={className}
+        />
+      );
+    case "terms":
+      return (
+        <FileTextIcon
+          ref={iconRef as RefObject<FileTextIconHandle | null>}
+          size={16}
+          isAnimateOnView={false}
+          animateOnHover={false}
+          className={className}
+        />
+      );
+    case "members":
+      return (
+        <UserRoundCheckIcon
+          ref={iconRef as RefObject<UserRoundCheckIconHandle | null>}
+          size={16}
+          isAnimateOnView={false}
+          animateOnHover={false}
+          className={className}
+        />
+      );
+  }
+}
 
 type SidebarNavLinkProps = {
   href: string;
   label: string;
   isActive: boolean;
   isCollapsed: boolean;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
   children: ReactNode;
 };
 
@@ -49,13 +215,24 @@ function SidebarNavLink({
   label,
   isActive,
   isCollapsed,
+  onMouseEnter,
+  onMouseLeave,
   children,
 }: SidebarNavLinkProps) {
-  const linkClassName = cn(sidebarMenuButtonVariants({ isActive }));
+  const linkClassName = cn(
+    sidebarMenuButtonVariants({ isActive }),
+    "group",
+    isActive && "font-semibold",
+  );
 
   if (!isCollapsed) {
     return (
-      <Link href={href} className={linkClassName}>
+      <Link
+        href={href}
+        className={linkClassName}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+      >
         {children}
       </Link>
     );
@@ -69,7 +246,16 @@ function SidebarNavLink({
             href={href}
             {...triggerProps}
             aria-label={label}
+            aria-current={isActive ? "page" : undefined}
             className={cn(linkClassName, triggerProps.className)}
+            onMouseEnter={(event) => {
+              triggerProps.onMouseEnter?.(event);
+              onMouseEnter?.();
+            }}
+            onMouseLeave={(event) => {
+              triggerProps.onMouseLeave?.(event);
+              onMouseLeave?.();
+            }}
           >
             {children}
           </Link>
@@ -82,24 +268,65 @@ function SidebarNavLink({
   );
 }
 
+type SidebarNavItemProps = {
+  item: NavItem;
+  isActive: boolean;
+  isCollapsed: boolean;
+};
+
+function SidebarNavItem({ item, isActive, isCollapsed }: SidebarNavItemProps) {
+  const iconRef = useRef<AnimatedIconHandle>(null);
+  const iconClassName = getNavIconClassName(isActive);
+
+  return (
+    <SidebarMenuItem>
+      <SidebarNavLink
+        href={item.href}
+        label={item.label}
+        isActive={isActive}
+        isCollapsed={isCollapsed}
+        onMouseEnter={() => iconRef.current?.startAnimation()}
+        onMouseLeave={() => iconRef.current?.stopAnimation()}
+      >
+        {item.kind === "animated" ? (
+          <SidebarAnimatedIcon
+            iconKey={item.iconKey}
+            iconRef={iconRef}
+            className={iconClassName}
+          />
+        ) : (
+          <item.Icon aria-hidden className={iconClassName} />
+        )}
+        <span className={cn("truncate", isCollapsed && "sr-only")}>
+          {item.label}
+        </span>
+      </SidebarNavLink>
+    </SidebarMenuItem>
+  );
+}
+
+function isNavItemActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export function AppSidebar() {
   const pathname = usePathname();
   const { open, isMobile } = useSidebar();
   const isCollapsed = !isMobile && !open;
 
   return (
-    <Sidebar className="rounded-l-xl border-r border-border">
-      <SidebarHeader>
+    <Sidebar className="rounded-l-xl border-border bg-card">
+      <SidebarHeader className="border-b border-border">
         {isCollapsed ? (
           <Tooltip>
             <TooltipTrigger
               render={(triggerProps) => (
                 <Link
-                  href="/"
+                  href="/dashboard"
                   {...triggerProps}
                   aria-label="Gateon"
                   className={cn(
-                    "flex h-full min-h-0 w-full min-w-0 items-center justify-center outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+                    "flex h-full min-h-0 w-full min-w-0 items-center justify-center rounded-lg outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-sidebar-ring",
                     triggerProps.className,
                   )}
                 >
@@ -113,42 +340,40 @@ export function AppSidebar() {
           </Tooltip>
         ) : (
           <Link
-            href="/"
-            className="flex h-full min-h-0 w-full min-w-0 items-center outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+            href="/dashboard"
+            className="flex h-full min-h-0 w-full min-w-0 items-center rounded-lg outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-sidebar-ring"
           >
             <GateonLogo showWordmark />
           </Link>
         )}
       </SidebarHeader>
-      <SidebarContent>
-        <SidebarMenu>
-          {navItems.map(({ href, label, Icon }) => {
-            const isActive =
-              href === "/"
-                ? pathname === "/"
-                : pathname === href || pathname.startsWith(`${href}/`);
-            return (
-              <SidebarMenuItem key={href}>
-                <SidebarNavLink
-                  href={href}
-                  label={label}
-                  isActive={isActive}
+
+      <SidebarContent className="space-y-4 px-3 py-4 group-data-[state=collapsed]/sidebar-wrapper:space-y-0">
+        {navSections.map((section) => (
+          <SidebarGroup key={section.label}>
+            {!isCollapsed ? (
+              <p className="mb-1 px-3 text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                {section.label}
+              </p>
+            ) : null}
+            <SidebarMenu>
+              {section.items.map((item) => (
+                <SidebarNavItem
+                  key={item.href}
+                  item={item}
+                  isActive={isNavItemActive(pathname, item.href)}
                   isCollapsed={isCollapsed}
-                >
-                  <Icon />
-                  <span className={cn("truncate", isCollapsed && "sr-only")}>
-                    {label}
-                  </span>
-                </SidebarNavLink>
-              </SidebarMenuItem>
-            );
-          })}
-        </SidebarMenu>
+                />
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
-      <SidebarFooter>
+
+      <SidebarFooter className="border-border bg-muted/30">
         <p
           className={cn(
-            "text-xs text-sidebar-foreground/70",
+            "text-center text-muted-foreground text-xs leading-snug",
             isCollapsed && "sr-only",
           )}
         >

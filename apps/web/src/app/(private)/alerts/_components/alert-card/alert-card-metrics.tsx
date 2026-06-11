@@ -31,7 +31,7 @@ export function AlertCardMetrics({ alert }: AlertCardMetricsProps) {
           </span>
         </span>
         <span className="text-border text-xs font-light">|</span>
-        <span className="inline-flex items-center gap-1.5 font-medium text-amber-600 dark:text-amber-300">
+        <span className="inline-flex items-center gap-1.5 font-medium text-amber-600 dark:text-amber-400">
           <BadgeAlertIcon
             size={16}
             animateOnHover={true}
@@ -49,7 +49,7 @@ export function AlertCardMetrics({ alert }: AlertCardMetricsProps) {
             alert.deliveryRate >= 80
               ? "text-green-500"
               : alert.deliveryRate >= 60
-                ? "text-amber-600 dark:text-amber-300"
+                ? "text-amber-600 dark:text-amber-400"
                 : "text-destructive",
           )}
         >

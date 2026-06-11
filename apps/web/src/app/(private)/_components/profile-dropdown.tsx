@@ -91,7 +91,7 @@ export function ProfileDropdown({ user }: ProfileDropdownProps) {
             className="p-0 cursor-pointer"
           >
             <Link
-              href="/dashboard/settings"
+              href="/settings"
               className="flex group items-center p-2 gap-2"
             >
               <SettingsIcon

@@ -4,6 +4,8 @@ export const PRIVATE_THEME_ROUTE_PREFIXES = [
   "/groups",
   "/members",
   "/alerts",
+  "/settings",
+  "/terms",
 ] as const;
 
 export function isPrivateThemeRoute(pathname: string | null): boolean {

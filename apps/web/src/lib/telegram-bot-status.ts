@@ -42,8 +42,8 @@ const DISPLAY: Record<BotStatusDisplayKind, BotStatusDisplay> = {
     label: "Inativo",
     variant: "ghost",
     className:
-      "border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400",
-    dotClassName: "bg-zinc-400",
+      "border-border bg-muted/60 text-muted-foreground dark:bg-muted/40",
+    dotClassName: "bg-muted-foreground/70",
   },
   error: {
     label: "Removido",

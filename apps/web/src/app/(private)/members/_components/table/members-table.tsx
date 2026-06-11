@@ -39,6 +39,7 @@ import {
   isMemberOwner,
   type MemberSummary,
   memberMatchesSearch,
+  sortMembersActiveFirst,
   type VisibleGroup,
 } from "../members-table-helpers";
 import { MemberSelectionCheckbox } from "./member-selection-checkbox";
@@ -85,13 +86,15 @@ export function MembersTable({ groups }: MembersTableProps) {
           memberPassesPopoverFilters(member, popoverFilters),
         );
 
-        const visibleMembers = !query
-          ? filteredMembers
-          : groupMatchesSearch(group, query)
+        const visibleMembers = sortMembersActiveFirst(
+          !query
             ? filteredMembers
-            : filteredMembers.filter((member) =>
-                memberMatchesSearch(member, query),
-              );
+            : groupMatchesSearch(group, query)
+              ? filteredMembers
+              : filteredMembers.filter((member) =>
+                  memberMatchesSearch(member, query),
+                ),
+        );
 
         return { ...group, visibleMembers };
       })

@@ -241,6 +241,20 @@ function SidebarSeparator({
   );
 }
 
+function SidebarGroup({ className, ...props }: ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="sidebar-group"
+      className={cn(
+        "flex flex-col gap-1",
+        "group-data-[state=collapsed]/sidebar-wrapper:not-first:mt-2 group-data-[state=collapsed]/sidebar-wrapper:not-first:border-t group-data-[state=collapsed]/sidebar-wrapper:not-first:border-border group-data-[state=collapsed]/sidebar-wrapper:not-first:pt-2",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
 function SidebarMenu({ className, ...props }: ComponentProps<"ul">) {
   return (
     <ul
@@ -332,6 +346,7 @@ export {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,

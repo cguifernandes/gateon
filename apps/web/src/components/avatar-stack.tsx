@@ -38,11 +38,11 @@ function AvatarStackIcon({
     return (
       <span
         className={cn(
-          "flex size-full items-center justify-center bg-sky-500/15",
+          "flex size-full items-center justify-center bg-primary",
           className,
         )}
       >
-        <HashIcon className="size-3.5 text-sky-600 dark:text-sky-300" />
+        <HashIcon className="size-3.5 text-primary-foreground" />
       </span>
     );
   }
@@ -70,6 +70,8 @@ export function AvatarStack({
   const visibleItems = items.slice(0, maxVisible);
   const overflowItems = items.slice(maxVisible);
   const overflowCount = overflowItems.length;
+  const isTopicStack =
+    items.length > 0 && items.every((item) => item.kind === "topic");
 
   return (
     <div className="flex items-center">
@@ -106,7 +108,11 @@ export function AvatarStack({
                 type="button"
                 aria-label={`Mais ${overflowCount} destino(s)`}
                 className={cn(
-                  "relative -ml-2 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-muted font-medium text-foreground text-xs ring-2 ring-card transition-transform hover:z-20 hover:scale-110",
+                  "relative -ml-2 inline-flex shrink-0 items-center justify-center rounded-full font-medium text-xs transition-transform hover:z-20 hover:scale-110",
+                  isTopicStack
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-foreground",
+                  avatarClassName ?? "size-8",
                   overflowButtonClassName,
                 )}
                 style={{ zIndex: visibleItems.length + 1 }}
