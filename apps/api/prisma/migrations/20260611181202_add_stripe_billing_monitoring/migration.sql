@@ -1,0 +1,2 @@
+-- RenameIndex
+ALTER INDEX "StripeBillingSubscriptions_connectionId_stripeSubscriptionId_ke" RENAME TO "StripeBillingSubscriptions_connectionId_stripeSubscriptionI_key";

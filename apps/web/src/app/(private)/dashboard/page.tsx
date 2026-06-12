@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getAlerts } from "@/lib/server/get-alerts";
 import { getSessionUser } from "@/lib/server/get-session";
+import { getStripeBillingStatus } from "@/lib/server/get-stripe-billing-status";
 import { getTelegramGroupsForMembers } from "@/lib/server/get-telegram-groups-for-members";
 import { DashboardOverview } from "./_components/dashboard-overview";
 
@@ -10,11 +11,13 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
-  const [user, { groups }, { data: alertsData }] = await Promise.all([
-    getSessionUser(),
-    getTelegramGroupsForMembers(),
-    getAlerts(),
-  ]);
+  const [user, { groups }, { data: alertsData }, { data: stripeBilling }] =
+    await Promise.all([
+      getSessionUser(),
+      getTelegramGroupsForMembers(),
+      getAlerts(),
+      getStripeBillingStatus(),
+    ]);
 
   return (
     <DashboardOverview
@@ -24,6 +27,7 @@ export default async function DashboardPage() {
       groups={groups}
       alertStats={alertsData.stats}
       alerts={alertsData.alerts}
+      stripeBilling={stripeBilling}
     />
   );
 }

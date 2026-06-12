@@ -51,6 +51,12 @@ export const alertTriggerTypeSchema = z.enum(
     "FORUM_TOPIC_CREATED",
     "MEMBER_JOINED_GROUP_MESSAGE",
     "MEMBER_LEFT_PRIVATE_MESSAGE",
+    "STRIPE_PAYMENT_SUCCEEDED",
+    "STRIPE_PAYMENT_FAILED",
+    "STRIPE_SUBSCRIPTION_EXPIRING",
+    "STRIPE_SUBSCRIPTION_EXPIRED",
+    "STRIPE_SUBSCRIPTION_RENEWED",
+    "STRIPE_SUBSCRIPTION_CANCELED",
   ],
   { message: alertMessages.invalidTrigger },
 );
@@ -62,6 +68,12 @@ export const alertTriggerLabels = {
   FORUM_TOPIC_CREATED: "Novo tópico no fórum",
   MEMBER_JOINED_GROUP_MESSAGE: "Mensagem de boas-vindas",
   MEMBER_LEFT_PRIVATE_MESSAGE: "Mensagem de despedida",
+  STRIPE_PAYMENT_SUCCEEDED: "Stripe: pagamento recebido",
+  STRIPE_PAYMENT_FAILED: "Stripe: pagamento falhou",
+  STRIPE_SUBSCRIPTION_EXPIRING: "Stripe: assinatura próxima do vencimento",
+  STRIPE_SUBSCRIPTION_EXPIRED: "Stripe: assinatura expirada",
+  STRIPE_SUBSCRIPTION_RENEWED: "Stripe: assinatura renovada",
+  STRIPE_SUBSCRIPTION_CANCELED: "Stripe: assinatura cancelada",
 } as const satisfies Record<z.infer<typeof alertTriggerTypeSchema>, string>;
 
 export const memberAutomationTriggerTypes = [
@@ -85,6 +97,18 @@ export const automationTriggerDescriptions = {
     "Envia uma mensagem de boas-vindas no chat do grupo quando alguém entra.",
   MEMBER_LEFT_PRIVATE_MESSAGE:
     "Envia uma mensagem no privado do membro quando ele sai do grupo. O Telegram só entrega se ele já conversou com o bot.",
+  STRIPE_PAYMENT_SUCCEEDED:
+    "Dispara quando a sincronização identifica um pagamento recebido na Stripe.",
+  STRIPE_PAYMENT_FAILED:
+    "Dispara quando a sincronização identifica uma falha de pagamento na Stripe.",
+  STRIPE_SUBSCRIPTION_EXPIRING:
+    "Dispara quando uma assinatura monitorada está próxima do vencimento.",
+  STRIPE_SUBSCRIPTION_EXPIRED:
+    "Dispara quando uma assinatura monitorada expira ou fica sem pagamento.",
+  STRIPE_SUBSCRIPTION_RENEWED:
+    "Dispara quando uma assinatura é renovada e ganha novo período de cobrança.",
+  STRIPE_SUBSCRIPTION_CANCELED:
+    "Dispara quando uma assinatura monitorada é cancelada na Stripe.",
 } as const satisfies Record<z.infer<typeof alertTriggerTypeSchema>, string>;
 
 export const alertTableSelectionSourceSchema = z.enum(["MEMBERS", "GROUPS"], {

@@ -102,12 +102,6 @@ export const DialogStack = ({
     };
   }, [setIsOpen]);
 
-  useEffect(() => {
-    if (onOpenChange && isOpen !== undefined) {
-      onOpenChange(isOpen);
-    }
-  }, [isOpen, onOpenChange]);
-
   return (
     <DialogStackContext.Provider
       value={{

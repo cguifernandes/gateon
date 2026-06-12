@@ -8,6 +8,7 @@ import { AlertsModule } from './modules/alerts/alerts.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { GroupBotSettingsModule } from './modules/group-bot-settings/group-bot-settings.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
+import { StripeBillingModule } from './modules/stripe-billing/stripe-billing.module';
 import { TelegramModule } from './modules/telegram/telegram.module';
 
 function readPositiveIntegerEnv(name: string, fallback: number): number {
@@ -31,6 +32,7 @@ function readPositiveIntegerEnv(name: string, fallback: number): number {
     TelegramModule,
     GroupBotSettingsModule,
     AlertsModule,
+    StripeBillingModule,
   ],
   controllers: [AppController],
   providers: [

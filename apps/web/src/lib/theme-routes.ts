@@ -6,6 +6,7 @@ export const PRIVATE_THEME_ROUTE_PREFIXES = [
   "/alerts",
   "/settings",
   "/terms",
+  "/integrations",
 ] as const;
 
 export function isPrivateThemeRoute(pathname: string | null): boolean {

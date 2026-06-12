@@ -27,6 +27,11 @@ model Users {
   telegramGroups                 TelegramGroups[]
   telegramAlerts                 TelegramAlerts[]
   telegramAlertTemplates         TelegramAlertTemplates[]
+  stripeBillingConnections       StripeBillingConnections[]
+  stripeBillingCustomers         StripeBillingCustomers[]
+  stripeBillingSubscriptions     StripeBillingSubscriptions[]
+  stripeBillingPayments          StripeBillingPayments[]
+  stripeBillingAuditLogs         StripeBillingAuditLogs[]
 }
 
 model Accounts {
@@ -206,6 +211,12 @@ enum AlertTriggerType {
   FORUM_TOPIC_CREATED
   MEMBER_JOINED_GROUP_MESSAGE
   MEMBER_LEFT_PRIVATE_MESSAGE
+  STRIPE_PAYMENT_SUCCEEDED
+  STRIPE_PAYMENT_FAILED
+  STRIPE_SUBSCRIPTION_EXPIRING
+  STRIPE_SUBSCRIPTION_EXPIRED
+  STRIPE_SUBSCRIPTION_RENEWED
+  STRIPE_SUBSCRIPTION_CANCELED
 }
 
 enum AlertRunStatus {
@@ -313,4 +324,138 @@ model TelegramAlertDeliveries {
 
   @@index([runId, status])
   @@index([telegramUserId])
+}
+
+enum StripeBillingConnectionStatus {
+  CONNECTED
+  DISCONNECTED
+  FAILED
+}
+
+enum StripeBillingAuditAction {
+  CONNECTION_CREATED
+  CONNECTION_REMOVED
+  CONSENT_ACCEPTED
+  SYNC_EXECUTED
+  PAYMENT_IDENTIFIED
+  SUBSCRIPTION_EXPIRING
+  SUBSCRIPTION_EXPIRED
+  SUBSCRIPTION_CANCELED
+  SUBSCRIPTION_RENEWED
+  AUTOMATION_TRIGGERED
+}
+
+model StripeBillingConnections {
+  id                        String                        @id @default(cuid())
+  userId                    String
+  stripeAccountId           String?
+  encryptedApiKey           String                        @db.Text
+  apiKeyLast4               String
+  status                    StripeBillingConnectionStatus @default(CONNECTED)
+  lastSyncedAt              DateTime?
+  consentAcceptedAt         DateTime
+  disconnectedAt            DateTime?
+  activeSubscriptionCount   Int                           @default(0)
+  expiringSubscriptionCount Int                           @default(0)
+  expiredSubscriptionCount  Int                           @default(0)
+  customerCount             Int                           @default(0)
+  monthlyRevenueCents       Int                           @default(0)
+  monitoredStripePriceId    String?
+  monitoredStripeProductId  String?
+  monitoredPlanLabel        String?
+  createdAt                 DateTime                      @default(now())
+  updatedAt                 DateTime                      @updatedAt
+
+  user          Users                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customers     StripeBillingCustomers[]
+  subscriptions StripeBillingSubscriptions[]
+  payments      StripeBillingPayments[]
+  auditLogs     StripeBillingAuditLogs[]
+
+  @@index([userId, status])
+  @@index([userId, monitoredStripePriceId])
+}
+
+model StripeBillingCustomers {
+  id               String   @id @default(cuid())
+  userId           String
+  connectionId     String
+  stripeCustomerId String
+  name             String?
+  email            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user          Users                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connection    StripeBillingConnections     @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  subscriptions StripeBillingSubscriptions[]
+  payments      StripeBillingPayments[]
+
+  @@unique([connectionId, stripeCustomerId])
+  @@index([userId])
+  @@index([email])
+}
+
+model StripeBillingSubscriptions {
+  id                   String    @id @default(cuid())
+  userId               String
+  connectionId         String
+  customerId           String?
+  stripeSubscriptionId String
+  stripeCustomerId     String?
+  status               String
+  planName             String?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
+  canceledAt           DateTime?
+  lastEventType        String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  user       Users                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connection StripeBillingConnections @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  customer   StripeBillingCustomers?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@unique([connectionId, stripeSubscriptionId])
+  @@index([userId, status])
+  @@index([connectionId, currentPeriodEnd])
+}
+
+model StripeBillingPayments {
+  id                    String    @id @default(cuid())
+  userId                String
+  connectionId          String
+  customerId            String?
+  stripePaymentIntentId String?
+  stripeInvoiceId       String?
+  stripeCustomerId      String?
+  status                String
+  amountCents           Int
+  currency              String
+  paidAt                DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user       Users                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connection StripeBillingConnections @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  customer   StripeBillingCustomers?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@unique([connectionId, stripeInvoiceId])
+  @@index([userId, status])
+  @@index([connectionId, paidAt])
+}
+
+model StripeBillingAuditLogs {
+  id           String                   @id @default(cuid())
+  userId       String
+  connectionId String?
+  action       StripeBillingAuditAction
+  metadata     Json?
+  createdAt    DateTime                 @default(now())
+
+  user       Users                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connection StripeBillingConnections? @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, action])
+  @@index([connectionId, createdAt])
 }

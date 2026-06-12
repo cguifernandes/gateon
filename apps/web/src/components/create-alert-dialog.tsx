@@ -60,6 +60,7 @@ import {
   DialogStackTrigger,
   useDialogStackNavigation,
 } from "@/components/kibo-ui/dialog-stack";
+import { SelectableOptionCard } from "@/components/selectable-option-card";
 import { TruncatedTextTooltip } from "@/components/truncated-text-tooltip";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -133,7 +134,7 @@ function ReviewSummaryCell({
 
   return (
     <div className={cn("p-3", className)}>
-      <p className="text-muted-foreground text-xs">{label}</p>
+      <p className="text-muted-foreground text-heading text-xs">{label}</p>
       {lineClamp ? (
         <TruncatedTextTooltip
           text={value}
@@ -269,7 +270,7 @@ const destinationOptions: AlertDestinationOption[] = [
     value: "AUTOMATION",
     title: "Automação",
     description:
-      "Mensagens automáticas disparadas por eventos do grupo, como entrada, saída ou novo tópico.",
+      "Mensagens automáticas disparadas por eventos do grupo ou integrações conectadas.",
     icon: BadgeAlertIcon,
   },
 ];
@@ -316,6 +317,42 @@ const automationTriggerOptions: {
     description: automationTriggerDescriptions.FORUM_TOPIC_CREATED,
     icon: MessageCircleIcon,
   },
+  {
+    value: "STRIPE_PAYMENT_SUCCEEDED",
+    title: "Stripe: pagamento recebido",
+    description: automationTriggerDescriptions.STRIPE_PAYMENT_SUCCEEDED,
+    icon: BadgeAlertIcon,
+  },
+  {
+    value: "STRIPE_PAYMENT_FAILED",
+    title: "Stripe: pagamento falhou",
+    description: automationTriggerDescriptions.STRIPE_PAYMENT_FAILED,
+    icon: BadgeAlertIcon,
+  },
+  {
+    value: "STRIPE_SUBSCRIPTION_EXPIRING",
+    title: "Stripe: vencimento próximo",
+    description: automationTriggerDescriptions.STRIPE_SUBSCRIPTION_EXPIRING,
+    icon: BadgeAlertIcon,
+  },
+  {
+    value: "STRIPE_SUBSCRIPTION_EXPIRED",
+    title: "Stripe: assinatura expirada",
+    description: automationTriggerDescriptions.STRIPE_SUBSCRIPTION_EXPIRED,
+    icon: BadgeAlertIcon,
+  },
+  {
+    value: "STRIPE_SUBSCRIPTION_RENEWED",
+    title: "Stripe: assinatura renovada",
+    description: automationTriggerDescriptions.STRIPE_SUBSCRIPTION_RENEWED,
+    icon: BadgeAlertIcon,
+  },
+  {
+    value: "STRIPE_SUBSCRIPTION_CANCELED",
+    title: "Stripe: assinatura cancelada",
+    description: automationTriggerDescriptions.STRIPE_SUBSCRIPTION_CANCELED,
+    icon: BadgeAlertIcon,
+  },
 ];
 
 const dialogProgressSteps = [
@@ -331,10 +368,6 @@ type CreateAlertWizardStep = {
   showNextButton?: boolean;
   showPreviousButton?: boolean;
 };
-
-type DestinationIconRefsMap = Partial<
-  Record<AlertDestinationType, IconAnimationHandle | null>
->;
 
 type AutomationTriggerIconRefsMap = Partial<
   Record<AlertTriggerType, IconAnimationHandle | null>
@@ -1544,18 +1577,6 @@ function DestinationStep({ form }: DestinationStepProps) {
     control: form.control,
     name: "destinationType",
   });
-  const iconRefs = useRef<DestinationIconRefsMap>({});
-  const arrowRefs = useRef<DestinationIconRefsMap>({});
-
-  function playDestinationCardAnimation(value: AlertDestinationType) {
-    iconRefs.current[value]?.startAnimation();
-    arrowRefs.current[value]?.startAnimation();
-  }
-
-  function stopDestinationCardAnimation(value: AlertDestinationType) {
-    iconRefs.current[value]?.stopAnimation();
-    arrowRefs.current[value]?.stopAnimation();
-  }
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -1564,89 +1585,53 @@ function DestinationStep({ form }: DestinationStepProps) {
           const isSelected = destinationType === value;
 
           return (
-            <button
+            <SelectableOptionCard
               key={value}
-              type="button"
-              onMouseEnter={() => playDestinationCardAnimation(value)}
-              onMouseLeave={() => stopDestinationCardAnimation(value)}
-              onClick={() => {
-                playDestinationCardAnimation(value);
-                if (isSelected) return;
-
+              title={title}
+              description={description}
+              isSelected={isSelected}
+              AnimatedIcon={Icon}
+              headerAction={
+                alert ? (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={(triggerProps) => (
+                        <span
+                          {...triggerProps}
+                          className={cn(
+                            "inline-flex shrink-0",
+                            triggerProps.className,
+                          )}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            triggerProps.onClick?.(event);
+                          }}
+                          onPointerDown={(event) => event.stopPropagation()}
+                          role="presentation"
+                          aria-hidden="true"
+                        >
+                          <BadgeAlertIcon size={16} />
+                        </span>
+                      )}
+                    />
+                    <TooltipContent
+                      side="top"
+                      sideOffset={8}
+                      className="max-w-xs text-pretty"
+                    >
+                      {alert}
+                    </TooltipContent>
+                  </Tooltip>
+                ) : null
+              }
+              onSelect={() => {
                 form.setValue("destinationType", value, {
                   shouldDirty: true,
                   shouldValidate: false,
                 });
                 resetAudienceFields(form);
               }}
-              className={cn(
-                "group flex h-full cursor-pointer relative flex-col gap-y-3 rounded-2xl border border-border p-4 text-left transition-all duration-200 hover:border-primary/40 hover:bg-primary/5",
-                isSelected && "border-primary/60 bg-primary/10",
-              )}
-            >
-              <div className="inline-flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Icon
-                  ref={(instance) => {
-                    iconRefs.current[value] = instance;
-                  }}
-                  size={18}
-                />
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold font-heading text-base">
-                    {title}
-                  </h3>
-                  {alert ? (
-                    <Tooltip>
-                      <TooltipTrigger
-                        render={(triggerProps) => (
-                          <span
-                            {...triggerProps}
-                            className={cn(
-                              "inline-flex shrink-0 absolute top-4 right-4",
-                              triggerProps.className,
-                            )}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              triggerProps.onClick?.(event);
-                            }}
-                            onPointerDown={(event) => event.stopPropagation()}
-                            role="presentation"
-                            aria-hidden="true"
-                          >
-                            <BadgeAlertIcon size={16} />
-                          </span>
-                        )}
-                      />
-                      <TooltipContent
-                        side="top"
-                        sideOffset={8}
-                        className="max-w-xs text-pretty"
-                      >
-                        {alert}
-                      </TooltipContent>
-                    </Tooltip>
-                  ) : null}
-                </div>
-                <p className="font-light text-muted-foreground text-sm">
-                  {description}
-                </p>
-              </div>
-
-              <span className="inline-flex items-center gap-1.5 font-medium text-primary text-sm">
-                Selecionar
-                <ArrowRightIcon
-                  ref={(instance) => {
-                    arrowRefs.current[value] = instance;
-                  }}
-                  size={16}
-                  isAnimateOnView={false}
-                  className="text-primary"
-                />
-              </span>
-            </button>
+            />
           );
         },
       )}

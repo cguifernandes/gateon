@@ -78,7 +78,7 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-61 flex max-h-[min(90vh,32rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-y-auto rounded-xl border border-border bg-background p-6 shadow-lg outline-none select-none",
+          "fixed top-1/2 left-1/2 z-61 flex max-h-[min(90vh,32rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-y-auto rounded-xl border border-border bg-background shadow-lg outline-none select-none",
           "data-open:animate-in data-starting-style:fade-in-0 data-starting-style:zoom-in-95",
           "data-closed:animate-out data-ending-style:fade-out-0 data-ending-style:zoom-out-95",
           className,
@@ -96,7 +96,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-1.5 pe-8 text-start", className)}
+      className={cn("flex flex-col gap-1.5 px-6 py-4 text-start", className)}
       {...props}
     />
   );
@@ -110,7 +110,7 @@ function DialogTitle({
     <DialogPrimitive.Title
       data-slot="dialog-title"
       className={cn(
-        "font-heading text-lg font-semibold text-foreground",
+        "font-semibold font-heading text-lg leading-none tracking-tight",
         className,
       )}
       {...props}
@@ -125,7 +125,7 @@ function DialogDescription({
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn("text-sm text-muted-foreground", className)}
+      className={cn("font-light text-muted-foreground text-sm", className)}
       {...props}
     />
   );
@@ -136,7 +136,7 @@ function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="dialog-footer"
       className={cn(
-        "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
+        "flex flex-col-reverse gap-2 border-t border-border px-6 py-4 sm:flex-row sm:justify-end",
         className,
       )}
       {...props}

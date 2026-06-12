@@ -359,6 +359,28 @@ export class AlertsService {
     return this.triggerAlertsForEvent(input);
   }
 
+  async triggerAutomationAlertsForUser(
+    userId: string,
+    triggerType: AlertInternalTriggerInput['triggerType'],
+  ) {
+    const automationAlerts = await this.prisma.telegramAlerts.findMany({
+      where: {
+        userId,
+        status: AlertStatus.ACTIVE,
+        destinationType: AlertDestinationType.AUTOMATION,
+        triggerType,
+      },
+      select: { id: true },
+      take: 100,
+    });
+
+    for (const alert of automationAlerts) {
+      await this.runAlert(alert.id, { throwOnTotalFailure: false });
+    }
+
+    return { triggeredCount: automationAlerts.length };
+  }
+
   async runAlert(alertId: string, runOptions?: RunAlertOptions) {
     const alert = await this.prisma.telegramAlerts.findUnique({
       where: { id: alertId },

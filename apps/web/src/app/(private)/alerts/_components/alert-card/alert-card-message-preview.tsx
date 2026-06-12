@@ -51,7 +51,7 @@ export function AlertCardMessagePreview({
             <AvatarStack
               avatarClassName="size-7"
               items={destinationItems}
-              maxVisible={1}
+              maxVisible={4}
             />
           ) : null}
         </div>

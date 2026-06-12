@@ -1,6 +1,6 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
+import { type LucideIcon, PlugIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, type RefObject, useRef } from "react";
@@ -18,11 +18,11 @@ import {
   SettingsIcon,
   type SettingsIconHandle,
 } from "@/components/icons/settings";
-import { UsersIcon, type UsersIconHandle } from "@/components/icons/users";
 import {
   UserRoundCheckIcon,
   type UserRoundCheckIconHandle,
 } from "@/components/icons/user-round-check";
+import { UsersIcon, type UsersIconHandle } from "@/components/icons/users";
 import {
   Sidebar,
   SidebarContent,
@@ -46,7 +46,13 @@ type AnimatedIconHandle = {
   stopAnimation: () => void;
 };
 
-type AnimatedIconKey = "dashboard" | "groups" | "alerts" | "settings" | "terms" | "members";
+type AnimatedIconKey =
+  | "dashboard"
+  | "groups"
+  | "alerts"
+  | "settings"
+  | "terms"
+  | "members";
 
 type NavItem =
   | {
@@ -94,6 +100,12 @@ const navSections: NavSection[] = [
         label: "Alertas",
         kind: "animated",
         iconKey: "alerts",
+      },
+      {
+        href: "/integrations",
+        label: "Integrações",
+        kind: "lucide",
+        Icon: PlugIcon,
       },
     ],
   },
