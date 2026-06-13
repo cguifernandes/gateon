@@ -118,8 +118,8 @@ export function DashboardRecentAlertsCard({
   }, [alerts, range, selectedGroup]);
 
   return (
-    <Card className="flex h-fit min-h-0 w-full flex-col gap-0 overflow-hidden py-0">
-      <CardHeader className="flex shrink-0 flex-row items-start justify-between border-b border-border p-5">
+    <Card className="flex h-full min-h-0 w-full flex-col gap-0 overflow-hidden py-0">
+      <CardHeader className="flex shrink-0 flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
         <div className="flex flex-col gap-y-1">
           <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Alertas recentes
@@ -135,18 +135,21 @@ export function DashboardRecentAlertsCard({
         </div>
         <Link
           href="/alerts"
-          className={cn(buttonVariants({ variant: "link" }), "p-0 h-fit")}
+          className={cn(
+            buttonVariants({ variant: "link" }),
+            "p-0 text-xs h-fit",
+          )}
         >
           Ver alertas
         </Link>
       </CardHeader>
-      <CardContent className="flex min-h-0 flex-1 flex-col overflow-y-auto p-5">
+      <CardContent className="flex h-fit flex-col p-4 sm:p-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
         {timelineItems.length === 0 ? (
-          <div className="flex min-h-52 items-center justify-center text-center text-muted-foreground text-sm">
+          <div className="flex items-center justify-center py-8 text-center text-muted-foreground text-sm sm:min-h-52">
             Nenhum alerta executado no período selecionado.
           </div>
         ) : (
-          <div className="min-h-0 flex-1">
+          <div className="h-fit lg:min-h-0 lg:flex-1">
             <ul className="space-y-0">
               {timelineItems.map((item, index) => {
                 const Icon = item.icon;

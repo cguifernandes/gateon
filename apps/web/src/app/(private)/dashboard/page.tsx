@@ -20,14 +20,16 @@ export default async function DashboardPage() {
     ]);
 
   return (
-    <DashboardOverview
-      userName={user?.name}
-      email={user?.email}
-      emailVerified={user?.emailVerified}
-      groups={groups}
-      alertStats={alertsData.stats}
-      alerts={alertsData.alerts}
-      stripeBilling={stripeBilling}
-    />
+    <div className="flex min-w-0 flex-1 flex-col">
+      <DashboardOverview
+        userName={user?.name}
+        email={user?.email}
+        emailVerified={user?.emailVerified}
+        groups={groups}
+        alertStats={alertsData.stats}
+        alerts={alertsData.alerts}
+        stripeBilling={stripeBilling}
+      />
+    </div>
   );
 }

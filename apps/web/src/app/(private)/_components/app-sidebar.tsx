@@ -1,6 +1,6 @@
 "use client";
 
-import { type LucideIcon, PlugIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, type RefObject, useRef } from "react";
@@ -14,6 +14,7 @@ import {
   MonitorIcon,
   type MonitorIconHandle,
 } from "@/components/icons/monitor";
+import { PlugIcon, type PlugIconHandle } from "@/components/icons/plug";
 import {
   SettingsIcon,
   type SettingsIconHandle,
@@ -52,7 +53,8 @@ type AnimatedIconKey =
   | "alerts"
   | "settings"
   | "terms"
-  | "members";
+  | "members"
+  | "plug";
 
 type NavItem =
   | {
@@ -104,8 +106,8 @@ const navSections: NavSection[] = [
       {
         href: "/integrations",
         label: "Integrações",
-        kind: "lucide",
-        Icon: PlugIcon,
+        kind: "animated",
+        iconKey: "plug",
       },
     ],
   },
@@ -206,6 +208,15 @@ function SidebarAnimatedIcon({
           size={16}
           isAnimateOnView={false}
           animateOnHover={false}
+          className={className}
+        />
+      );
+    case "plug":
+      return (
+        <PlugIcon
+          ref={iconRef as RefObject<PlugIconHandle | null>}
+          size={16}
+          isAnimateOnView={false}
           className={className}
         />
       );

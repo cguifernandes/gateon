@@ -100,7 +100,7 @@ export function DashboardGroupMemberActivityTable({
 
   return (
     <Card className="flex h-full min-h-0 flex-1 flex-col gap-0 overflow-hidden py-0">
-      <CardHeader className="flex shrink-0 flex-row items-start justify-between border-b border-border p-5">
+      <CardHeader className="flex shrink-0 flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
         <div className="flex flex-col gap-y-1">
           <CardTitle>Movimentação de membros</CardTitle>
           <CardDescription className="max-w-xl text-xs leading-relaxed">
@@ -110,7 +110,10 @@ export function DashboardGroupMemberActivityTable({
         </div>
         <Link
           href="/members"
-          className={cn(buttonVariants({ variant: "link" }), "p-0 h-fit")}
+          className={cn(
+            buttonVariants({ variant: "link" }),
+            "p-0 text-xs h-fit",
+          )}
         >
           Ver membros
         </Link>

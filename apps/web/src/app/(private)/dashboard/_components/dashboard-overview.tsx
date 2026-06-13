@@ -1,12 +1,13 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AlertSummaryDto } from "@/lib/zod/alert-schemas";
 import type { StripeBillingStatusDto } from "@/lib/zod/stripe-billing-schemas";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
 import { DashboardFiltersProvider } from "./dashboard-filters-context";
 import {
+  DashboardConnectedBotsCard,
   DashboardGroupInsights,
   DashboardGroupMemberActivityTable,
   DashboardRecentAlertsCard,
+  DashboardStripeBillingTable,
 } from "./dashboard-widgets";
 
 type AlertStats = {
@@ -35,7 +36,7 @@ export function DashboardOverview({
   const deliveryRateRounded = Math.round(alertStats.deliveryRate);
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="min-w-0 space-y-6 pb-8 sm:space-y-10 sm:pb-10">
       <DashboardFiltersProvider initialGroupId={groups[0]?.id ?? ""}>
         <DashboardGroupInsights
           groups={groups}
@@ -43,75 +44,20 @@ export function DashboardOverview({
           globalDeliveryRate={deliveryRateRounded}
         />
 
-        <StripeBillingDashboardCard stripeBilling={stripeBilling} />
+        <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start xl:grid-cols-[minmax(0,1fr)_22.5rem]">
+          <section className="flex min-w-0 flex-col space-y-4 sm:space-y-6">
+            <div className="flex min-h-[min(16rem,42vh)] flex-col sm:min-h-0 sm:max-h-[min(26rem,60vh)]">
+              <DashboardGroupMemberActivityTable groups={groups} />
+            </div>
+            <DashboardStripeBillingTable stripeBilling={stripeBilling} />
+          </section>
 
-        <section className="flex max-h-[min(26rem,60vh)] min-h-0 flex-col gap-8 xl:flex-row xl:items-stretch">
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <DashboardGroupMemberActivityTable groups={groups} />
-          </div>
-          <div className="flex min-h-0 w-full shrink-0 flex-col xl:w-[320px]">
+          <section className="flex min-w-0 flex-col space-y-4 sm:space-y-6">
             <DashboardRecentAlertsCard groups={groups} alerts={alerts} />
-          </div>
-        </section>
+            <DashboardConnectedBotsCard groups={groups} />
+          </section>
+        </div>
       </DashboardFiltersProvider>
-    </div>
-  );
-}
-
-function formatCurrency(cents: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(cents / 100);
-}
-
-function StripeBillingDashboardCard({
-  stripeBilling,
-}: {
-  stripeBilling: StripeBillingStatusDto;
-}) {
-  const totals = stripeBilling.totals;
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Stripe Billing</CardTitle>
-      </CardHeader>
-      <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-        <StripeMetric
-          label="Assinaturas ativas"
-          value={String(totals.activeSubscriptionCount)}
-        />
-        <StripeMetric
-          label="Próximas de vencer"
-          value={String(totals.expiringSubscriptionCount)}
-        />
-        <StripeMetric
-          label="Expiradas"
-          value={String(totals.expiredSubscriptionCount)}
-        />
-        <StripeMetric
-          label="Receita mensal"
-          value={formatCurrency(totals.monthlyRevenueCents)}
-        />
-        <StripeMetric
-          label="Pagamentos recebidos"
-          value={String(totals.receivedPaymentCount)}
-        />
-        <StripeMetric
-          label="Falhas de pagamento"
-          value={String(totals.failedPaymentCount)}
-        />
-      </CardContent>
-    </Card>
-  );
-}
-
-function StripeMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-border bg-background p-3">
-      <p className="text-muted-foreground text-xs">{label}</p>
-      <p className="mt-1 font-semibold text-base">{value}</p>
     </div>
   );
 }

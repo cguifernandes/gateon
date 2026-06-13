@@ -216,6 +216,9 @@ function InsightSparkline({
   );
 }
 
+const PLAN_CARD_SHELL_CLASS =
+  "relative flex h-fit w-full min-h-0 flex-col overflow-hidden rounded-xl p-5 max-lg:gap-6 lg:h-full lg:flex-1 lg:justify-between lg:gap-0";
+
 function PlanUpsellCard() {
   const { planId, planLabel, connectedCount, maxGroups, remaining, isAtLimit } =
     useGroupLimit();
@@ -231,7 +234,12 @@ function PlanUpsellCard() {
     const upgradePlanId = planId === "starter" ? ("pro" as const) : null;
 
     return (
-      <div className="relative flex w-full flex-col h-full justify-between gap-5 overflow-hidden rounded-xl border border-border bg-card p-5">
+      <div
+        className={cn(
+          PLAN_CARD_SHELL_CLASS,
+          "border border-border bg-card max-lg:gap-5",
+        )}
+      >
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
             <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
@@ -276,7 +284,7 @@ function PlanUpsellCard() {
 
         <Link
           href="/settings"
-          className={cn(buttonVariants({ variant: "outline" }), "mt-6 w-full")}
+          className={cn(buttonVariants({ variant: "outline" }), "w-full")}
         >
           Gerenciar assinatura
         </Link>
@@ -287,8 +295,8 @@ function PlanUpsellCard() {
   return (
     <div
       className={cn(
-        "relative flex w-full h-full flex-col justify-between overflow-hidden rounded-xl p-5 text-primary-foreground",
-        "bg-linear-to-br from-primary via-primary to-primary/50",
+        PLAN_CARD_SHELL_CLASS,
+        "text-primary-foreground bg-linear-to-br from-primary via-primary to-primary/50",
       )}
     >
       <div
@@ -321,7 +329,7 @@ function PlanUpsellCard() {
         href="/#pricing"
         className={cn(
           buttonVariants({ variant: "secondary" }),
-          "relative mt-6 w-full bg-white text-primary hover:bg-white/90",
+          "relative w-full bg-white text-primary hover:bg-white/90",
         )}
       >
         Assinar plano {upgradeLabel}
@@ -383,13 +391,13 @@ export function DashboardGroupInsights({
   if (!selectedGroup || !insights) {
     return (
       <section className="space-y-4">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-stretch xl:gap-8">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-6 xl:gap-8">
           <div className="flex min-w-0 flex-1 flex-col gap-4">
             <div className="min-w-0">
               <p className="text-muted-foreground text-sm">
                 Indicadores aparecem após conectar um grupo.
               </p>
-              <h2 className="mt-1 font-heading text-2xl font-bold tracking-tight text-foreground">
+              <h2 className="mt-1 font-heading text-xl font-bold tracking-tight text-foreground sm:text-2xl">
                 Visão do grupo
               </h2>
             </div>
@@ -418,7 +426,7 @@ export function DashboardGroupInsights({
             </Empty>
           </div>
 
-          <aside className="flex w-full flex-col gap-4 xl:w-[320px] xl:shrink-0">
+          <aside className="flex w-full flex-col max-lg:h-fit lg:min-h-0 lg:w-80 lg:shrink-0 xl:w-[360px]">
             <PlanUpsellCard />
           </aside>
         </div>
@@ -476,14 +484,14 @@ export function DashboardGroupInsights({
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-stretch xl:gap-8">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-6 xl:gap-8">
         <div className="flex min-w-0 flex-1 flex-col gap-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <p className="truncate text-muted-foreground text-sm">
                 Indicadores de {groupTitle} no período selecionado.
               </p>
-              <h2 className="mt-1 font-heading text-2xl font-bold tracking-tight text-foreground">
+              <h2 className="mt-1 font-heading text-xl font-bold tracking-tight text-foreground sm:text-2xl">
                 Visão do grupo
               </h2>
             </div>
@@ -522,7 +530,7 @@ export function DashboardGroupInsights({
             </div>
           </div>
 
-          <div className="grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
             {cards.map((card) => {
               const positive = card.trendInverted
                 ? card.trend <= 0
@@ -603,7 +611,7 @@ export function DashboardGroupInsights({
           </div>
         </div>
 
-        <aside className="flex w-full flex-col gap-4 xl:w-[320px] xl:shrink-0">
+        <aside className="flex w-full flex-col max-lg:h-fit lg:min-h-0 lg:w-80 lg:shrink-0 xl:w-[340px]">
           <PlanUpsellCard />
         </aside>
       </div>
