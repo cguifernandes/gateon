@@ -415,11 +415,13 @@ export class StripeBillingSyncService {
         });
         await this.triggerAutomation(
           userId,
+          connectionId,
           AlertTriggerType.STRIPE_PAYMENT_SUCCEEDED,
         );
       } else if (status === 'uncollectible' || status === 'void') {
         await this.triggerAutomation(
           userId,
+          connectionId,
           AlertTriggerType.STRIPE_PAYMENT_FAILED,
         );
       }
@@ -552,16 +554,18 @@ export class StripeBillingSyncService {
       await this.recordAudit(userId, connectionId, action, {
         stripeSubscriptionId,
       });
-    await this.triggerAutomation(userId, triggerType);
+    await this.triggerAutomation(userId, connectionId, triggerType);
   }
 
   private async triggerAutomation(
     userId: string,
+    connectionId: string,
     triggerType: AlertTriggerType,
   ) {
     const result = await this.alerts.triggerAutomationAlertsForUser(
       userId,
       triggerType,
+      connectionId,
     );
     if (result.triggeredCount === 0) return;
 

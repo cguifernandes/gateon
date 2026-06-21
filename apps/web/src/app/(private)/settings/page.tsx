@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EMAIL_SUPPORT } from "@/lib/utils";
+import { BotStartSettingsSection } from "./_components/bot-start-settings-section";
 
 export const metadata: Metadata = {
   title: "Configurações — Gateon",
@@ -17,14 +18,16 @@ export default function DashboardSettingsPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
+    <div className="space-y-6 pb-4">
+      <div className="space-y-1">
         <h1 className="font-semibold text-2xl tracking-tight">Configurações</h1>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-muted-foreground font-light text-sm">
           Gerencie preferências da conta, privacidade e solicitações
           relacionadas aos seus dados.
         </p>
       </div>
+
+      <BotStartSettingsSection />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

@@ -7,12 +7,14 @@ import { registerChatMigrateHandler } from "./handlers/chat-migrate.js";
 import { registerHelpCommand } from "./handlers/help.js";
 import { registerMyChatMemberHandler } from "./handlers/my-chat-member.js";
 import { registerStartCommand } from "./handlers/start.js";
+import { registerStartPaymentGroupHandler } from "./handlers/start-payment-group.js";
 
 async function bootstrap() {
   const config = loadConfig();
   const bot = new Bot(config.TELEGRAM_BOT_TOKEN);
 
   registerStartCommand(bot, config);
+  registerStartPaymentGroupHandler(bot, config);
   registerHelpCommand(bot);
   registerChatMemberHandler(bot, config);
   registerChatMigrateHandler(bot, config);

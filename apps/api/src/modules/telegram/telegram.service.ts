@@ -8,7 +8,11 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { TelegramConnectionStatus } from '@prisma/client';
+import {
+  TelegramConnectionStatus,
+  StripeBillingConnectionStatus,
+  StripeTelegramMemberLinkStatus,
+} from '@prisma/client';
 import { GroupLimitService } from '../../lib/group-limit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { hashSensitiveValue } from '../../utils/utils';
@@ -193,6 +197,69 @@ export class TelegramService {
       leftAt: member.leftAt?.toISOString() ?? null,
       status: member.leftAt ? ('left' as const) : ('active' as const),
       isOwner: member.isOwner,
+      linkedStripePlans: [] as { connectionId: string; label: string }[],
+    };
+  }
+
+  private async buildStripePayerPlansByMemberKey(
+    userId: string,
+    groupIds: string[],
+  ) {
+    if (groupIds.length === 0) {
+      return new Map<string, { connectionId: string; label: string }[]>();
+    }
+
+    const memberLinks = await this.prisma.stripeTelegramMemberLinks.findMany({
+      where: {
+        userId,
+        telegramGroupId: { in: groupIds },
+        status: StripeTelegramMemberLinkStatus.ACTIVE,
+      },
+      select: {
+        telegramGroupId: true,
+        telegramUserId: true,
+        connectionId: true,
+        connection: {
+          select: {
+            monitoredPlanLabel: true,
+            monitoredStripePriceId: true,
+          },
+        },
+      },
+    });
+
+    const plansByMemberKey = new Map<
+      string,
+      { connectionId: string; label: string }[]
+    >();
+
+    for (const link of memberLinks) {
+      const key = `${link.telegramGroupId}:${link.telegramUserId}`;
+      const label =
+        link.connection.monitoredPlanLabel?.trim() ||
+        link.connection.monitoredStripePriceId ||
+        'Plano Stripe';
+      const current = plansByMemberKey.get(key) ?? [];
+
+      if (!current.some((plan) => plan.connectionId === link.connectionId)) {
+        current.push({ connectionId: link.connectionId, label });
+      }
+
+      plansByMemberKey.set(key, current);
+    }
+
+    return plansByMemberKey;
+  }
+
+  private withMemberStripePayerPlans(
+    groupId: string,
+    member: ReturnType<TelegramService['mapTrackedMemberToDto']>,
+    plansByMemberKey: Map<string, { connectionId: string; label: string }[]>,
+  ) {
+    return {
+      ...member,
+      linkedStripePlans:
+        plansByMemberKey.get(`${groupId}:${member.telegramUserId}`) ?? [],
     };
   }
 
@@ -251,6 +318,37 @@ export class TelegramService {
     );
 
     const groupIds = groups.map((group) => group.id);
+    const stripeLinks =
+      groupIds.length > 0
+        ? await this.prisma.stripeBillingConnections.findMany({
+            where: {
+              userId,
+              status: StripeBillingConnectionStatus.CONNECTED,
+              telegramGroupId: { in: groupIds },
+            },
+            select: {
+              id: true,
+              telegramGroupId: true,
+              monitoredPlanLabel: true,
+              monitoredStripePriceId: true,
+            },
+          })
+        : [];
+    const stripePlansByGroupId = new Map<
+      string,
+      { connectionId: string; label: string }[]
+    >();
+    for (const link of stripeLinks) {
+      if (!link.telegramGroupId) continue;
+      const label =
+        link.monitoredPlanLabel?.trim() ||
+        link.monitoredStripePriceId ||
+        'Plano Stripe';
+      const current = stripePlansByGroupId.get(link.telegramGroupId) ?? [];
+      current.push({ connectionId: link.id, label });
+      stripePlansByGroupId.set(link.telegramGroupId, current);
+    }
+
     const leftMemberCounts =
       groupIds.length > 0
         ? await this.prisma.telegramGroupMembers.groupBy({
@@ -296,6 +394,7 @@ export class TelegramService {
           members: group.members.map((m) =>
             this.mapTrackedMemberToDto(group.id, m),
           ),
+          linkedStripePlans: stripePlansByGroupId.get(group.id) ?? [],
         };
       }),
     );
@@ -443,6 +542,8 @@ export class TelegramService {
     const leftMemberCountByGroupId = new Map(
       leftMemberCounts.map((row) => [row.telegramGroupId, row._count._all]),
     );
+    const stripePayerPlansByMemberKey =
+      await this.buildStripePayerPlansByMemberKey(userId, groupIds);
 
     return Promise.all(
       groups.map(async (group) => {
@@ -472,7 +573,11 @@ export class TelegramService {
             ? `/api/telegram/groups/${group.id}/connector-profile-photo`
             : null,
           members: group.members.map((m) =>
-            this.mapTrackedMemberToDto(group.id, m),
+            this.withMemberStripePayerPlans(
+              group.id,
+              this.mapTrackedMemberToDto(group.id, m),
+              stripePayerPlansByMemberKey,
+            ),
           ),
         };
       }),
@@ -518,6 +623,8 @@ export class TelegramService {
     const telegramChatId = group.telegramChatId.trim();
     const trackedMemberCount = members.filter((m) => m.leftAt === null).length;
     const leftMemberCount = members.length - trackedMemberCount;
+    const stripePayerPlansByMemberKey =
+      await this.buildStripePayerPlansByMemberKey(userId, [group.id]);
 
     return {
       id: group.id,
@@ -534,7 +641,11 @@ export class TelegramService {
       connectedAt: group.connectedAt.toISOString(),
       lastSyncedAt: group.updatedAt.toISOString(),
       members: members.map((m) => ({
-        ...this.mapTrackedMemberToDto(group.id, m),
+        ...this.withMemberStripePayerPlans(
+          group.id,
+          this.mapTrackedMemberToDto(group.id, m),
+          stripePayerPlansByMemberKey,
+        ),
         updatedAt: m.updatedAt.toISOString(),
       })),
     };
@@ -2065,37 +2176,106 @@ export class TelegramService {
     return this.downloadTelegramFileById(row.profilePhotoFileId);
   }
 
-  async sendAlertToChat(params: {
-    chatId: string;
+  private static readonly TELEGRAM_PHOTO_CAPTION_MAX_LENGTH = 1024;
+
+  private async sendAlertTelegramDelivery(params: {
+    chatId: string | number;
     text: string;
-    messageThreadId?: number | null;
+    photoUrl?: string | null;
     silent?: boolean;
-    pinMessage?: boolean;
+    messageThreadId?: number | null;
     replyMarkup?: Record<string, unknown>;
+    pinMessage?: boolean;
+    mapFailure: (reason: string) => string;
   }): Promise<{ ok: true } | { ok: false; reason: string }> {
-    const payload: Record<string, unknown> = {
+    const photoUrl = params.photoUrl?.trim();
+    const text = params.text;
+    const textFitsCaption =
+      text.length <= TelegramService.TELEGRAM_PHOTO_CAPTION_MAX_LENGTH;
+
+    const basePayload: Record<string, unknown> = {
       chat_id: params.chatId,
-      text: params.text,
       disable_notification: params.silent === true,
     };
 
     if (params.messageThreadId) {
-      payload.message_thread_id = params.messageThreadId;
+      basePayload.message_thread_id = params.messageThreadId;
     }
 
+    if (photoUrl) {
+      const photoPayload: Record<string, unknown> = {
+        ...basePayload,
+        photo: photoUrl,
+      };
+
+      if (text.trim() && textFitsCaption) {
+        photoPayload.caption = text;
+      }
+
+      if (params.replyMarkup && textFitsCaption) {
+        photoPayload.reply_markup = params.replyMarkup;
+      }
+
+      const sendResult = await this.callTelegramBotMethodDetailed<{
+        message_id?: number;
+      }>('sendPhoto', photoPayload);
+
+      if (!sendResult.ok) {
+        return { ok: false, reason: params.mapFailure(sendResult.reason) };
+      }
+
+      let pinnedMessageId = sendResult.result.message_id;
+
+      if (!textFitsCaption && text.trim()) {
+        const followUpPayload: Record<string, unknown> = {
+          ...basePayload,
+          text,
+        };
+
+        if (params.replyMarkup) {
+          followUpPayload.reply_markup = params.replyMarkup;
+        }
+
+        const followUpResult = await this.callTelegramBotMethodDetailed<{
+          message_id?: number;
+        }>('sendMessage', followUpPayload);
+
+        if (!followUpResult.ok) {
+          return {
+            ok: false,
+            reason: params.mapFailure(followUpResult.reason),
+          };
+        }
+
+        pinnedMessageId = followUpResult.result.message_id ?? pinnedMessageId;
+      }
+
+      if (params.pinMessage && pinnedMessageId) {
+        await this.callTelegramBotMethodDetailed('pinChatMessage', {
+          chat_id: params.chatId,
+          message_id: pinnedMessageId,
+          disable_notification: params.silent === true,
+        });
+      }
+
+      return { ok: true };
+    }
+
+    const messagePayload: Record<string, unknown> = {
+      ...basePayload,
+      text,
+    };
+
     if (params.replyMarkup) {
-      payload.reply_markup = params.replyMarkup;
+      messagePayload.reply_markup = params.replyMarkup;
     }
 
     const sendResult = await this.callTelegramBotMethodDetailed<{
       message_id?: number;
-    }>('sendMessage', payload);
+    }>('sendMessage', messagePayload);
 
     if (!sendResult.ok) {
-      return {
-        ok: false,
-        reason: this.mapTelegramGroupMessageFailureReason(sendResult.reason),
-      };
+      return { ok: false, reason: params.mapFailure(sendResult.reason) };
     }
 
     if (params.pinMessage && sendResult.result.message_id) {
@@ -2109,9 +2289,31 @@ export class TelegramService {
     return { ok: true };
   }
 
+  async sendAlertToChat(params: {
+    chatId: string;
+    text: string;
+    photoUrl?: string | null;
+    messageThreadId?: number | null;
+    silent?: boolean;
+    pinMessage?: boolean;
+    replyMarkup?: Record<string, unknown>;
+  }): Promise<{ ok: true } | { ok: false; reason: string }> {
+    return this.sendAlertTelegramDelivery({
+      chatId: params.chatId,
+      text: params.text,
+      photoUrl: params.photoUrl,
+      messageThreadId: params.messageThreadId,
+      silent: params.silent,
+      pinMessage: params.pinMessage,
+      replyMarkup: params.replyMarkup,
+      mapFailure: (reason) => this.mapTelegramGroupMessageFailureReason(reason),
+    });
+  }
+
   async sendAlertDm(params: {
     telegramUserId: string;
     text: string;
+    photoUrl?: string | null;
     silent?: boolean;
     replyMarkup?: Record<string, unknown>;
   }): Promise<{ ok: true } | { ok: false; reason: string }> {
@@ -2120,29 +2322,44 @@ export class TelegramService {
       return { ok: false, reason: 'ID do Telegram inválido.' };
     }
 
-    const payload: Record<string, unknown> = {
-      chat_id: userId,
+    return this.sendAlertTelegramDelivery({
+      chatId: userId,
       text: params.text,
-      disable_notification: params.silent === true,
-    };
+      photoUrl: params.photoUrl,
+      silent: params.silent,
+      replyMarkup: params.replyMarkup,
+      mapFailure: (reason) => this.mapTelegramDmFailureReason(reason),
+    });
+  }
 
-    if (params.replyMarkup) {
-      payload.reply_markup = params.replyMarkup;
+  async createChatInviteLink(input: {
+    chatId: string;
+    name?: string;
+    memberLimit?: number;
+  }): Promise<
+    { ok: true; inviteLink: string } | { ok: false; reason: string }
+  > {
+    const chatId = Number(input.chatId);
+    if (!Number.isFinite(chatId)) {
+      return { ok: false, reason: 'ID do grupo inválido.' };
     }
 
-    const sendResult = await this.callTelegramBotMethodDetailed<unknown>(
-      'sendMessage',
-      payload,
-    );
+    const result = await this.callTelegramBotMethodDetailed<{
+      invite_link?: string;
+    }>('createChatInviteLink', {
+      chat_id: chatId,
+      ...(input.name ? { name: input.name } : {}),
+      ...(input.memberLimit ? { member_limit: input.memberLimit } : {}),
+    });
 
-    if (!sendResult.ok) {
+    if (!result.ok || !result.result.invite_link) {
       return {
         ok: false,
-        reason: this.mapTelegramDmFailureReason(sendResult.reason),
+        reason: result.ok ? 'Link de convite indisponível.' : result.reason,
       };
     }
 
-    return { ok: true };
+    return { ok: true, inviteLink: result.result.invite_link };
   }
 
   async listForumTopics(
@@ -2241,6 +2458,12 @@ export class TelegramService {
     ) {
       return 'Não foi possível enviar no particular. O membro precisa ter enviado mensagem para o bot antes.';
     }
+    if (
+      normalized.includes('failed to get http url content') ||
+      normalized.includes('wrong type of the web page')
+    ) {
+      return 'Não foi possível carregar a imagem pela URL informada. Use um link direto para o arquivo de imagem (jpg, png ou webp).';
+    }
     return description;
   }
 
@@ -2258,6 +2481,12 @@ export class TelegramService {
     }
     if (normalized.includes('chat not found')) {
       return 'Grupo não encontrado no Telegram. Sincronize os dados do grupo.';
+    }
+    if (
+      normalized.includes('failed to get http url content') ||
+      normalized.includes('wrong type of the web page')
+    ) {
+      return 'Não foi possível carregar a imagem pela URL informada. Use um link direto para o arquivo de imagem (jpg, png ou webp).';
     }
     return description;
   }

@@ -9,6 +9,7 @@ import {
   AlertRunStatus,
   AlertStatus,
   Prisma,
+  StripeBillingConnectionStatus,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
@@ -22,8 +23,10 @@ import {
   type AlertInternalTriggerInput,
   type AlertListQueryInput,
   type AlertOptionsInput,
+  type AlertQuickDispatchInput,
   type AlertTemplateCreateInput,
   type AlertUpsertInput,
+  isStripeAutomationTriggerType,
   toAlertTriggerTypeInput,
 } from './schemas/alert-schemas';
 
@@ -31,7 +34,7 @@ const DEFAULT_RATE_LIMIT_PER_MINUTE = 20;
 
 type DeliveryTarget =
   | { kind: 'chat'; chatId: string; threadId?: number | null }
-  | { kind: 'member'; telegramUserId: string };
+  | { kind: 'member'; telegramUserId: string; displayName?: string };
 
 type RunAlertOptions = {
   /** When set (event-triggered automation), deliver only to this Telegram chat. */
@@ -39,6 +42,7 @@ type RunAlertOptions = {
   scopeToMessageThreadId?: number;
   scopeToTelegramUserId?: string;
   scopeToMemberDisplayName?: string;
+  quickDispatchMembers?: { telegramUserId: string; displayName?: string }[];
   /** When true (default), user-initiated runs throw if nothing was delivered. */
   throwOnTotalFailure?: boolean;
 };
@@ -161,12 +165,17 @@ export class AlertsService {
   }
 
   async createAlert(userId: string, input: AlertUpsertInput) {
-    const normalizedInput = this.normalizeQuickAlertInput(
-      this.normalizeTopicSelection(input),
+    const normalizedInput = this.normalizeStripeAutomationInput(
+      this.normalizeQuickAlertInput(this.normalizeTopicSelection(input)),
     );
     await this.assertGroupsAccess(
       userId,
       this.getAlertGroupIds(normalizedInput),
+    );
+    await this.assertStripeConnectionForTrigger(
+      userId,
+      normalizedInput.triggerType,
+      normalizedInput.triggerConfig,
     );
 
     const status = this.resolveInitialStatus(input);
@@ -217,12 +226,17 @@ export class AlertsService {
 
   async updateAlert(userId: string, alertId: string, input: AlertUpsertInput) {
     await this.assertAlertAccess(userId, alertId);
-    const normalizedInput = this.normalizeQuickAlertInput(
-      this.normalizeTopicSelection(input),
+    const normalizedInput = this.normalizeStripeAutomationInput(
+      this.normalizeQuickAlertInput(this.normalizeTopicSelection(input)),
     );
     await this.assertGroupsAccess(
       userId,
       this.getAlertGroupIds(normalizedInput),
+    );
+    await this.assertStripeConnectionForTrigger(
+      userId,
+      normalizedInput.triggerType,
+      normalizedInput.triggerConfig,
     );
 
     const options = this.normalizeOptions(input.options);
@@ -362,6 +376,7 @@ export class AlertsService {
   async triggerAutomationAlertsForUser(
     userId: string,
     triggerType: AlertInternalTriggerInput['triggerType'],
+    stripeConnectionId: string,
   ) {
     const automationAlerts = await this.prisma.telegramAlerts.findMany({
       where: {
@@ -370,15 +385,23 @@ export class AlertsService {
         destinationType: AlertDestinationType.AUTOMATION,
         triggerType,
       },
-      select: { id: true },
+      select: { id: true, triggerConfig: true },
       take: 100,
     });
 
-    for (const alert of automationAlerts) {
+    const matchingAlerts = automationAlerts.filter((alert) => {
+      const config = (alert.triggerConfig ?? {}) as {
+        stripeConnectionId?: string;
+      };
+      if (!config.stripeConnectionId) return true;
+      return config.stripeConnectionId === stripeConnectionId;
+    });
+
+    for (const alert of matchingAlerts) {
       await this.runAlert(alert.id, { throwOnTotalFailure: false });
     }
 
-    return { triggeredCount: automationAlerts.length };
+    return { triggeredCount: matchingAlerts.length };
   }
 
   async runAlert(alertId: string, runOptions?: RunAlertOptions) {
@@ -410,8 +433,10 @@ export class AlertsService {
     const options = alert.options as AlertOptionsInput;
     const content = alert.content as AlertContentInput;
     const replyMarkup = this.buildReplyMarkup(content.inlineButtons);
-    const text = this.renderAutomationMessageText(
-      this.buildMessageText(content),
+    const baseMessageText = this.buildMessageText(content);
+    const photoUrl = content.imageUrl?.trim() || undefined;
+    const defaultText = this.renderAutomationMessageText(
+      baseMessageText,
       runOptions,
     );
     const waitMs = this.resolveWaitMs(options.rateLimitPerMinute);
@@ -447,7 +472,8 @@ export class AlertsService {
           const result = await this.telegram.sendAlertToChat({
             chatId: target.chatId,
             messageThreadId: target.threadId,
-            text,
+            text: defaultText,
+            photoUrl,
             silent: options.silent,
             pinMessage: options.pinMessage,
             replyMarkup,
@@ -458,9 +484,16 @@ export class AlertsService {
           }
         }
       } else {
+        const messageText =
+          target.displayName !== undefined
+            ? this.renderAutomationMessageText(baseMessageText, {
+                scopeToMemberDisplayName: target.displayName,
+              })
+            : defaultText;
         const result = await this.telegram.sendAlertDm({
           telegramUserId: target.telegramUserId,
-          text,
+          text: messageText,
+          photoUrl,
           silent: options.silent,
           replyMarkup,
         });
@@ -543,6 +576,51 @@ export class AlertsService {
       successCount,
       failCount,
     };
+  }
+
+  async dispatchQuickAlert(
+    userId: string,
+    alertId: string,
+    input: AlertQuickDispatchInput,
+  ) {
+    const alert = await this.prisma.telegramAlerts.findFirst({
+      where: {
+        id: alertId,
+        userId,
+        destinationType: AlertDestinationType.QUICK_ALERT,
+      },
+      select: { id: true, status: true },
+    });
+
+    if (!alert) {
+      throw new NotFoundException('Alert not found.');
+    }
+
+    if (alert.status === AlertStatus.DRAFT) {
+      throw new BadRequestException(
+        'Ative o aviso rápido antes de enviá-lo nas tabelas.',
+      );
+    }
+
+    if (input.targetType === 'group') {
+      const group = await this.prisma.telegramGroups.findFirst({
+        where: { id: input.telegramGroupId, userId },
+        select: { telegramChatId: true },
+      });
+
+      if (!group) {
+        throw new BadRequestException('Telegram group not found.');
+      }
+
+      return this.runAlert(alertId, {
+        scopeToTelegramChatId: group.telegramChatId,
+        scopeToMessageThreadId: input.messageThreadId,
+      });
+    }
+
+    return this.runAlert(alertId, {
+      quickDispatchMembers: input.targets,
+    });
   }
 
   private async triggerAlertsForEvent(input: AlertInternalTriggerInput) {
@@ -674,6 +752,24 @@ export class AlertsService {
     }
 
     if (alert.destinationType === AlertDestinationType.QUICK_ALERT) {
+      if (options?.quickDispatchMembers?.length) {
+        return options.quickDispatchMembers.map((member) => ({
+          kind: 'member' as const,
+          telegramUserId: member.telegramUserId,
+          displayName: member.displayName,
+        }));
+      }
+
+      if (options?.scopeToTelegramChatId) {
+        return [
+          {
+            kind: 'chat' as const,
+            chatId: options.scopeToTelegramChatId,
+            threadId: options.scopeToMessageThreadId,
+          },
+        ];
+      }
+
       return [];
     }
 
@@ -825,6 +921,59 @@ export class AlertsService {
       rateLimitPerMinute:
         options.rateLimitPerMinute ?? DEFAULT_RATE_LIMIT_PER_MINUTE,
     };
+  }
+
+  private normalizeStripeAutomationInput(
+    input: AlertUpsertInput,
+  ): AlertUpsertInput {
+    const keepStripeConnection =
+      input.destinationType === AlertDestinationType.AUTOMATION &&
+      isStripeAutomationTriggerType(input.triggerType);
+
+    if (keepStripeConnection) return input;
+
+    const config = (input.triggerConfig ?? {}) as {
+      stripeConnectionId?: string;
+    };
+    if (!config.stripeConnectionId) return input;
+
+    return {
+      ...input,
+      triggerConfig: {
+        ...config,
+        stripeConnectionId: undefined,
+      },
+    };
+  }
+
+  private async assertStripeConnectionForTrigger(
+    userId: string,
+    triggerType: AlertUpsertInput['triggerType'],
+    triggerConfig: AlertUpsertInput['triggerConfig'],
+  ) {
+    if (!isStripeAutomationTriggerType(triggerType)) return;
+
+    const connectionId = triggerConfig?.stripeConnectionId;
+    if (!connectionId) {
+      throw new BadRequestException(
+        'Selecione o plano Stripe monitorado para este alerta.',
+      );
+    }
+
+    const connection = await this.prisma.stripeBillingConnections.findFirst({
+      where: {
+        id: connectionId,
+        userId,
+        status: StripeBillingConnectionStatus.CONNECTED,
+      },
+      select: { id: true },
+    });
+
+    if (!connection) {
+      throw new BadRequestException(
+        'O plano Stripe selecionado é inválido ou está desconectado.',
+      );
+    }
   }
 
   private normalizeQuickAlertInput(input: AlertUpsertInput): AlertUpsertInput {

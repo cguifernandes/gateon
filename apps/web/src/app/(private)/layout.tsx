@@ -14,6 +14,7 @@ export default async function DashboardLayout({
   children,
 }: DashboardLayoutProps) {
   const user = await getSessionUser();
+
   if (!user) {
     redirect("/login");
   }

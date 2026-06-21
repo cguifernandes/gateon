@@ -72,6 +72,16 @@ export type StripeInvoiceRecord = {
   created?: number;
 };
 
+export type StripeCheckoutSessionRecord = {
+  id: string;
+  url?: string | null;
+  status?: string;
+  payment_status?: string;
+  customer?: string | StripeCustomerRecord | null;
+  subscription?: string | { id?: string } | null;
+  metadata?: Record<string, string>;
+};
+
 export class StripeBillingStripeClient {
   private readonly baseUrl = 'https://api.stripe.com/v1';
 
@@ -121,6 +131,43 @@ export class StripeBillingStripeClient {
       limit: '100',
       'expand[]': ['data.customer', 'data.payment_intent'],
     });
+  }
+
+  async createCheckoutSession(input: {
+    priceId: string;
+    successUrl: string;
+    cancelUrl: string;
+    metadata: Record<string, string>;
+    clientReferenceId?: string;
+  }): Promise<StripeCheckoutSessionRecord> {
+    const body = new URLSearchParams();
+    body.set('mode', 'subscription');
+    body.set('success_url', input.successUrl);
+    body.set('cancel_url', input.cancelUrl);
+    body.set('line_items[0][price]', input.priceId);
+    body.set('line_items[0][quantity]', '1');
+    if (input.clientReferenceId) {
+      body.set('client_reference_id', input.clientReferenceId);
+    }
+    for (const [key, value] of Object.entries(input.metadata)) {
+      body.set(`metadata[${key}]`, value);
+    }
+
+    return this.postRequest<StripeCheckoutSessionRecord>(
+      '/checkout/sessions',
+      body,
+    );
+  }
+
+  async retrieveCheckoutSession(
+    sessionId: string,
+  ): Promise<StripeCheckoutSessionRecord> {
+    return this.request<StripeCheckoutSessionRecord>(
+      `/checkout/sessions/${encodeURIComponent(sessionId)}`,
+      {
+        'expand[]': ['customer', 'subscription'],
+      },
+    );
   }
 
   mapCatalogPrice(price: StripePriceRecord) {
@@ -205,6 +252,39 @@ export class StripeBillingStripeClient {
     return body as T;
   }
 
+  private async postRequest<T>(
+    path: string,
+    body: URLSearchParams,
+  ): Promise<T> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body.toString(),
+      signal: AbortSignal.timeout(20_000),
+    });
+
+    const parsed = (await response.json().catch(() => null)) as
+      | { error?: { message?: string } }
+      | T
+      | null;
+
+    if (!response.ok) {
+      const message =
+        parsed &&
+        typeof parsed === 'object' &&
+        'error' in parsed &&
+        typeof parsed.error?.message === 'string'
+          ? parsed.error.message
+          : 'Não foi possível comunicar com a Stripe.';
+      throw new BadRequestException(message);
+    }
+
+    return parsed as T;
+  }
+
   private appendSearchParams(url: URL, params?: StripeRequestParams) {
     for (const [key, value] of Object.entries(params ?? {})) {
       if (Array.isArray(value)) {
@@ -242,6 +322,15 @@ export function getStripeCustomerSnapshot(
 ): StripeCustomerRecord | null {
   if (!customer || typeof customer === 'string') return null;
   return customer;
+}
+
+export function getStripeSubscriptionId(
+  subscription: string | { id?: string } | null | undefined,
+): string | null {
+  if (!subscription) return null;
+  return typeof subscription === 'string'
+    ? subscription
+    : (subscription.id ?? null);
 }
 
 export function getStripePaymentIntentId(

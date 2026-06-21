@@ -22,6 +22,7 @@ type MemberActionsToolbarProps = {
   variant?: "overlay" | "inline";
   className?: string;
   onActionSuccess?: () => void;
+  onSendNotice?: () => void;
 };
 
 async function copyTelegramUserId(telegramUserId: string) {
@@ -42,6 +43,7 @@ export function MemberActionsToolbar({
   variant = "inline",
   className,
   onActionSuccess,
+  onSendNotice,
 }: MemberActionsToolbarProps) {
   const { runAction, pendingAction } = useMemberActionHandler({
     onActionSuccess,
@@ -84,7 +86,7 @@ export function MemberActionsToolbar({
       aria-label={`Ações para ${displayName}`}
       className={cn(
         variant === "overlay"
-          ? "pointer-events-none absolute inset-0 flex items-center justify-end gap-0.5 rounded-lg px-2 transition-[background-color,backdrop-filter] group-hover:pointer-events-auto group-hover:bg-background/40 group-hover:backdrop-blur-[2px] [&_button]:pointer-events-auto"
+          ? "pointer-events-none absolute inset-0 flex items-center justify-end gap-0.5 rounded-lg px-2 opacity-0 transition-[opacity,background-color,backdrop-filter] group-hover:pointer-events-auto group-hover:opacity-100 group-hover:bg-background/40 group-hover:backdrop-blur-[2px] focus-within:pointer-events-auto focus-within:opacity-100 focus-within:bg-background/40 focus-within:backdrop-blur-[2px]"
           : "flex items-center justify-end gap-0.5",
         className,
       )}
@@ -123,7 +125,13 @@ export function MemberActionsToolbar({
         size="icon-xs"
         loading={pendingAction === "notice"}
         disabled={isBusy}
-        onClick={() => handleMemberAction("notice")}
+        onClick={() => {
+          if (onSendNotice) {
+            onSendNotice();
+            return;
+          }
+          handleMemberAction("notice");
+        }}
         onMouseEnter={() => bellIconRef.current?.startAnimation()}
         onMouseLeave={() => bellIconRef.current?.stopAnimation()}
       >

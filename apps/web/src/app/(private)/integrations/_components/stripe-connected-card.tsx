@@ -23,10 +23,12 @@ import {
   type StripeBillingStatusDto,
   stripeBillingStatusSchema,
 } from "@/lib/zod/stripe-billing-schemas";
+import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
 
 type StripeConnectedCardProps = {
   connections: StripeBillingConnectionDto[];
   onStatusChange: (status: StripeBillingStatusDto) => void;
+  groups: TelegramGroupSummaryDto[];
 };
 
 function formatDate(value: string | Date | null | undefined) {
@@ -146,17 +148,30 @@ function getErrorMessage(body: unknown, fallback: string) {
   return fallback;
 }
 
-function buildPlanReviewFields(connection: StripeBillingConnectionDto) {
+function buildPlanReviewFields(
+  connection: StripeBillingConnectionDto,
+  linkedGroup: TelegramGroupSummaryDto | null,
+) {
   return [
+    {
+      label: "Grupo vinculado",
+      value: formatReviewValue(linkedGroup?.title?.trim() || "Sem título"),
+      lineClamp: 2 as const,
+    },
+    {
+      label: "ID do grupo",
+      value: formatReviewValue(linkedGroup?.telegramChatId),
+      valueClassName: "font-mono",
+    },
     {
       label: "Chave ativa",
       value: `••••${connection.apiKeyLast4}`,
-      valueClassName: "font-mono text-xs",
+      valueClassName: "font-mono",
     },
     {
       label: "Conta Stripe",
       value: formatReviewValue(connection.stripeAccountId),
-      valueClassName: "font-mono text-xs",
+      valueClassName: "font-mono",
     },
     {
       label: "Assinaturas ativas",
@@ -201,6 +216,7 @@ type StripePlanConnectionSectionProps = {
   onSync: () => void;
   onDisconnect: () => void;
   planCount: number;
+  groups: TelegramGroupSummaryDto[];
 };
 
 function StripePlanConnectionSection({
@@ -211,11 +227,16 @@ function StripePlanConnectionSection({
   onSync,
   onDisconnect,
   planCount,
+  groups,
 }: StripePlanConnectionSectionProps) {
   const planTitle =
     formatReviewValue(connection.monitoredPlanLabel) === "—"
       ? "Plano sem nome"
       : connection.monitoredPlanLabel;
+
+  const linkedGroup = connection.telegramGroupId
+    ? (groups.find((group) => group.id === connection.telegramGroupId) ?? null)
+    : null;
 
   return (
     <section
@@ -225,7 +246,9 @@ function StripePlanConnectionSection({
         {planTitle}
       </h3>
 
-      <ReviewSummaryGrid fields={buildPlanReviewFields(connection)} />
+      <ReviewSummaryGrid
+        fields={buildPlanReviewFields(connection, linkedGroup)}
+      />
 
       <div className="flex flex-wrap justify-end gap-2">
         <Button
@@ -254,6 +277,7 @@ function StripePlanConnectionSection({
 export function StripeConnectedCard({
   connections,
   onStatusChange,
+  groups,
 }: StripeConnectedCardProps) {
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
@@ -391,6 +415,7 @@ export function StripeConnectedCard({
               isDisconnecting={disconnectingId === connection.id}
               onSync={() => syncConnection(connection.id)}
               onDisconnect={() => disconnectConnection(connection.id)}
+              groups={groups}
             />
           </div>
         ))}

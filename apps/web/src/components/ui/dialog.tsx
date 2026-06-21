@@ -39,7 +39,7 @@ function DialogCloseButton({ className }: { className?: string }) {
           variant="outline"
           size="icon"
           className={cn(
-            "absolute inset-e-4 top-4 z-10 shrink-0",
+            "absolute inset-e-6 top-4 z-10 shrink-0",
             className,
             closeProps.className,
           )}
@@ -71,14 +71,14 @@ function DialogContent({
     <DialogPortal>
       <DialogPrimitive.Backdrop
         className={cn(
-          "fixed inset-0 z-60 bg-black/40 data-ending-style:animate-out data-ending-style:fade-out-0",
+          "pointer-events-auto fixed inset-0 z-[100] bg-black/40 data-ending-style:animate-out data-ending-style:fade-out-0",
           "data-starting-style:animate-in data-starting-style:fade-in-0",
         )}
       />
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-61 flex max-h-[min(90vh,32rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-y-auto rounded-xl border border-border bg-background shadow-lg outline-none select-none",
+          "pointer-events-auto fixed top-1/2 left-1/2 z-[101] flex max-h-[min(90vh,32rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-y-auto rounded-xl border border-border bg-background shadow-lg outline-none select-none",
           "data-open:animate-in data-starting-style:fade-in-0 data-starting-style:zoom-in-95",
           "data-closed:animate-out data-ending-style:fade-out-0 data-ending-style:zoom-out-95",
           className,

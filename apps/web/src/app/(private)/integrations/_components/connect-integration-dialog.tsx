@@ -52,8 +52,11 @@ import {
   stripeBillingConnectSchema,
   stripeBillingStatusSchema,
 } from "@/lib/zod/stripe-billing-schemas";
+import type { StripePaymentGroupLimit } from "@/lib/zod/stripe-payment-group-schemas";
+import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
 import { StripeApiKeyStep } from "./stripe-api-key-step";
 import { StripeConsentStep } from "./stripe-consent-step";
+import { StripeGroupSelectStep } from "./stripe-group-select-step";
 import { StripePriceSelectStep } from "./stripe-price-select-step";
 
 type ConnectIntegrationDialogProps = {
@@ -61,6 +64,11 @@ type ConnectIntegrationDialogProps = {
   onOpenChange: (open: boolean) => void;
   connectedPriceIds?: string[];
   onStripeConnected: (status: StripeBillingStatusDto) => void;
+  stripePaymentGroupLimit: StripePaymentGroupLimit;
+  existingConnections: Array<{
+    id: string;
+    telegramGroupId: string | null;
+  }>;
 };
 
 type WizardStep = {
@@ -77,6 +85,7 @@ const dialogProgressSteps = [
   { id: "gateway", label: "Gateway" },
   { id: "api-key", label: "Chave API" },
   { id: "plan", label: "Plano" },
+  { id: "group", label: "Grupo" },
   { id: "confirm", label: "Confirmar" },
 ] as const;
 
@@ -278,6 +287,8 @@ export function ConnectIntegrationDialog({
   onOpenChange,
   connectedPriceIds = [],
   onStripeConnected,
+  stripePaymentGroupLimit,
+  existingConnections,
 }: ConnectIntegrationDialogProps) {
   const [wizardKey, setWizardKey] = useState(0);
   const [selectedGatewayId, setSelectedGatewayId] = useState<GatewayId | null>(
@@ -288,6 +299,8 @@ export function ConnectIntegrationDialog({
   );
   const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
   const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [selectedGroup, setSelectedGroup] =
+    useState<TelegramGroupSummaryDto | null>(null);
   const formId = useId();
   const apiKeyInputId = useId();
   const consentCheckboxId = useId();
@@ -300,11 +313,13 @@ export function ConnectIntegrationDialog({
     defaultValues: {
       apiKey: "",
       stripePriceId: "",
+      telegramGroupId: "",
       consentAccepted: false as unknown as true,
     },
   });
   const { reset: resetForm } = form;
   const selectedPriceId = form.watch("stripePriceId");
+  const selectedGroupId = form.watch("telegramGroupId");
   const selectedPrice = catalogPrices.find(
     (price) => price.id === selectedPriceId,
   );
@@ -317,15 +332,18 @@ export function ConnectIntegrationDialog({
   const canProceedFromPlanStep = Boolean(
     selectedPriceId && !connectedPriceIds.includes(selectedPriceId),
   );
+  const canProceedFromGroupStep = Boolean(selectedGroupId);
 
   const resetWizard = useCallback(() => {
     setSelectedGatewayId(null);
     setCatalogPrices([]);
     setCatalogError(null);
     setIsLoadingCatalog(false);
+    setSelectedGroup(null);
     resetForm({
       apiKey: "",
       stripePriceId: "",
+      telegramGroupId: "",
       consentAccepted: false as unknown as true,
     });
   }, [resetForm]);
@@ -452,15 +470,43 @@ export function ConnectIntegrationDialog({
       ),
     },
     {
+      title: "Vincular grupo",
+      description:
+        "Defina para qual grupo do Telegram os assinantes deste plano serão enviados após o pagamento.",
+      content: (
+        <StripeGroupSelectStep
+          selectedGroupId={selectedGroupId || null}
+          onSelectGroup={(group) => {
+            form.setValue("telegramGroupId", group.id, {
+              shouldDirty: true,
+              shouldValidate: true,
+            });
+            setSelectedGroup(group);
+          }}
+          stripePaymentGroupLimit={stripePaymentGroupLimit}
+          existingConnections={existingConnections}
+        />
+      ),
+      showPreviousButton: true,
+      nextButton: (
+        <PlanNextButton
+          disabled={!canProceedFromGroupStep}
+          arrowRightIconRefs={arrowRightIconRefs}
+          iconIndex={3}
+        />
+      ),
+    },
+    {
       title: "Confirmar integração",
       description:
-        "Confira o plano monitorado, aceite o consentimento de uso dos dados e conclua a conexão.",
+        "Confira o plano monitorado, o grupo vinculado, aceite o consentimento de uso dos dados e conclua a conexão.",
       content: (
         <form id={formId} onSubmit={form.handleSubmit(onSubmit)}>
           <StripeConsentStep
             form={form}
             consentCheckboxId={consentCheckboxId}
             selectedPrice={selectedPrice ?? null}
+            selectedGroup={selectedGroup}
             gatewayName={selectedProvider?.name}
           />
         </form>
@@ -476,13 +522,13 @@ export function ConnectIntegrationDialog({
               variant="outline"
               disabled={form.formState.isSubmitting}
               onMouseEnter={() =>
-                arrowLeftIconRefs.current[3]?.startAnimation()
+                arrowLeftIconRefs.current[4]?.startAnimation()
               }
-              onMouseLeave={() => arrowLeftIconRefs.current[3]?.stopAnimation()}
+              onMouseLeave={() => arrowLeftIconRefs.current[4]?.stopAnimation()}
             >
               <ArrowLeftIcon
                 ref={(element) => {
-                  arrowLeftIconRefs.current[3] = element;
+                  arrowLeftIconRefs.current[4] = element;
                 }}
                 isAnimateOnView={false}
                 size={16}

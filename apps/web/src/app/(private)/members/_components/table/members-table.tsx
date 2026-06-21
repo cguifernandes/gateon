@@ -1,10 +1,13 @@
 "use client";
 
 import { Fragment, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { SearchIcon, type SearchIconHandle } from "@/components/icons/search";
 import { ImageComponent } from "@/components/image-component";
 import { MemberActionsToolbar } from "@/components/member-actions-toolbar";
 import { MemberOwnerBadge } from "@/components/member-owner-badge";
+import { MemberStripePayerBadge } from "@/components/member-stripe-payer-badge";
+import { QuickNoticeDialog } from "@/components/quick-notice-dialog";
 import { RefreshGroupButton } from "@/components/refresh-group-button";
 import { TruncatedTextTooltip } from "@/components/truncated-text-tooltip";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +55,7 @@ type MembersTableProps = {
 };
 
 export function MembersTable({ groups }: MembersTableProps) {
+  const router = useRouter();
   const { search, setSearch, clearSearch, urlFilters, filtersPopover } =
     useMembersFiltersUrl();
   const searchIconRef = useRef<SearchIconHandle>(null);
@@ -61,6 +65,14 @@ export function MembersTable({ groups }: MembersTableProps) {
   const [selectedMemberKeys, setSelectedMemberKeys] = useState<Set<string>>(
     () => new Set(),
   );
+  const [quickNoticePayload, setQuickNoticePayload] = useState<
+    | {
+        type: "members";
+        title: string;
+        targets: { telegramUserId: string; displayName?: string }[];
+      }
+    | null
+  >(null);
   const query = search.trim().toLowerCase();
   const hasPopoverFilters = countActiveMembersUrlFilters(urlFilters) > 0;
 
@@ -285,11 +297,11 @@ export function MembersTable({ groups }: MembersTableProps) {
               <MembersFiltersPopover groups={groups} control={filtersPopover} />
             </div>
           </div>
-          <div className="overflow-hidden rounded-md border border-border bg-background shadow-xs">
-            <Table className="table-fixed">
+          <div className="overflow-x-auto rounded-md border border-border bg-background shadow-xs">
+            <Table className="w-full min-w-4xl table-fixed">
               <TableHeader>
                 <TableRow className="bg-muted hover:bg-muted!">
-                  <TableHead className="w-8 px-3 text-center">
+                  <TableHead className="w-8 min-w-8 px-3 text-center">
                     <MemberSelectionCheckbox
                       checked={allVisibleSelected}
                       indeterminate={
@@ -299,17 +311,19 @@ export function MembersTable({ groups }: MembersTableProps) {
                       onCheckedChange={toggleAllVisible}
                     />
                   </TableHead>
-                  <TableHead className="w-full">Membro</TableHead>
-                  <TableHead className="hidden w-[220px] md:table-cell text-center">
+                  <TableHead className="min-w-60">Membro</TableHead>
+                  <TableHead className="hidden w-36 min-w-36 whitespace-nowrap px-2 text-center md:table-cell">
                     Entrada
                   </TableHead>
-                  <TableHead className="hidden w-[220px] md:table-cell text-center">
+                  <TableHead className="hidden w-36 min-w-36 whitespace-nowrap px-2 text-center md:table-cell">
                     Saída
                   </TableHead>
-                  <TableHead className="w-[140px] text-center">
+                  <TableHead className="w-40 min-w-40 whitespace-nowrap px-2 text-center">
                     Status
                   </TableHead>
-                  <TableHead className="w-[148px] text-center" />
+                  <TableHead className="w-36 min-w-36 px-2 text-center">
+                    <span className="sr-only">Ações</span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -326,7 +340,7 @@ export function MembersTable({ groups }: MembersTableProps) {
                   return (
                     <Fragment key={group.id}>
                       <TableRow className="bg-muted/40 hover:bg-muted/50">
-                        <TableCell className="px-3 text-center">
+                        <TableCell className="w-8 min-w-8 px-3 text-center">
                           <MemberSelectionCheckbox
                             checked={isGroupSelected}
                             indeterminate={isGroupIndeterminate}
@@ -336,8 +350,8 @@ export function MembersTable({ groups }: MembersTableProps) {
                             }
                           />
                         </TableCell>
-                        <TableCell className="py-3">
-                          <div className="flex min-w-0 items-center gap-3">
+                        <TableCell className="overflow-hidden py-3">
+                          <div className="flex min-w-0 gap-3">
                             <ImageComponent
                               src={
                                 group.chatPhotoUrl
@@ -354,7 +368,7 @@ export function MembersTable({ groups }: MembersTableProps) {
                               avatarFallbackClassName="text-sm!"
                               className="size-[36px] shrink-0 rounded-full border border-border object-cover"
                             />
-                            <div className="min-w-0 flex-1 space-y-1 overflow-hidden">
+                            <div className="min-w-0 flex-1 overflow-hidden">
                               <TruncatedTextTooltip
                                 text={group.title ?? "Grupo sem nome"}
                                 variant="truncate"
@@ -366,9 +380,9 @@ export function MembersTable({ groups }: MembersTableProps) {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="hidden py-3 md:table-cell" />
-                        <TableCell className="hidden py-3 md:table-cell" />
-                        <TableCell className="w-[140px] py-3 text-center">
+                        <TableCell className="hidden w-36 min-w-36 py-3 md:table-cell" />
+                        <TableCell className="hidden w-36 min-w-36 py-3 md:table-cell" />
+                        <TableCell className="w-40 min-w-40 py-3 text-center">
                           <Badge
                             variant="outline"
                             className="mx-auto w-max whitespace-nowrap"
@@ -376,7 +390,7 @@ export function MembersTable({ groups }: MembersTableProps) {
                             {formatGroupMemberStatusSummary(group.members)}
                           </Badge>
                         </TableCell>
-                        <TableCell className="w-[148px] py-3 text-center">
+                        <TableCell className="w-36 min-w-36 py-3 text-center">
                           <div className="flex justify-end">
                             <RefreshGroupButton
                               groupId={group.id}
@@ -424,7 +438,7 @@ export function MembersTable({ groups }: MembersTableProps) {
                             >
                               <TableCell
                                 className={cn(
-                                  "w-12 px-3 text-center",
+                                  "w-8 min-w-8 px-3 text-center",
                                   memberRowMutedClass,
                                 )}
                               >
@@ -437,9 +451,12 @@ export function MembersTable({ groups }: MembersTableProps) {
                                 />
                               </TableCell>
                               <TableCell
-                                className={cn("py-2 pl-8", memberRowMutedClass)}
+                                className={cn(
+                                  "overflow-hidden py-2 pl-8",
+                                  memberRowMutedClass,
+                                )}
                               >
-                                <div className="flex min-w-0 items-center gap-3">
+                                <div className="flex min-w-0 gap-3">
                                   <ImageComponent
                                     src={member.profilePhotoUrl ?? null}
                                     alt={displayName}
@@ -453,26 +470,33 @@ export function MembersTable({ groups }: MembersTableProps) {
                                     }
                                     className="size-[32px] shrink-0 rounded-full border border-border object-cover"
                                   />
-                                  <div className="min-w-0">
+                                  <div className="min-w-0 flex-1 overflow-hidden">
                                     <div className="flex min-w-0 items-center gap-1.5">
-                                      <TruncatedTextTooltip
-                                        text={displayName}
-                                        variant="truncate"
-                                        className="font-medium text-foreground"
-                                      />
-                                      {isMemberOwner(member) ? (
-                                        <MemberOwnerBadge />
-                                      ) : null}
+                                      <div className="min-w-0 max-w-40 overflow-hidden">
+                                        <TruncatedTextTooltip
+                                          text={displayName}
+                                          variant="truncate"
+                                          className="font-medium text-foreground"
+                                        />
+                                      </div>
+                                      <div className="flex shrink-0 items-center gap-1.5">
+                                        {isMemberOwner(member) ? (
+                                          <MemberOwnerBadge />
+                                        ) : null}
+                                        <MemberStripePayerBadge
+                                          plans={member.linkedStripePlans}
+                                        />
+                                      </div>
                                     </div>
-                                    <code className="truncate text-muted-foreground text-xs">
+                                    <span className="truncate text-muted-foreground text-xs">
                                       {member.telegramUserId}
-                                    </code>
+                                    </span>
                                   </div>
                                 </div>
                               </TableCell>
                               <TableCell
                                 className={cn(
-                                  "hidden text-center text-muted-foreground md:table-cell",
+                                  "hidden w-36 min-w-36 text-center whitespace-nowrap text-muted-foreground align-middle md:table-cell",
                                   memberRowMutedClass,
                                 )}
                               >
@@ -480,7 +504,7 @@ export function MembersTable({ groups }: MembersTableProps) {
                               </TableCell>
                               <TableCell
                                 className={cn(
-                                  "hidden text-center text-muted-foreground md:table-cell",
+                                  "hidden w-36 min-w-36 text-center whitespace-nowrap text-muted-foreground align-middle md:table-cell",
                                   memberRowMutedClass,
                                 )}
                               >
@@ -491,7 +515,7 @@ export function MembersTable({ groups }: MembersTableProps) {
 
                               <TableCell
                                 className={cn(
-                                  "text-center",
+                                  "w-40 min-w-40 text-center align-middle",
                                   memberRowMutedClass,
                                 )}
                               >
@@ -505,13 +529,30 @@ export function MembersTable({ groups }: MembersTableProps) {
                                   {memberLeft ? "Saiu" : "Ativo"}
                                 </Badge>
                               </TableCell>
-                              <TableCell className="w-[148px] py-2">
+                              <TableCell
+                                className={cn(
+                                  "w-36 min-w-36 py-2 align-middle",
+                                  memberRowMutedClass,
+                                )}
+                              >
                                 <MemberActionsToolbar
                                   groupId={group.id}
                                   telegramUserId={member.telegramUserId}
                                   displayName={displayName}
                                   isInactive={memberLeft}
                                   isOwner={member.isOwner}
+                                  onSendNotice={() =>
+                                    setQuickNoticePayload({
+                                      type: "members",
+                                      title: displayName,
+                                      targets: [
+                                        {
+                                          telegramUserId: member.telegramUserId,
+                                          displayName,
+                                        },
+                                      ],
+                                    })
+                                  }
                                 />
                               </TableCell>
                             </TableRow>
@@ -551,8 +592,44 @@ export function MembersTable({ groups }: MembersTableProps) {
           selectedTelegramUserIds={selectionSummary.telegramUserIds}
           hasRemovableMember={selectionSummary.hasRemovableMember}
           onClear={clearSelection}
+          onSendNotice={() => {
+            const targetsByUserId = new Map<
+              string,
+              { telegramUserId: string; displayName?: string }
+            >();
+
+            for (const target of selectionSummary.targets) {
+              const member = groups
+                .find((group) => group.id === target.groupId)
+                ?.members.find(
+                  (item) => item.telegramUserId === target.telegramUserId,
+                );
+
+              targetsByUserId.set(target.telegramUserId, {
+                telegramUserId: target.telegramUserId,
+                displayName: member ? getMemberDisplayName(member) : undefined,
+              });
+            }
+
+            setQuickNoticePayload({
+              type: "members",
+              title: `${targetsByUserId.size} membro${targetsByUserId.size === 1 ? "" : "s"}`,
+              targets: [...targetsByUserId.values()],
+            });
+          }}
         />
       ) : null}
+
+      <QuickNoticeDialog
+        open={quickNoticePayload !== null}
+        payload={quickNoticePayload}
+        onOpenChange={(open) => {
+          if (!open) {
+            setQuickNoticePayload(null);
+          }
+        }}
+        onSent={() => router.refresh()}
+      />
 
       {!showFullPageEmpty ? (
         <p

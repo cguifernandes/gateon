@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getStripeBillingStatus } from "@/lib/server/get-stripe-billing-status";
+import { getTelegramGroups } from "@/lib/server/get-telegram-groups";
 import { IntegrationsClient } from "./_components/integrations-client";
 
 export const metadata: Metadata = {
@@ -8,11 +9,18 @@ export const metadata: Metadata = {
 };
 
 export default async function IntegrationsPage() {
-  const { data, error } = await getStripeBillingStatus();
+  const [{ data, error }, { groups, error: groupsError }] = await Promise.all([
+    getStripeBillingStatus(),
+    getTelegramGroups(),
+  ]);
 
   return (
     <div className="space-y-6 pb-10">
-      <IntegrationsClient initialStatus={data} loadError={error} />
+      <IntegrationsClient
+        initialStatus={data}
+        loadError={error ?? groupsError}
+        groups={groups}
+      />
     </div>
   );
 }

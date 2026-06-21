@@ -26,11 +26,13 @@ import type {
   StripeBillingConnectInput,
   StripeCatalogPriceDto,
 } from "@/lib/zod/stripe-billing-schemas";
+import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
 
 type StripeConsentStepProps = {
   form: UseFormReturn<StripeBillingConnectInput>;
   consentCheckboxId: string;
   selectedPrice: StripeCatalogPriceDto | null;
+  selectedGroup: TelegramGroupSummaryDto | null;
   gatewayName?: string;
 };
 
@@ -87,6 +89,7 @@ export function StripeConsentStep({
   form,
   consentCheckboxId,
   selectedPrice,
+  selectedGroup,
   gatewayName = "Stripe",
 }: StripeConsentStepProps) {
   const consentInfoIconRef = useRef<BadgeAlertIconHandle | null>(null);
@@ -104,7 +107,7 @@ export function StripeConsentStep({
     {
       label: "Chave informada",
       value: formatReviewValue(maskApiKey(apiKey)),
-      valueClassName: "font-mono text-xs",
+      valueClassName: "font-mono",
     },
     {
       label: "Produto monitorado",
@@ -114,6 +117,16 @@ export function StripeConsentStep({
     {
       label: "Preço recorrente",
       value: formatReviewValue(selectedPrice?.priceLabel),
+    },
+    {
+      label: "Grupo vinculado",
+      value: formatReviewValue(selectedGroup?.title?.trim() || "Sem título"),
+      lineClamp: 2,
+    },
+    {
+      label: "ID do grupo",
+      value: formatReviewValue(selectedGroup?.telegramChatId),
+      valueClassName: "font-mono",
     },
   ];
 
@@ -177,6 +190,13 @@ export function StripeConsentStep({
           <li>
             Atualizar métricas do painel (assinantes ativos, receita mensal e
             alertas de vencimento).
+          </li>
+          <li>
+            Enviar assinantes deste plano para o grupo{" "}
+            <span className="font-medium text-foreground">
+              {formatReviewValue(selectedGroup?.title?.trim() || "Sem título")}
+            </span>{" "}
+            após a confirmação do pagamento.
           </li>
           <li>
             Permitir que automações usem o status da assinatura para controlar

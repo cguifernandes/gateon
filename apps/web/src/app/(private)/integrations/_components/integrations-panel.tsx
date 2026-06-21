@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { PlusIcon, type PlusIconHandle } from "@/components/icons/plus";
 import { Button } from "@/components/ui/button";
 import type { StripeBillingStatusDto } from "@/lib/zod/stripe-billing-schemas";
+import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
 import { ConnectIntegrationDialog } from "./connect-integration-dialog";
 import { IntegrationsEmptyState } from "./integrations-empty-state";
 import { StripeConnectedCard } from "./stripe-connected-card";
@@ -11,11 +12,13 @@ import { StripeConnectedCard } from "./stripe-connected-card";
 type IntegrationsPanelProps = {
   stripeStatus: StripeBillingStatusDto;
   onStripeStatusChange: (status: StripeBillingStatusDto) => void;
+  groups: TelegramGroupSummaryDto[];
 };
 
 export function IntegrationsPanel({
   stripeStatus,
   onStripeStatusChange,
+  groups,
 }: IntegrationsPanelProps) {
   const [connectDialogOpen, setConnectDialogOpen] = useState(false);
   const plusIconRef = useRef<PlusIconHandle | null>(null);
@@ -35,6 +38,11 @@ export function IntegrationsPanel({
           onOpenChange={setConnectDialogOpen}
           connectedPriceIds={connectedPriceIds}
           onStripeConnected={onStripeStatusChange}
+          stripePaymentGroupLimit={stripeStatus.stripePaymentGroupLimit}
+          existingConnections={stripeStatus.connections.map((connection) => ({
+            id: connection.id,
+            telegramGroupId: connection.telegramGroupId,
+          }))}
         />
       </>
     );
@@ -59,6 +67,7 @@ export function IntegrationsPanel({
       <StripeConnectedCard
         connections={stripeStatus.connections}
         onStatusChange={onStripeStatusChange}
+        groups={groups}
       />
 
       <ConnectIntegrationDialog
@@ -66,6 +75,11 @@ export function IntegrationsPanel({
         onOpenChange={setConnectDialogOpen}
         connectedPriceIds={connectedPriceIds}
         onStripeConnected={onStripeStatusChange}
+        stripePaymentGroupLimit={stripeStatus.stripePaymentGroupLimit}
+        existingConnections={stripeStatus.connections.map((connection) => ({
+          id: connection.id,
+          telegramGroupId: connection.telegramGroupId,
+        }))}
       />
     </div>
   );

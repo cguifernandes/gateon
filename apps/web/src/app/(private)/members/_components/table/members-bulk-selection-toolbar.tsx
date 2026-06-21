@@ -35,6 +35,7 @@ type MembersBulkSelectionToolbarProps = {
   selectedTelegramUserIds: string[];
   hasRemovableMember: boolean;
   onClear: () => void;
+  onSendNotice: () => void;
   className?: string;
 };
 
@@ -101,6 +102,7 @@ export function MembersBulkSelectionToolbar({
   selectedTelegramUserIds,
   hasRemovableMember,
   onClear,
+  onSendNotice,
   className,
 }: MembersBulkSelectionToolbarProps) {
   const { runAction, isPending } = useMemberActionHandler();
@@ -162,7 +164,7 @@ export function MembersBulkSelectionToolbar({
           <BulkToolbarButton
             label={MEMBER_ACTION_UI_LABELS.notice}
             disabled={isPending}
-            onClick={() => handleBulkAction("notice")}
+            onClick={onSendNotice}
             onMouseEnter={() => bellIconRef.current?.startAnimation()}
             onMouseLeave={() => bellIconRef.current?.stopAnimation()}
           >

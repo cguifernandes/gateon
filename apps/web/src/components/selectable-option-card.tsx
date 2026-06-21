@@ -31,6 +31,7 @@ export type SelectableOptionCardProps = {
   headerAction?: ReactNode;
   actionLabel?: string;
   hideAction?: boolean;
+  mediaClassName?: string;
 };
 
 export function SelectableOptionCard({
@@ -46,6 +47,7 @@ export function SelectableOptionCard({
   headerAction,
   actionLabel = "Selecionar",
   hideAction = false,
+  mediaClassName,
 }: SelectableOptionCardProps) {
   const iconRef = useRef<IconAnimationHandle | null>(null);
   const arrowRef = useRef<ArrowRightIconHandle | null>(null);
@@ -90,6 +92,7 @@ export function SelectableOptionCard({
               "inline-flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary",
             mediaVariant === "logo" &&
               "flex h-12 w-20 items-center justify-center rounded-lg border border-border bg-background px-2",
+            mediaClassName,
           )}
         >
           {AnimatedIcon ? <AnimatedIcon ref={iconRef} size={18} /> : media}
@@ -103,7 +106,7 @@ export function SelectableOptionCard({
             text={description}
             variant="line-clamp"
             lineClamp={3}
-            className="font-light text-muted-foreground text-sm"
+            className="font-light cursor-pointer! text-muted-foreground text-sm"
           />
         </div>
       </div>

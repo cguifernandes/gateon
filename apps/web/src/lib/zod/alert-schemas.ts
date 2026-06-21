@@ -31,7 +31,14 @@ const alertMessages = {
   threadsMax: "Selecione no máximo 50 tópicos.",
   selectMember: "Selecione ao menos um membro.",
   selectTrigger: "Selecione o evento da automação.",
+  selectStripePlan: "Selecione o plano monitorado.",
 } as const;
+
+export function isStripeAutomationTriggerType(
+  triggerType: string | null | undefined,
+): boolean {
+  return typeof triggerType === "string" && triggerType.startsWith("STRIPE_");
+}
 
 export const alertStatusSchema = z.enum(
   ["DRAFT", "ACTIVE", "PAUSED", "FAILED"],
@@ -262,6 +269,11 @@ export const alertUpsertSchema = z
           )
           .max(50, alertMessages.threadsMax)
           .optional(),
+        stripeConnectionId: z
+          .string()
+          .trim()
+          .min(1, alertMessages.selectStripePlan)
+          .optional(),
       })
       .passthrough()
       .optional(),
@@ -331,6 +343,18 @@ export const alertUpsertSchema = z
         message: alertMessages.selectTrigger,
       });
     }
+
+    if (
+      value.destinationType === "AUTOMATION" &&
+      isStripeAutomationTriggerType(value.triggerType) &&
+      !value.triggerConfig?.stripeConnectionId
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["triggerConfig", "stripeConnectionId"],
+        message: alertMessages.selectStripePlan,
+      });
+    }
   });
 
 export const alertSummarySchema = z.object({
@@ -389,6 +413,37 @@ export const alertsResponseSchema = z.object({
   }),
 });
 
+const alertQuickDispatchMemberTargetSchema = z.object({
+  telegramUserId: z.string().trim().min(1, alertMessages.membersPerItem),
+  displayName: z.string().trim().max(200).optional(),
+});
+
+export const alertQuickDispatchSchema = z.discriminatedUnion("targetType", [
+  z.object({
+    targetType: z.literal("members"),
+    targets: z
+      .array(alertQuickDispatchMemberTargetSchema)
+      .min(1, alertMessages.selectMember)
+      .max(500, alertMessages.membersMax),
+  }),
+  z.object({
+    targetType: z.literal("group"),
+    telegramGroupId: z.string().trim().min(1, alertMessages.groupIdMin),
+    messageThreadId: z
+      .number({ message: alertMessages.threadIdInt })
+      .int(alertMessages.threadIdInt)
+      .positive(alertMessages.threadIdPositive)
+      .optional(),
+  }),
+]);
+
+export const alertQuickDispatchRunResultSchema = z.object({
+  runId: z.string(),
+  status: alertRunStatusSchema,
+  successCount: z.number(),
+  failCount: z.number(),
+});
+
 export const alertRunRecordSchema = z.object({
   id: z.string(),
   alertId: z.string(),
@@ -437,6 +492,7 @@ export type AlertTableSelectionSource = z.infer<
 >;
 export type AlertSummaryDto = z.infer<typeof alertSummarySchema>;
 export type AlertsResponseDto = z.infer<typeof alertsResponseSchema>;
+export type AlertQuickDispatchInput = z.infer<typeof alertQuickDispatchSchema>;
 export type AlertTemplateDto = z.infer<typeof alertTemplateSchema>;
 export type AlertRunRecordDto = z.infer<typeof alertRunRecordSchema>;
 export type AlertDeliveryRecordDto = z.infer<typeof alertDeliveryRecordSchema>;

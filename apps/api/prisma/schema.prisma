@@ -32,6 +32,9 @@ model Users {
   stripeBillingSubscriptions     StripeBillingSubscriptions[]
   stripeBillingPayments          StripeBillingPayments[]
   stripeBillingAuditLogs         StripeBillingAuditLogs[]
+  telegramBotStartSettings       TelegramBotStartSettings?
+  stripeTelegramMemberLinks      StripeTelegramMemberLinks[]
+  stripeTelegramCheckoutSessions StripeTelegramCheckoutSessions[]
 }
 
 model Accounts {
@@ -130,11 +133,14 @@ model TelegramGroups {
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
 
-  user        Users                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  members     TelegramGroupMembers[]
-  settings    TelegramGroupBotSettings?
-  alerts      TelegramAlerts[]
-  forumTopics TelegramForumTopics[]
+  user                           Users                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  members                        TelegramGroupMembers[]
+  settings                       TelegramGroupBotSettings?
+  alerts                         TelegramAlerts[]
+  forumTopics                    TelegramForumTopics[]
+  stripeTelegramMemberLinks      StripeTelegramMemberLinks[]
+  stripeTelegramCheckoutSessions StripeTelegramCheckoutSessions[]
+  stripeBillingConnections       StripeBillingConnections[]
 
   @@index([userId])
   @@index([addedByTelegramUserId])
@@ -343,6 +349,19 @@ enum StripeBillingAuditAction {
   SUBSCRIPTION_CANCELED
   SUBSCRIPTION_RENEWED
   AUTOMATION_TRIGGERED
+  TELEGRAM_MEMBER_LINKED
+}
+
+enum StripeTelegramCheckoutStatus {
+  PENDING
+  COMPLETED
+  EXPIRED
+  FAILED
+}
+
+enum StripeTelegramMemberLinkStatus {
+  ACTIVE
+  REVOKED
 }
 
 model StripeBillingConnections {
@@ -363,17 +382,22 @@ model StripeBillingConnections {
   monitoredStripePriceId    String?
   monitoredStripeProductId  String?
   monitoredPlanLabel        String?
+  telegramGroupId           String?
   createdAt                 DateTime                      @default(now())
   updatedAt                 DateTime                      @updatedAt
 
   user          Users                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group         TelegramGroups?              @relation(fields: [telegramGroupId], references: [id], onDelete: SetNull)
   customers     StripeBillingCustomers[]
   subscriptions StripeBillingSubscriptions[]
   payments      StripeBillingPayments[]
   auditLogs     StripeBillingAuditLogs[]
+  memberLinks   StripeTelegramMemberLinks[]
+  checkoutSessions StripeTelegramCheckoutSessions[]
 
   @@index([userId, status])
   @@index([userId, monitoredStripePriceId])
+  @@index([userId, telegramGroupId])
 }
 
 model StripeBillingCustomers {
@@ -458,4 +482,71 @@ model StripeBillingAuditLogs {
 
   @@index([userId, action])
   @@index([connectionId, createdAt])
+}
+
+model TelegramBotStartSettings {
+  id                         String   @id @default(cuid())
+  userId                     String   @unique
+  publicStartToken           String   @unique
+  welcomeMessageEnabled      Boolean  @default(true)
+  welcomeMessage             String?  @db.Text
+  showStripePlans            Boolean  @default(false)
+  stripeConnectionIds          String[] @default([])
+  showPaymentButtons         Boolean  @default(false)
+  paymentButtonConnectionIds String[] @default([])
+  paymentButtonsGroupFirst   Boolean  @default(false)
+  showSupportHint            Boolean  @default(true)
+  supportHintText            String?  @db.Text
+  showSubscribeSteps         Boolean  @default(true)
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([publicStartToken])
+}
+
+model StripeTelegramCheckoutSessions {
+  id                      String                       @id @default(cuid())
+  userId                  String
+  connectionId            String
+  telegramUserId          String
+  telegramGroupId         String?
+  stripeCheckoutSessionId String                       @unique
+  stripePriceId           String
+  status                  StripeTelegramCheckoutStatus @default(PENDING)
+  stripeCustomerId        String?
+  stripeSubscriptionId    String?
+  completedAt             DateTime?
+  createdAt               DateTime                     @default(now())
+  updatedAt               DateTime                     @updatedAt
+
+  user       Users                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connection StripeBillingConnections @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  group      TelegramGroups?          @relation(fields: [telegramGroupId], references: [id], onDelete: SetNull)
+
+  @@index([userId, telegramUserId])
+  @@index([connectionId, status])
+}
+
+model StripeTelegramMemberLinks {
+  id                   String                         @id @default(cuid())
+  userId               String
+  connectionId         String
+  telegramGroupId      String
+  telegramUserId       String
+  stripeCustomerId     String
+  stripeSubscriptionId String?
+  status               StripeTelegramMemberLinkStatus @default(ACTIVE)
+  linkedAt             DateTime                       @default(now())
+  updatedAt            DateTime                       @updatedAt
+
+  user       Users                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connection StripeBillingConnections @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  group      TelegramGroups           @relation(fields: [telegramGroupId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, telegramUserId])
+  @@index([userId, telegramGroupId])
+  @@index([stripeCustomerId])
+  @@index([telegramUserId, status])
 }

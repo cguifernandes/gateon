@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { toast } from "sonner";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { TelegramGroupTypeBadges } from "@/app/(private)/groups/_components/table/telegram-group-type-badges";
 import {
   type RefreshTelegramGroupResult,
@@ -34,11 +33,7 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
-import { postGroupChatNotice } from "@/lib/group-chat-notice";
-import {
-  DEFAULT_MEMBER_NOTICE_TEXT,
-  getMemberActionLoadingToast,
-} from "@/lib/member-actions";
+import type { QuickNoticePayload } from "@/components/quick-notice-dialog";
 import { getBotStatusDisplay } from "@/lib/telegram-bot-status";
 import { cn, withCacheBuster } from "@/lib/utils";
 import {
@@ -166,6 +161,10 @@ type MembersMainContentProps = {
   groupId: string;
   members: GroupMemberRowData[];
   onMemberUpdated: () => void;
+  onSendMemberNotice: (target: {
+    telegramUserId: string;
+    displayName: string;
+  }) => void;
 };
 
 function MembersMainContent({
@@ -173,6 +172,7 @@ function MembersMainContent({
   groupId,
   members,
   onMemberUpdated,
+  onSendMemberNotice,
 }: MembersMainContentProps) {
   switch (state.kind) {
     case "loading":
@@ -202,6 +202,7 @@ function MembersMainContent({
           members={members}
           formatDateTime={formatDateTime}
           onMemberUpdated={onMemberUpdated}
+          onSendMemberNotice={onSendMemberNotice}
         />
       );
   }
@@ -212,6 +213,9 @@ type GroupMembersDrawerProps = {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   onRequestRemove?: () => void;
+  onQuickNoticeRequest?: (payload: QuickNoticePayload) => void;
+  /** When a dialog is open on top of this drawer. */
+  nestedDialogOpen?: boolean;
   showTrigger?: boolean;
 };
 
@@ -220,6 +224,8 @@ export function GroupMembersDrawer({
   open: openProp,
   onOpenChange,
   onRequestRemove,
+  onQuickNoticeRequest,
+  nestedDialogOpen = false,
   showTrigger = true,
 }: GroupMembersDrawerProps) {
   const [internalOpen, setInternalOpen] = useState(false);
@@ -238,7 +244,6 @@ export function GroupMembersDrawer({
   const removeIconRef = useRef<XIconHandle>(null);
   const settingsIconRef = useRef<SettingsIconHandle>(null);
   const groupNoticeIconRef = useRef<MessageCircleIconHandle>(null);
-  const [isSendingGroupNotice, startGroupNoticeTransition] = useTransition();
 
   const groupTitle = displayGroup.title ?? "";
 
@@ -336,6 +341,10 @@ export function GroupMembersDrawer({
   );
 
   function handleOpenChange(next: boolean) {
+    if (!next && nestedDialogOpen) {
+      return;
+    }
+
     if (isControlled) {
       onOpenChange?.(next);
     } else {
@@ -372,34 +381,14 @@ export function GroupMembersDrawer({
   const botDisplay = getBotStatusDisplay(displayGroup.botStatus);
 
   function handleSendGroupNotice() {
-    if (isSendingGroupNotice || isSyncing || isLoading) {
+    if (isSyncing || isLoading) {
       return;
     }
 
-    const loadingToast = getMemberActionLoadingToast("notice");
-    const toastId = toast.loading(loadingToast.title, {
-      description: isForum
-        ? `Enviando "${DEFAULT_MEMBER_NOTICE_TEXT}" no tópico geral do grupo.`
-        : `Enviando "${DEFAULT_MEMBER_NOTICE_TEXT}" no chat do grupo.`,
-    });
-
-    startGroupNoticeTransition(async () => {
-      try {
-        await postGroupChatNotice(displayGroup.id);
-        toast.success("Aviso enviado no grupo", {
-          id: toastId,
-          description: isForum
-            ? "A mensagem foi publicada no tópico geral."
-            : "A mensagem foi publicada no chat do grupo.",
-        });
-      } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Não foi possível enviar o aviso no grupo.",
-          { id: toastId },
-        );
-      }
+    onQuickNoticeRequest?.({
+      type: "group",
+      title: groupTitle,
+      groupId: displayGroup.id,
     });
   }
   const membersContentState = resolveMembersContentState(
@@ -410,7 +399,12 @@ export function GroupMembersDrawer({
   const showSummary = membersContentState.kind !== "loading";
 
   return (
-    <Drawer direction="right" open={open} onOpenChange={handleOpenChange}>
+    <Drawer
+      direction="right"
+      open={open}
+      dismissible={!nestedDialogOpen}
+      onOpenChange={handleOpenChange}
+    >
       {showTrigger ? (
         <DrawerTrigger asChild>
           <Button
@@ -422,7 +416,11 @@ export function GroupMembersDrawer({
           </Button>
         </DrawerTrigger>
       ) : null}
-      <DrawerContent className="data-[vaul-drawer-direction=right]:h-full data-[vaul-drawer-direction=right]:max-h-none data-[vaul-drawer-direction=right]:w-full data-[vaul-drawer-direction=right]:sm:max-w-md">
+      <DrawerContent
+        overlayClassName={nestedDialogOpen ? "opacity-0" : undefined}
+        overlayStyle={nestedDialogOpen ? { pointerEvents: "none" } : undefined}
+        className="data-[vaul-drawer-direction=right]:h-full data-[vaul-drawer-direction=right]:max-h-none data-[vaul-drawer-direction=right]:w-full data-[vaul-drawer-direction=right]:sm:max-w-md"
+      >
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <DrawerHeader className="relative shrink-0 p-0 border-b border-border text-left">
             <DrawerClose asChild>
@@ -505,7 +503,7 @@ export function GroupMembersDrawer({
                     type="button"
                     variant="outline"
                     className="flex h-auto flex-col items-center justify-center gap-1 py-3 text-sm"
-                    disabled={isSyncing || isLoading || isSendingGroupNotice}
+                    disabled={isSyncing || isLoading}
                     onClick={() => refresh()}
                     onMouseEnter={() =>
                       refreshIconRef.current?.startAnimation()
@@ -529,7 +527,7 @@ export function GroupMembersDrawer({
                     type="button"
                     variant="outline"
                     className="flex h-auto flex-col items-center justify-center gap-1 py-3 text-sm"
-                    disabled={isSyncing || isLoading || isSendingGroupNotice}
+                    disabled={isSyncing || isLoading}
                     onClick={handleSendGroupNotice}
                     onMouseEnter={() =>
                       groupNoticeIconRef.current?.startAnimation()
@@ -545,16 +543,14 @@ export function GroupMembersDrawer({
                       className="shrink-0 text-muted-foreground"
                     />
                     <span className="text-center leading-tight">
-                      {isSendingGroupNotice
-                        ? "Enviando…"
-                        : "Enviar aviso no grupo"}
+                      Enviar aviso no grupo
                     </span>
                   </Button>
                   <Button
                     type="button"
                     variant="destructive"
                     className="flex h-auto flex-col items-center justify-center gap-1 py-3 text-sm"
-                    disabled={isSyncing || isLoading || isSendingGroupNotice}
+                    disabled={isSyncing || isLoading}
                     onClick={() => onRequestRemove?.()}
                     onMouseEnter={() => removeIconRef.current?.startAnimation()}
                     onMouseLeave={() => removeIconRef.current?.stopAnimation()}
@@ -588,6 +584,18 @@ export function GroupMembersDrawer({
                 groupId={displayGroup.id}
                 members={members}
                 onMemberUpdated={() => void loadMembers({ silent: true })}
+                onSendMemberNotice={(target) =>
+                  onQuickNoticeRequest?.({
+                    type: "members",
+                    title: target.displayName,
+                    targets: [
+                      {
+                        telegramUserId: target.telegramUserId,
+                        displayName: target.displayName,
+                      },
+                    ],
+                  })
+                }
               />
             </div>
           </div>

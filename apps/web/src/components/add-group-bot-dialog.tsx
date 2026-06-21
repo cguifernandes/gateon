@@ -50,6 +50,11 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useGroupLimit } from "@/contexts/group-limit-context";
 import { revalidateTelegramGroupsAction } from "@/lib/server/revalidate-telegram-groups.action";
 import { cn, TELEGRAM_BOT_PERMISSION_GROUPS } from "@/lib/utils";
@@ -64,6 +69,13 @@ import {
 } from "@/lib/zod/telegram-group-connection-schemas";
 import { ArrowLeftIcon, type ArrowLeftIconHandle } from "./icons/arrow-left";
 import { ArrowRightIcon, type ArrowRightIconHandle } from "./icons/arrow-right";
+
+type AddGroupBotDialogProps = {
+  presentation?: "default" | "icon";
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  showTrigger?: boolean;
+};
 
 type AddGroupBotWizardStep = {
   title: string;
@@ -530,24 +542,39 @@ function ConfirmStep({
   );
 }
 
-export function AddGroupBotDialog() {
+export function AddGroupBotDialog({
+  presentation = "default",
+  open: openProp,
+  onOpenChange: onOpenChangeProp,
+  showTrigger = true,
+}: AddGroupBotDialogProps) {
   const { canAddGroup, isAtLimit, maxGroups } = useGroupLimit();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [intentId, setIntentId] = useState<string | null>(null);
   const xIconRefs = useRef<(XIconHandle | null)[]>([]);
   const plusIconRefs = useRef<PlusIconHandle | null>(null);
   const arrowLeftIconRefs = useRef<(ArrowLeftIconHandle | null)[]>([]);
   const arrowRightIconRefs = useRef<(ArrowRightIconHandle | null)[]>([]);
 
-  function handleOpenChange(next: boolean) {
-    if (next && !canAddGroup) {
-      return;
-    }
-    setOpen(next);
-    if (!next) {
-      setIntentId(null);
-    }
-  }
+  const isControlled = openProp !== undefined;
+  const open = isControlled ? openProp : internalOpen;
+
+  const handleOpenChange = useCallback(
+    (next: boolean) => {
+      if (next && !canAddGroup) {
+        return;
+      }
+      if (isControlled) {
+        onOpenChangeProp?.(next);
+      } else {
+        setInternalOpen(next);
+      }
+      if (!next) {
+        setIntentId(null);
+      }
+    },
+    [canAddGroup, isControlled, onOpenChangeProp],
+  );
 
   const handleIntentCreated = useCallback((id: string) => {
     setIntentId(id);
@@ -561,10 +588,10 @@ export function AddGroupBotDialog() {
     toast.success("Grupo conectado ao Gateon", {
       description: "A lista de grupos foi atualizada no painel.",
     });
-    setOpen(false);
+    handleOpenChange(false);
     setIntentId(null);
     await revalidateTelegramGroupsAction();
-  }, []);
+  }, [handleOpenChange]);
 
   const steps: AddGroupBotWizardStep[] = useMemo(
     () => [
@@ -603,29 +630,73 @@ export function AddGroupBotDialog() {
     ],
   );
 
+  const limitTitle = isAtLimit
+    ? `Limite de ${maxGroups} grupos atingido no plano atual`
+    : undefined;
+
+  const defaultTrigger = (
+    <Button
+      type="button"
+      variant="default"
+      disabled={!canAddGroup}
+      title={limitTitle}
+      onClick={() => {
+        if (canAddGroup) {
+          handleOpenChange(true);
+        }
+      }}
+      onMouseEnter={() => plusIconRefs.current?.startAnimation()}
+      onMouseLeave={() => plusIconRefs.current?.stopAnimation()}
+    >
+      <PlusIcon ref={plusIconRefs} size={14} /> Conectar Novo Grupo
+    </Button>
+  );
+
+  const iconTrigger = (
+    <Tooltip>
+      <TooltipTrigger
+        render={(triggerProps) => (
+          <DialogStackTrigger asChild>
+            <Button
+              {...triggerProps}
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              disabled={!canAddGroup}
+              title={limitTitle}
+              aria-label="Conectar novo grupo"
+              onClick={() => {
+                if (canAddGroup) {
+                  handleOpenChange(true);
+                }
+              }}
+              onMouseEnter={() => plusIconRefs.current?.startAnimation()}
+              onMouseLeave={() => plusIconRefs.current?.stopAnimation()}
+            >
+              <PlusIcon ref={plusIconRefs} size={16} />
+            </Button>
+          </DialogStackTrigger>
+        )}
+      />
+      <TooltipContent side="bottom">
+        {isAtLimit ? limitTitle : "Conectar novo grupo"}
+      </TooltipContent>
+    </Tooltip>
+  );
+
   return (
-    <DialogStack open={open} onOpenChange={handleOpenChange}>
-      <DialogStackTrigger asChild>
-        <Button
-          type="button"
-          variant="default"
-          disabled={!canAddGroup}
-          title={
-            isAtLimit
-              ? `Limite de ${maxGroups} grupos atingido no plano atual`
-              : undefined
-          }
-          onClick={() => {
-            if (canAddGroup) {
-              setOpen(true);
-            }
-          }}
-          onMouseEnter={() => plusIconRefs.current?.startAnimation()}
-          onMouseLeave={() => plusIconRefs.current?.stopAnimation()}
-        >
-          <PlusIcon ref={plusIconRefs} size={14} /> Conectar Novo Grupo
-        </Button>
-      </DialogStackTrigger>
+    <DialogStack
+      open={open}
+      onOpenChange={handleOpenChange}
+      className={showTrigger ? undefined : "contents"}
+    >
+      {showTrigger ? (
+        presentation === "icon" ? (
+          iconTrigger
+        ) : (
+          <DialogStackTrigger asChild>{defaultTrigger}</DialogStackTrigger>
+        )
+      ) : null}
 
       <DialogStackOverlay />
 

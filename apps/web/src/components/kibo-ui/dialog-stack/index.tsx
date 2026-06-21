@@ -97,6 +97,19 @@ export const DialogStack = ({
   }, [isOpen]);
 
   useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
     return () => {
       setIsOpen(false);
     };
@@ -196,16 +209,18 @@ export const DialogStackOverlay = ({
   return (
     <AnimatePresence>
       {context.isOpen ? (
-        <motion.div
-          key="dialog-stack-overlay"
-          animate={{ opacity: 1 }}
-          className={cn("fixed inset-0 z-50 bg-black/40", className)}
-          exit={{ opacity: 0, backdropFilter: "blur(0px)" }}
-          initial={{ opacity: 0, backdropFilter: "blur(2px)" }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
-          onClick={handleClick}
-          {...props}
-        />
+        <Portal.Root>
+          <motion.div
+            key="dialog-stack-overlay"
+            animate={{ opacity: 1 }}
+            className={cn("fixed inset-0 z-100 bg-black/40", className)}
+            exit={{ opacity: 0, backdropFilter: "blur(0px)" }}
+            initial={{ opacity: 0, backdropFilter: "blur(2px)" }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            onClick={handleClick}
+            {...props}
+          />
+        </Portal.Root>
       ) : null}
     </AnimatePresence>
   );
@@ -244,12 +259,12 @@ export const DialogStackBody = ({
       <Portal.Root>
         <div
           className={cn(
-            "pointer-events-none fixed inset-0 z-50 mx-auto flex w-full max-w-lg flex-col items-center justify-center",
+            "pointer-events-none fixed inset-0 z-100 mx-auto flex w-full max-w-lg flex-col items-center justify-center",
             className,
           )}
           {...props}
         >
-          <div className="pointer-events-auto relative flex w-full flex-col items-center justify-center">
+          <div className="pointer-events-auto relative flex max-h-[100dvh] w-full flex-col items-center justify-center overflow-y-auto overscroll-contain py-4">
             {Children.map(children, (child, index) => {
               const childElement = child as ReactElement<{
                 index: number;

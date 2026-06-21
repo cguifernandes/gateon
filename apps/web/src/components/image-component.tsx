@@ -10,6 +10,23 @@ function isSessionProxiedSrc(src: ImageProps["src"]): boolean {
   return typeof src === "string" && src.startsWith("/api/");
 }
 
+function isExternalAbsoluteUrl(src: ImageProps["src"]): boolean {
+  if (typeof src !== "string") return false;
+  const trimmed = src.trim();
+  return (
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://")
+  );
+}
+
+function shouldUseUnoptimizedSrc(
+  src: ImageProps["src"],
+  unoptimized?: boolean,
+): boolean {
+  if (unoptimized != null) return unoptimized;
+  return isSessionProxiedSrc(src) || isExternalAbsoluteUrl(src);
+}
+
 function hasValidSrc(src: ImageComponentProps["src"]): boolean {
   if (src == null) return false;
   if (typeof src === "string") return src.trim().length > 0;
@@ -84,7 +101,7 @@ function ImageComponentInner({
   }
 
   const resolvedSrc = src as NonNullable<typeof src>;
-  const resolvedUnoptimized = unoptimized ?? isSessionProxiedSrc(resolvedSrc);
+  const resolvedUnoptimized = shouldUseUnoptimizedSrc(resolvedSrc, unoptimized);
 
   return (
     <span

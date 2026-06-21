@@ -51,6 +51,7 @@ function isTextTruncated(
 type TruncatedTextTooltipProps = {
   text: string;
   className?: string;
+  triggerClassName?: string;
   /** Single-line ellipsis (`truncate`) or multi-line clamp. */
   variant?: "truncate" | "line-clamp";
   lineClamp?: 2 | 3;
@@ -60,6 +61,7 @@ type TruncatedTextTooltipProps = {
 export function TruncatedTextTooltip({
   text,
   className,
+  triggerClassName,
   variant = "truncate",
   lineClamp = 2,
   tooltipClassName,
@@ -107,7 +109,11 @@ export function TruncatedTextTooltip({
   return (
     <Tooltip disabled={!isTruncated}>
       <TooltipTrigger
-        className="min-w-0 max-w-full cursor-default text-left"
+        className={cn(
+          "block min-w-0 w-full max-w-full cursor-default text-left",
+          variant === "truncate" && "overflow-hidden",
+          triggerClassName,
+        )}
         render={(triggerProps) => (
           <p
             {...triggerProps}
@@ -120,7 +126,11 @@ export function TruncatedTextTooltip({
                 triggerRef.current = node;
               }
             }}
-            className={cn(textClassName, triggerProps.className)}
+            className={cn(
+              textClassName,
+              variant === "truncate" && "block w-full min-w-0",
+              triggerProps.className,
+            )}
           >
             {text}
           </p>

@@ -42,7 +42,16 @@ const alertMessages = {
   threadsMax: 'Selecione no máximo 50 tópicos.',
   selectMember: 'Selecione ao menos um membro.',
   selectTrigger: 'Selecione o evento da automação.',
+  selectStripePlan: 'Selecione o plano monitorado.',
+  stripeConnectionInvalid:
+    'O plano selecionado é inválido ou está desconectado.',
 } as const;
+
+export function isStripeAutomationTriggerType(
+  triggerType: string | null | undefined,
+): boolean {
+  return typeof triggerType === 'string' && triggerType.startsWith('STRIPE_');
+}
 
 export const alertStatusSchema = z.enum(
   ['DRAFT', 'ACTIVE', 'PAUSED', 'FAILED'],
@@ -150,6 +159,11 @@ export const alertTriggerConfigSchema = z
       )
       .max(50, alertMessages.threadsMax)
       .optional(),
+    stripeConnectionId: z
+      .string()
+      .trim()
+      .min(1, alertMessages.selectStripePlan)
+      .optional(),
   })
   .passthrough();
 
@@ -254,6 +268,18 @@ export const alertUpsertSchema = z
         message: alertMessages.selectTrigger,
       });
     }
+
+    if (
+      value.destinationType === 'AUTOMATION' &&
+      isStripeAutomationTriggerType(value.triggerType) &&
+      !value.triggerConfig?.stripeConnectionId
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['triggerConfig', 'stripeConnectionId'],
+        message: alertMessages.selectStripePlan,
+      });
+    }
   });
 
 export const alertListQuerySchema = z.object({
@@ -285,6 +311,30 @@ export const alertInternalTriggerSchema = z.object({
   messageThreadId: z.coerce.number().int().positive().optional(),
 });
 
+const alertQuickDispatchMemberTargetSchema = z.object({
+  telegramUserId: z.string().trim().min(1, alertMessages.membersPerItem),
+  displayName: z.string().trim().max(200).optional(),
+});
+
+export const alertQuickDispatchSchema = z.discriminatedUnion('targetType', [
+  z.object({
+    targetType: z.literal('members'),
+    targets: z
+      .array(alertQuickDispatchMemberTargetSchema)
+      .min(1, alertMessages.selectMember)
+      .max(500, alertMessages.membersMax),
+  }),
+  z.object({
+    targetType: z.literal('group'),
+    telegramGroupId: z.string().trim().min(1, alertMessages.groupIdMin),
+    messageThreadId: z
+      .number({ invalid_type_error: alertMessages.threadIdInt })
+      .int(alertMessages.threadIdInt)
+      .positive(alertMessages.threadIdPositive)
+      .optional(),
+  }),
+]);
+
 export type AlertUpsertInput = z.infer<typeof alertUpsertSchema>;
 export type AlertTriggerTypeInput = z.infer<typeof alertTriggerTypeSchema>;
 
@@ -304,3 +354,4 @@ export type AlertOptionsInput = z.infer<typeof alertOptionsSchema>;
 export type AlertInternalTriggerInput = z.infer<
   typeof alertInternalTriggerSchema
 >;
+export type AlertQuickDispatchInput = z.infer<typeof alertQuickDispatchSchema>;

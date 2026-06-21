@@ -19,10 +19,7 @@ import {
   SettingsIcon,
   type SettingsIconHandle,
 } from "@/components/icons/settings";
-import {
-  UserRoundCheckIcon,
-  type UserRoundCheckIconHandle,
-} from "@/components/icons/user-round-check";
+import { UserIcon, type UserIconHandle } from "@/components/icons/user";
 import { UsersIcon, type UsersIconHandle } from "@/components/icons/users";
 import {
   Sidebar,
@@ -203,8 +200,8 @@ function SidebarAnimatedIcon({
       );
     case "members":
       return (
-        <UserRoundCheckIcon
-          ref={iconRef as RefObject<UserRoundCheckIconHandle | null>}
+        <UserIcon
+          ref={iconRef as RefObject<UserIconHandle | null>}
           size={16}
           isAnimateOnView={false}
           animateOnHover={false}

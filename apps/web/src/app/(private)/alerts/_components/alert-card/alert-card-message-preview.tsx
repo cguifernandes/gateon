@@ -1,10 +1,12 @@
 "use client";
 
 import { AvatarStack } from "@/components/avatar-stack";
+import { StripePrivateMessageBadge } from "@/components/stripe-private-message-badge";
 import { TruncatedTextTooltip } from "@/components/truncated-text-tooltip";
 import { Button } from "@/components/ui/button";
 import {
   type AlertSummaryDto,
+  isStripeAutomationTriggerType,
   resolveAlertTriggerLabel,
 } from "@/lib/zod/alert-schemas";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
@@ -30,6 +32,7 @@ export function AlertCardMessagePreview({
     .map((button) => button.text.trim())
     .filter(Boolean)
     .slice(0, 3);
+  const isStripeAlert = isStripeAutomationTriggerType(alert.triggerType);
 
   return (
     <div
@@ -42,8 +45,9 @@ export function AlertCardMessagePreview({
             <p className="text-foreground text-xs">{destinationsLabel}</p>
 
             {alert.triggerType ? (
-              <span className="font-light text-muted-foreground text-xs">
+              <span className="inline-flex flex-wrap items-center gap-1.5 font-light text-muted-foreground text-xs">
                 {resolveAlertTriggerLabel(alert.triggerType)}
+                {isStripeAlert ? <StripePrivateMessageBadge /> : null}
               </span>
             ) : null}
           </div>

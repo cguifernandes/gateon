@@ -14,6 +14,12 @@ export const PLAN_GROUP_MEMBER_LIMITS: Record<PlanId, number> = {
   pro: 300,
 };
 
+export const PLAN_LABELS: Record<PlanId, string> = {
+  free: 'Gratuito',
+  starter: 'Starter',
+  pro: 'Pro',
+};
+
 export function getMaxGroupsForPlan(planId: PlanId): number {
   return PLAN_GROUP_LIMITS[planId];
 }

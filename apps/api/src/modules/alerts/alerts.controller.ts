@@ -18,6 +18,7 @@ import { TelegramService } from '../telegram/telegram.service';
 import { AlertsService } from './alerts.service';
 import {
   alertListQuerySchema,
+  alertQuickDispatchSchema,
   alertTemplateCreateSchema,
   alertUpsertSchema,
 } from './schemas/alert-schemas';
@@ -121,6 +122,20 @@ export class AlertsController {
   async runAlert(@Req() req: Request, @Param('alertId') alertId: string) {
     await this.alerts.getAlert(this.getUserId(req), alertId);
     return this.alerts.runAlert(alertId);
+  }
+
+  @Post(':alertId/dispatch')
+  @UseGuards(AuthGuard)
+  dispatchQuickAlert(
+    @Req() req: Request,
+    @Param('alertId') alertId: string,
+    @Body() body: unknown,
+  ) {
+    return this.alerts.dispatchQuickAlert(
+      this.getUserId(req),
+      alertId,
+      alertQuickDispatchSchema.parse(body),
+    );
   }
 
   @Post(':alertId/test')

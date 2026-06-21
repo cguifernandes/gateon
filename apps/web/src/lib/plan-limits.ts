@@ -14,6 +14,13 @@ export const PLAN_GROUP_MEMBER_LIMITS: Record<PlanId, number> = {
   pro: 300,
 };
 
+/** Distinct Telegram groups allowed as Stripe /start payment targets per Gateon plan. */
+export const PLAN_STRIPE_PAYMENT_GROUP_LIMITS: Record<PlanId, number> = {
+  free: 1,
+  starter: 5,
+  pro: 100,
+};
+
 export const PLAN_LABELS: Record<PlanId, string> = {
   free: "Gratuito",
   starter: "Starter",
@@ -26,6 +33,13 @@ export function getMaxGroupsForPlan(planId: PlanId): number {
 
 export function getMaxManagedMembersPerGroupForPlan(planId: PlanId): number {
   return PLAN_GROUP_MEMBER_LIMITS[planId];
+}
+
+export function getMaxStripePaymentGroupsForPlan(planId: PlanId): number {
+  return Math.min(
+    PLAN_STRIPE_PAYMENT_GROUP_LIMITS[planId],
+    getMaxGroupsForPlan(planId),
+  );
 }
 
 export type GroupLimitSnapshot = {

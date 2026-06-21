@@ -48,19 +48,21 @@ function parseForumTopic(value: unknown): ForumTopic | null {
   };
 }
 
-type ForumTopicSelectFieldProps = {
-  form: UseFormReturn<AlertUpsertInput>;
+export type ForumTopicPickerProps = {
   groupId?: string;
   fieldIdPrefix: string;
   error?: string;
+  selectedThreadIds: number[];
+  onSelectedThreadIdsChange: (threadIds: number[]) => void;
 };
 
-export function ForumTopicSelectField({
-  form,
+export function ForumTopicPicker({
   groupId,
   fieldIdPrefix,
   error,
-}: ForumTopicSelectFieldProps) {
+  selectedThreadIds,
+  onSelectedThreadIdsChange,
+}: ForumTopicPickerProps) {
   const [topics, setTopics] = useState<ForumTopic[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -69,9 +71,6 @@ export function ForumTopicSelectField({
   const previousGroupIdRef = useRef<string | undefined>(undefined);
   const loadAbortRef = useRef<AbortController | null>(null);
   const refreshIconRef = useRef<RefreshCWIconHandle>(null);
-  const selectedThreadIds = (form.watch(
-    "triggerConfig.targetMessageThreadIds",
-  ) ?? []) as number[];
 
   const syncedTopicIds = useMemo(
     () => new Set(topics.map((topic) => topic.messageThreadId)),
@@ -98,19 +97,9 @@ export function ForumTopicSelectField({
       const normalized = [...new Set(nextThreadIds)].filter(
         (threadId) => Number.isFinite(threadId) && threadId > 0,
       );
-      form.setValue("triggerConfig.targetMessageThreadIds", normalized, {
-        shouldDirty: true,
-        shouldValidate: false,
-      });
-      form.setValue("messageThreadId", normalized[0], {
-        shouldDirty: true,
-        shouldValidate: false,
-      });
-      if (normalized.length > 0) {
-        form.clearErrors("triggerConfig.targetMessageThreadIds");
-      }
+      onSelectedThreadIdsChange(normalized);
     },
-    [form],
+    [onSelectedThreadIdsChange],
   );
 
   const toggleTopic = useCallback(
@@ -440,5 +429,53 @@ export function ForumTopicSelectField({
 
       {error ? <FieldError>{error}</FieldError> : null}
     </Field>
+  );
+}
+
+type ForumTopicSelectFieldProps = {
+  form: UseFormReturn<AlertUpsertInput>;
+  groupId?: string;
+  fieldIdPrefix: string;
+  error?: string;
+};
+
+export function ForumTopicSelectField({
+  form,
+  groupId,
+  fieldIdPrefix,
+  error,
+}: ForumTopicSelectFieldProps) {
+  const selectedThreadIds = (form.watch(
+    "triggerConfig.targetMessageThreadIds",
+  ) ?? []) as number[];
+
+  const setSelectedThreadIds = useCallback(
+    (nextThreadIds: number[]) => {
+      const normalized = [...new Set(nextThreadIds)].filter(
+        (threadId) => Number.isFinite(threadId) && threadId > 0,
+      );
+      form.setValue("triggerConfig.targetMessageThreadIds", normalized, {
+        shouldDirty: true,
+        shouldValidate: false,
+      });
+      form.setValue("messageThreadId", normalized[0], {
+        shouldDirty: true,
+        shouldValidate: false,
+      });
+      if (normalized.length > 0) {
+        form.clearErrors("triggerConfig.targetMessageThreadIds");
+      }
+    },
+    [form],
+  );
+
+  return (
+    <ForumTopicPicker
+      groupId={groupId}
+      fieldIdPrefix={fieldIdPrefix}
+      error={error}
+      selectedThreadIds={selectedThreadIds}
+      onSelectedThreadIdsChange={setSelectedThreadIds}
+    />
   );
 }

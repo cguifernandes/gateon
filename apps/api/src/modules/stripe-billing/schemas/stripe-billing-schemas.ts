@@ -27,9 +27,14 @@ export const stripeBillingPreviewCatalogSchema = z.object({
 export const stripeBillingConnectSchema = z.object({
   apiKey: stripeApiKeySchema,
   stripePriceId: stripePriceIdSchema,
+  telegramGroupId: z.string().trim().min(1, 'Selecione o grupo vinculado ao plano.'),
   consentAccepted: z.literal(true, {
     errorMap: () => ({ message: stripeMessages.consentRequired }),
   }),
+});
+
+export const stripeBillingUpdateLinkedGroupSchema = z.object({
+  telegramGroupId: z.string().trim().min(1, 'Selecione o grupo vinculado ao plano.'),
 });
 
 export const stripeBillingCatalogPriceSchema = z.object({
@@ -55,6 +60,9 @@ export type StripeBillingPreviewCatalogInput = z.infer<
 >;
 export type StripeBillingConnectInput = z.infer<
   typeof stripeBillingConnectSchema
+>;
+export type StripeBillingUpdateLinkedGroupInput = z.infer<
+  typeof stripeBillingUpdateLinkedGroupSchema
 >;
 export type StripeBillingCatalogPrice = z.infer<
   typeof stripeBillingCatalogPriceSchema

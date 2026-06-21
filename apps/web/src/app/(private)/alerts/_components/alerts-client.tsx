@@ -11,6 +11,7 @@ import {
   type AlertsResponseDto,
   alertsResponseSchema,
 } from "@/lib/zod/alert-schemas";
+import type { StripeBillingConnectionDto } from "@/lib/zod/stripe-billing-schemas";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
 import { CreateAlertDialog } from "../../../../components/create-alert-dialog";
 import { useAlertsFiltersUrl } from "../_hooks/use-alerts-filters-url";
@@ -23,6 +24,7 @@ import { StatCard } from "./stat-card";
 type AlertsClientProps = {
   initialData: AlertsResponseDto;
   groups: TelegramGroupSummaryDto[];
+  stripeConnections: StripeBillingConnectionDto[];
 };
 
 function readRefreshAlertsError(body: unknown): string {
@@ -44,11 +46,18 @@ function readRefreshAlertsError(body: unknown): string {
   return "Não foi possível atualizar a lista de alertas.";
 }
 
-export function AlertsClient({ initialData, groups }: AlertsClientProps) {
+export function AlertsClient({
+  initialData,
+  groups,
+  stripeConnections,
+}: AlertsClientProps) {
   const [data, setData] = useState(initialData);
   const [query, setQuery] = useState("");
   const { urlFilters, control: filtersControl } = useAlertsFiltersUrl();
   const [selectedAlert, setSelectedAlert] = useState<AlertSummaryDto | null>(
+    null,
+  );
+  const [editingAlert, setEditingAlert] = useState<AlertSummaryDto | null>(
     null,
   );
   const searchIconRef = useRef<SearchIconHandle>(null);
@@ -187,7 +196,11 @@ export function AlertsClient({ initialData, groups }: AlertsClientProps) {
               onChange={(event) => setQuery(event.target.value)}
             />
           </div>
-          <CreateAlertDialog groups={groups} onCreated={refreshAlerts} />
+          <CreateAlertDialog
+            groups={groups}
+            stripeConnections={stripeConnections}
+            onCreated={refreshAlerts}
+          />
         </div>
         <div className="grid gap-4 lg:grid-cols-[295px_1fr]">
           <AlertsFiltersSidebar groups={groups} control={filtersControl} />
@@ -212,6 +225,7 @@ export function AlertsClient({ initialData, groups }: AlertsClientProps) {
                 searchQuery={query}
                 hasActiveUrlFilters={filtersControl.appliedActiveCount > 0}
                 groups={groups}
+                stripeConnections={stripeConnections}
                 onCreated={refreshAlerts}
                 onClearFilters={filtersControl.clear}
               />
@@ -220,11 +234,37 @@ export function AlertsClient({ initialData, groups }: AlertsClientProps) {
         </div>
       </div>
 
-      <AlertDetailDrawer
-        alert={selectedAlert}
+      {editingAlert === null ? (
+        <AlertDetailDrawer
+          alert={selectedAlert}
+          groups={groups}
+          open={selectedAlert !== null}
+          onOpenChange={(open) => !open && setSelectedAlert(null)}
+          onEdit={(alert) => {
+            setEditingAlert(alert);
+            setSelectedAlert(null);
+          }}
+          onDeleted={() => {
+            setSelectedAlert(null);
+            setEditingAlert(null);
+            void refreshAlerts();
+          }}
+        />
+      ) : null}
+
+      <CreateAlertDialog
         groups={groups}
-        open={selectedAlert !== null}
-        onOpenChange={(open) => !open && setSelectedAlert(null)}
+        stripeConnections={stripeConnections}
+        alertToEdit={editingAlert}
+        open={editingAlert !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditingAlert(null);
+        }}
+        onCreated={() => {
+          setSelectedAlert(null);
+          void refreshAlerts();
+        }}
+        showTrigger={false}
       />
     </>
   );

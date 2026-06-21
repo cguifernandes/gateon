@@ -1,13 +1,24 @@
-import { InlineKeyboard, type Bot, type Context } from "grammy";
+import { type Bot, type Context, InlineKeyboard } from "grammy";
+import { buildConfiguredStartMessage } from "../bot-start-message-builder.js";
 import type { AppConfig } from "../config.js";
-import { sendTelegramBotEvent } from "../gateon-api.js";
-import { replyForTelegramConnectionReason } from "../telegram-connection-replies.js";
+import {
+  fetchBotStartCheckoutButtons,
+  fetchBotStartPublicSettings,
+  sendTelegramBotEvent,
+} from "../gateon-api.js";
 import {
   gateonGroupNotifySlotKey,
   tryConsumeGateonGroupNotifySlot,
 } from "../gateon-group-notify.js";
 import { extractAdministratorRightsPayload } from "../telegram-admin-rights.js";
 import { buildStartWithoutTokenMessage } from "../telegram-bot-messages.js";
+import {
+  replyForGateonApiError,
+  replyForTelegramConnectionReason,
+} from "../telegram-connection-replies.js";
+import { buildPaymentGroupsMarkup } from "./start-payment-group.js";
+
+const PUBLIC_START_TOKEN_PREFIX = "g_";
 
 type TelegramUserPayload = {
   id: string;
@@ -60,7 +71,40 @@ async function getBotMembershipForGateon(ctx: Context): Promise<{
   };
 }
 
-export function registerStartCommand(bot: Bot<Context>, config: AppConfig): void {
+async function buildPaymentButtonsMarkup(
+  config: AppConfig,
+  token: string,
+  telegramUserId: string,
+  showPaymentButtons: boolean,
+): Promise<InlineKeyboard | undefined> {
+  if (!showPaymentButtons) {
+    return undefined;
+  }
+
+  try {
+    const { buttons } = await fetchBotStartCheckoutButtons(config, {
+      token,
+      telegramUserId,
+    });
+
+    if (buttons.length === 0) {
+      return undefined;
+    }
+
+    const keyboard = new InlineKeyboard();
+    for (const button of buttons) {
+      keyboard.url(button.label, button.url).row();
+    }
+    return keyboard;
+  } catch {
+    return undefined;
+  }
+}
+
+export function registerStartCommand(
+  bot: Bot<Context>,
+  config: AppConfig,
+): void {
   bot.command("start", async (ctx) => {
     const token = getStartPayload(ctx);
     const telegramUser = getTelegramUser(ctx);
@@ -70,28 +114,72 @@ export function registerStartCommand(bot: Bot<Context>, config: AppConfig): void
       return;
     }
 
-    if (ctx.chat?.type === "private") {
-      const result = await sendTelegramBotEvent(config, {
-        eventType: "private_start",
-        token,
-        telegramUser,
-      });
+    if (token.startsWith(PUBLIC_START_TOKEN_PREFIX)) {
+      if (ctx.chat?.type !== "private") {
+        await ctx.reply(
+          "Este link deve ser aberto no chat privado com o bot do Gateon.",
+        );
+        return;
+      }
 
-      const startGroupUrl =
-        result.startGroupUrl ??
-        `https://t.me/${ctx.me.username}?startgroup=${encodeURIComponent(
-          token,
-        )}`;
+      const settings = await fetchBotStartPublicSettings(config, token);
+      if (!settings) {
+        await ctx.reply(
+          "Este link de /start não é válido ou foi desativado. Peça um novo link ao criador.",
+        );
+        return;
+      }
+
+      const message = buildConfiguredStartMessage(settings);
+      const useGroupFirst =
+        settings.showPaymentButtons && settings.paymentButtonsGroupFirst;
+      const replyMarkup = useGroupFirst
+        ? await buildPaymentGroupsMarkup(
+            config,
+            token,
+            settings.showPaymentButtons,
+            settings.paymentButtonsGroupFirst,
+          )
+        : await buildPaymentButtonsMarkup(
+            config,
+            token,
+            telegramUser.id,
+            settings.showPaymentButtons,
+          );
 
       await ctx.reply(
-        "Identidade confirmada. Agora selecione o grupo que deseja conectar ao Gateon.",
-        {
-          reply_markup: new InlineKeyboard().url(
-            "Selecionar grupo",
-            startGroupUrl,
-          ),
-        },
+        message,
+        replyMarkup ? { reply_markup: replyMarkup } : undefined,
       );
+      return;
+    }
+
+    if (ctx.chat?.type === "private") {
+      try {
+        const result = await sendTelegramBotEvent(config, {
+          eventType: "private_start",
+          token,
+          telegramUser,
+        });
+
+        const startGroupUrl =
+          result.startGroupUrl ??
+          `https://t.me/${ctx.me.username}?startgroup=${encodeURIComponent(
+            token,
+          )}`;
+
+        await ctx.reply(
+          "Identidade confirmada. Agora selecione o grupo que deseja conectar ao Gateon.",
+          {
+            reply_markup: new InlineKeyboard().url(
+              "Selecionar grupo",
+              startGroupUrl,
+            ),
+          },
+        );
+      } catch (error) {
+        await ctx.reply(replyForGateonApiError(error));
+      }
       return;
     }
 
@@ -102,35 +190,40 @@ export function registerStartCommand(bot: Bot<Context>, config: AppConfig): void
     }
 
     const membership = await getBotMembershipForGateon(ctx);
-    const result = await sendTelegramBotEvent(config, {
-      eventType: "group_start",
-      token,
-      telegramUser,
-      chat,
-      botStatus: membership.botStatus,
-      administratorRights: membership.administratorRights,
-    });
 
-    const dedupeKey = gateonGroupNotifySlotKey(result);
-    if (dedupeKey) {
-      if (!tryConsumeGateonGroupNotifySlot(chat.id, dedupeKey)) {
+    try {
+      const result = await sendTelegramBotEvent(config, {
+        eventType: "group_start",
+        token,
+        telegramUser,
+        chat,
+        botStatus: membership.botStatus,
+        administratorRights: membership.administratorRights,
+      });
+
+      const dedupeKey = gateonGroupNotifySlotKey(result);
+      if (dedupeKey) {
+        if (!tryConsumeGateonGroupNotifySlot(chat.id, dedupeKey)) {
+          return;
+        }
+      }
+
+      const reasonMessage = replyForTelegramConnectionReason(
+        result.reason,
+        result.missingRequiredRightIds,
+      );
+      if (reasonMessage) {
+        await ctx.reply(reasonMessage);
         return;
       }
-    }
 
-    const reasonMessage = replyForTelegramConnectionReason(
-      result.reason,
-      result.missingRequiredRightIds,
-    );
-    if (reasonMessage) {
-      await ctx.reply(reasonMessage);
-      return;
-    }
-
-    if (result.status === "CONNECTED") {
-      await ctx.reply(
-        "Conexao concluida com sucesso. O Gateon ja pode gerenciar este grupo.",
-      );
+      if (result.status === "CONNECTED") {
+        await ctx.reply(
+          "Conexao concluida com sucesso. O Gateon ja pode gerenciar este grupo.",
+        );
+      }
+    } catch (error) {
+      await ctx.reply(replyForGateonApiError(error));
     }
   });
 }

@@ -1,10 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
-import type { MemberActionTarget } from "@/lib/member-actions";
-import { postGroupMemberBulkAction } from "@/lib/member-actions";
-import { postGroupChatNotice } from "@/lib/group-chat-notice";
+import { LoaderIcon } from "@/components/icons/loader";
+import { SlidersHorizontalIcon } from "@/components/icons/sliders-horizontal";
+import { QuickAlertSelectedDetails } from "@/components/quick-alert-selected-details";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,41 +14,43 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+  FieldTitle,
+} from "@/components/ui/field";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { dispatchQuickAlertWithToast } from "@/lib/quick-alert-dispatch";
+import {
+  fetchQuickAlertOptions,
+  getQuickAlertCardDescription,
+  type QuickAlertOption,
+} from "@/lib/quick-alerts";
+import { cn } from "@/lib/utils";
 
-const DEFAULT_QUICK_NOTICE_TEXT = "Boa tarde";
-const GENERAL_TOPIC_ID = 1;
-
-type ForumTopic = {
-  messageThreadId: number;
-  name: string;
-  isClosed: boolean;
+export type QuickNoticeMemberTarget = {
+  telegramUserId: string;
+  displayName?: string;
 };
+
+export type QuickNoticePayload =
+  | {
+      type: "members";
+      title: string;
+      targets: QuickNoticeMemberTarget[];
+    }
+  | {
+      type: "group";
+      title: string;
+      groupId: string;
+    };
 
 type QuickNoticeDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  payload:
-    | {
-        type: "members";
-        title: string;
-        targets: MemberActionTarget[];
-      }
-    | {
-        type: "group";
-        title: string;
-        groupId: string;
-        isForum: boolean;
-      }
-    | null;
+  payload: QuickNoticePayload | null;
   onSent?: () => void;
 };
 
@@ -58,40 +60,48 @@ export function QuickNoticeDialog({
   payload,
   onSent,
 }: QuickNoticeDialogProps) {
-  const [text, setText] = useState(DEFAULT_QUICK_NOTICE_TEXT);
+  const [quickAlerts, setQuickAlerts] = useState<QuickAlertOption[]>([]);
+  const [selectedAlertId, setSelectedAlertId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [topics, setTopics] = useState<ForumTopic[]>([]);
-  const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
-  const [step, setStep] = useState<"topic" | "message">("message");
+  const [isLoadingAlerts, setIsLoadingAlerts] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const isGroupForum = payload?.type === "group" && payload.isForum;
+  const hasQuickAlerts = quickAlerts.length > 0;
 
-  useEffect(() => {
-    if (!open || !payload) return;
-    setText(DEFAULT_QUICK_NOTICE_TEXT);
-    setIsSubmitting(false);
-    setTopics([]);
-    setSelectedTopic(null);
-    setStep(isGroupForum ? "topic" : "message");
-  }, [open, payload, isGroupForum]);
+  const selectedAlert = useMemo(
+    () => quickAlerts.find((alert) => alert.id === selectedAlertId) ?? null,
+    [quickAlerts, selectedAlertId],
+  );
 
   useEffect(() => {
-    if (!open || payload?.type !== "group" || !payload.isForum) return;
+    if (!open || !payload) {
+      return;
+    }
 
+    const controller = new AbortController();
     let cancelled = false;
-    fetch(`/api/alerts/groups/${payload.groupId}/forum-topics`)
-      .then((response) => (response.ok ? response.json() : []))
-      .then((data: unknown) => {
-        if (!cancelled && Array.isArray(data)) {
-          setTopics(data as ForumTopic[]);
+
+    setIsLoadingAlerts(true);
+    setLoadError(null);
+    setIsSubmitting(false);
+
+    void fetchQuickAlertOptions(controller.signal).then((result) => {
+      if (cancelled) return;
+
+      setQuickAlerts(result.alerts);
+      setLoadError(result.error);
+      setIsLoadingAlerts(false);
+      setSelectedAlertId((current) => {
+        if (current && result.alerts.some((alert) => alert.id === current)) {
+          return current;
         }
-      })
-      .catch(() => {
-        if (!cancelled) setTopics([]);
+        return result.alerts[0]?.id ?? "";
       });
+    });
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [open, payload]);
 
@@ -103,135 +113,206 @@ export function QuickNoticeDialog({
     return payload.title;
   }, [payload]);
 
-  async function handleSend() {
-    if (!payload) return;
-    if (!text.trim()) {
-      toast.error("Digite a mensagem do aviso.");
-      return;
+  function handleClose() {
+    onOpenChange(false);
+  }
+
+  function handleDialogOpenChange(nextOpen: boolean) {
+    if (!nextOpen) {
+      handleClose();
     }
+  }
+
+  async function handleSend() {
+    if (!payload || !selectedAlert) return;
 
     setIsSubmitting(true);
-    const loadingId = toast.loading("Enviando aviso rápido...");
 
     try {
-      if (payload.type === "members") {
-        const grouped = new Map<string, string[]>();
-        for (const target of payload.targets) {
-          const current = grouped.get(target.groupId) ?? [];
-          current.push(target.telegramUserId);
-          grouped.set(target.groupId, current);
-        }
+      const result =
+        payload.type === "members"
+          ? await dispatchQuickAlertWithToast(
+              selectedAlert.id,
+              {
+                targetType: "members",
+                targets: payload.targets.map((target) => ({
+                  telegramUserId: target.telegramUserId,
+                  displayName: target.displayName,
+                })),
+              },
+              {
+                successMessage: `Aviso enviado para ${payload.targets.length} membro(s).`,
+              },
+            )
+          : await dispatchQuickAlertWithToast(
+              selectedAlert.id,
+              {
+                targetType: "group",
+                telegramGroupId: payload.groupId,
+              },
+              { successMessage: "Aviso enviado para o grupo." },
+            );
 
-        let successCount = 0;
-        for (const [groupId, telegramUserIds] of grouped) {
-          const result = await postGroupMemberBulkAction(groupId, {
-            action: "notice",
-            telegramUserIds,
-            text: text.trim(),
-          });
-          successCount += result.successCount;
-        }
+      if (!result.success) return;
 
-        toast.success(`Aviso enviado para ${successCount} membro(s).`, {
-          id: loadingId,
-        });
-      } else {
-        const messageThreadId =
-          payload.isForum && selectedTopic
-            ? Number(selectedTopic)
-            : payload.isForum
-              ? GENERAL_TOPIC_ID
-              : undefined;
-
-        await postGroupChatNotice(payload.groupId, text.trim(), messageThreadId);
-        toast.success("Aviso enviado para o grupo.", { id: loadingId });
-      }
-
-      onOpenChange(false);
+      handleClose();
       onSent?.();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Falha ao enviar aviso rápido.",
-        { id: loadingId },
-      );
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  if (!payload) return null;
+  if (!open || !payload) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px]">
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
+      <DialogContent className="grid max-h-[600px] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0 sm:max-w-[560px]">
         <DialogHeader>
-          <DialogTitle>Aviso Rápido</DialogTitle>
+          <DialogTitle>Aviso rápido</DialogTitle>
           <DialogDescription>
-            {payload.type === "members"
-              ? `Enviar aviso para ${summaryLabel}.`
-              : `Enviar aviso no grupo ${summaryLabel}.`}
+            {payload.type === "members" ? (
+              <>
+                Selecione um modelo para enviar a{" "}
+                <span className="font-medium text-foreground">
+                  {summaryLabel}
+                </span>
+                .
+              </>
+            ) : (
+              <>
+                Selecione um modelo para enviar no grupo{" "}
+                <span className="font-medium text-foreground">
+                  {summaryLabel}
+                </span>
+                .
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
 
-        {isGroupForum && step === "topic" ? (
-          <div className="space-y-3">
-            <Label>Tópico de destino</Label>
-            <Select
-              value={selectedTopic ?? ""}
-              onValueChange={(value) => setSelectedTopic(value)}
+        <div
+          className="min-h-0 overflow-y-auto overscroll-contain"
+          onWheel={(event) => event.stopPropagation()}
+        >
+          {isLoadingAlerts ? (
+            <div
+              className="flex items-center justify-center gap-2 px-6 py-10 text-muted-foreground text-sm"
+              aria-live="polite"
+              aria-busy="true"
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um tópico" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={String(GENERAL_TOPIC_ID)}>
-                  Tópico geral
-                </SelectItem>
-                {topics.map((topic) => (
-                  <SelectItem
-                    key={topic.messageThreadId}
-                    value={String(topic.messageThreadId)}
-                    disabled={topic.isClosed}
-                  >
-                    {topic.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancelar
-              </Button>
+              <LoaderIcon animateOnHover={false} size={20} />
+              Carregando avisos rápidos…
+            </div>
+          ) : loadError ? (
+            <div className="px-6 pb-4">
+              <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-destructive text-sm">
+                {loadError}
+              </p>
+            </div>
+          ) : hasQuickAlerts ? (
+            <div className="space-y-4 px-6 pb-4">
+              <Field>
+                <FieldLabel>Modelo de aviso</FieldLabel>
+                <RadioGroup
+                  value={selectedAlertId}
+                  onValueChange={(value) => {
+                    if (value) setSelectedAlertId(value);
+                  }}
+                  className="max-h-40 gap-0 overflow-y-auto rounded-lg border border-border"
+                >
+                  {quickAlerts.map((alert, index) => {
+                    const inputId = `quick-notice-alert-${alert.id}`;
+                    const isSelected = selectedAlertId === alert.id;
+
+                    return (
+                      <FieldLabel
+                        key={alert.id}
+                        htmlFor={inputId}
+                        className={cn(
+                          "w-full cursor-pointer border-0 shadow-none",
+                          "has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:rounded-none has-[>[data-slot=field]]:border-0",
+                          "hover:bg-muted/50",
+                          isSelected && "bg-primary/5",
+                          index > 0 && "border-border border-t",
+                        )}
+                      >
+                        <Field
+                          orientation="horizontal"
+                          className="gap-3 px-3 py-2.5"
+                        >
+                          <RadioGroupItem value={alert.id} id={inputId} />
+                          <div className="flex min-w-0 flex-1 items-start gap-3">
+                            <div
+                              className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
+                              aria-hidden="true"
+                            >
+                              <SlidersHorizontalIcon
+                                size={16}
+                                isAnimateOnView={false}
+                              />
+                            </div>
+                            <FieldContent>
+                              <FieldTitle className="line-clamp-1 font-medium text-foreground! text-sm">
+                                {alert.name}
+                              </FieldTitle>
+                              <FieldDescription className="line-clamp-2 text-muted-foreground text-xs">
+                                {getQuickAlertCardDescription(alert)}
+                              </FieldDescription>
+                            </FieldContent>
+                          </div>
+                        </Field>
+                      </FieldLabel>
+                    );
+                  })}
+                </RadioGroup>
+              </Field>
+
+              {selectedAlert ? (
+                <QuickAlertSelectedDetails alert={selectedAlert} />
+              ) : null}
+            </div>
+          ) : (
+            <div className="px-6 py-10">
+              <p className="text-center text-sm text-muted-foreground">
+                Nenhum aviso rápido disponível. Crie um alerta com destino{" "}
+                <span className="font-medium text-foreground">
+                  Aviso rápido
+                </span>{" "}
+                na página de{" "}
+                <Link href="/alerts" className="text-primary underline">
+                  Alertas
+                </Link>{" "}
+                para reutilizar aqui.
+              </p>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <div className="flex items-center w-full justify-between gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-40"
+              onClick={handleClose}
+            >
+              {hasQuickAlerts && !isLoadingAlerts && !loadError
+                ? "Cancelar"
+                : "Fechar"}
+            </Button>
+            {hasQuickAlerts && !isLoadingAlerts && !loadError ? (
               <Button
                 type="button"
-                onClick={() => setStep("message")}
-                disabled={!selectedTopic}
+                className="w-40"
+                disabled={isSubmitting || !selectedAlert}
+                onClick={handleSend}
               >
-                Continuar
-              </Button>
-            </DialogFooter>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <Label>Mensagem</Label>
-            <Textarea
-              rows={6}
-              value={text}
-              onChange={(event) => setText(event.target.value)}
-              placeholder="Escreva o aviso rápido..."
-            />
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancelar
-              </Button>
-              <Button type="button" disabled={isSubmitting} onClick={handleSend}>
                 {isSubmitting ? "Enviando..." : "Enviar aviso"}
               </Button>
-            </DialogFooter>
+            ) : null}
           </div>
-        )}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-

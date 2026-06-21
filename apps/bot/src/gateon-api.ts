@@ -1,5 +1,6 @@
-import type { AppConfig } from "./config.js";
 import type { AlertTriggerType } from "./alert-triggers.js";
+import type { BotStartPublicPayload } from "./bot-start-message-builder.js";
+import type { AppConfig } from "./config.js";
 
 type TelegramUserPayload = {
   id: string;
@@ -81,6 +82,37 @@ export type TelegramBotEventResult = {
   };
 };
 
+export class GateonApiError extends Error {
+  readonly status: number;
+  readonly apiMessage: string;
+
+  constructor(status: number, apiMessage: string) {
+    super(`Gateon API rejected Telegram event (${status}): ${apiMessage}`);
+    this.name = "GateonApiError";
+    this.status = status;
+    this.apiMessage = apiMessage;
+  }
+}
+
+function readGateonApiErrorMessage(body: unknown, fallback: string): string {
+  if (body && typeof body === "object") {
+    if (
+      "message" in body &&
+      typeof (body as { message?: unknown }).message === "string"
+    ) {
+      return (body as { message: string }).message;
+    }
+    if (
+      "error" in body &&
+      typeof (body as { error?: unknown }).error === "string"
+    ) {
+      return (body as { error: string }).error;
+    }
+  }
+
+  return fallback;
+}
+
 export async function sendTelegramBotEvent(
   config: AppConfig,
   event: TelegramBotEvent,
@@ -99,12 +131,118 @@ export async function sendTelegramBotEvent(
 
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
-    throw new Error(
-      `Gateon API rejected Telegram event (${response.status}): ${detail}`,
+    let parsedBody: unknown = null;
+    try {
+      parsedBody = detail ? JSON.parse(detail) : null;
+    } catch {
+      parsedBody = null;
+    }
+
+    throw new GateonApiError(
+      response.status,
+      readGateonApiErrorMessage(
+        parsedBody,
+        detail.trim() || "Não foi possível concluir a operação.",
+      ),
     );
   }
 
   return (await response.json()) as TelegramBotEventResult;
+}
+
+export async function fetchBotStartPublicSettings(
+  config: AppConfig,
+  token: string,
+): Promise<BotStartPublicPayload | null> {
+  const response = await fetch(
+    `${config.GATEON_API_BASE_URL}/telegram/internal/bot-start/public/${encodeURIComponent(token)}`,
+    {
+      method: "GET",
+      headers: {
+        "x-gateon-bot-secret": config.TELEGRAM_BOT_INTERNAL_SECRET,
+      },
+    },
+  );
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(
+      `Gateon API rejected bot start settings (${response.status}): ${detail}`,
+    );
+  }
+
+  return (await response.json()) as BotStartPublicPayload;
+}
+
+export type BotStartCheckoutButton = {
+  connectionId: string;
+  label: string;
+  url: string;
+};
+
+export type BotStartPaymentGroup = {
+  id: string;
+  title: string;
+};
+
+export async function fetchBotStartCheckoutButtons(
+  config: AppConfig,
+  input: {
+    token: string;
+    telegramUserId: string;
+    telegramGroupId?: string;
+  },
+): Promise<{ buttons: BotStartCheckoutButton[] }> {
+  const response = await fetch(
+    `${config.GATEON_API_BASE_URL}/telegram/internal/bot-start/checkout-buttons`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-gateon-bot-secret": config.TELEGRAM_BOT_INTERNAL_SECRET,
+      },
+      body: JSON.stringify(input),
+    },
+  );
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(
+      `Gateon API rejected bot start checkout buttons (${response.status}): ${detail}`,
+    );
+  }
+
+  return (await response.json()) as { buttons: BotStartCheckoutButton[] };
+}
+
+export async function fetchBotStartPaymentGroups(
+  config: AppConfig,
+  input: { token: string },
+): Promise<{ groups: BotStartPaymentGroup[] }> {
+  const response = await fetch(
+    `${config.GATEON_API_BASE_URL}/telegram/internal/bot-start/payment-groups`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-gateon-bot-secret": config.TELEGRAM_BOT_INTERNAL_SECRET,
+      },
+      body: JSON.stringify(input),
+    },
+  );
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(
+      `Gateon API rejected bot start payment groups (${response.status}): ${detail}`,
+    );
+  }
+
+  return (await response.json()) as { groups: BotStartPaymentGroup[] };
 }
 
 export async function triggerTelegramAlerts(

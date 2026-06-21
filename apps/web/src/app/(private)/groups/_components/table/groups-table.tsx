@@ -3,11 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TelegramGroupTypeCell } from "@/app/(private)/groups/_components/table/telegram-group-type-badges";
-import StripeIcon from "@/assets/gateway/stripe-4.svg";
 import { AddGroupBotDialog } from "@/components/add-group-bot-dialog";
 import { SearchIcon, type SearchIconHandle } from "@/components/icons/search";
 import { ImageComponent } from "@/components/image-component";
-import { QuickNoticeDialog } from "@/components/quick-notice-dialog";
+import {
+  QuickNoticeDialog,
+  type QuickNoticePayload,
+} from "@/components/quick-notice-dialog";
 import { RemoveGroupDialog } from "@/components/remove-group-dialog";
 import { TruncatedTextTooltip } from "@/components/truncated-text-tooltip";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +42,7 @@ import {
   getTrackedMembersProgressPercent,
   memberMatchesSearch,
 } from "./group-table-helpers";
+import { LinkedStripePlansCell } from "./linked-stripe-plans-cell";
 
 type GroupsTableProps = {
   groups: TelegramGroupSummaryDto[];
@@ -52,10 +55,10 @@ export function GroupsTable({ groups }: GroupsTableProps) {
   const searchIconRef = useRef<SearchIconHandle>(null);
   const [membersDrawerGroup, setMembersDrawerGroup] =
     useState<TelegramGroupSummaryDto | null>(null);
-  const [quickNoticeGroup, setQuickNoticeGroup] =
-    useState<TelegramGroupSummaryDto | null>(null);
   const [removeGroupTarget, setRemoveGroupTarget] =
     useState<TelegramGroupSummaryDto | null>(null);
+  const [quickNoticePayload, setQuickNoticePayload] =
+    useState<QuickNoticePayload | null>(null);
 
   useEffect(() => {
     if (!membersDrawerGroup) {
@@ -139,13 +142,11 @@ export function GroupsTable({ groups }: GroupsTableProps) {
               <TableHeader>
                 <TableRow className="bg-muted hover:bg-muted!">
                   <TableHead className="min-w-60">Grupo</TableHead>
-                  <TableHead className="w-55 min-w-55">
-                    Membros
-                  </TableHead>
+                  <TableHead className="w-55 min-w-55">Membros</TableHead>
                   <TableHead className="hidden w-32 min-w-32 whitespace-nowrap px-2 text-center sm:table-cell">
                     Tipo
                   </TableHead>
-                  <TableHead className="hidden w-32 min-w-32 whitespace-nowrap px-2 text-center lg:table-cell">
+                  <TableHead className="hidden w-44 min-w-44 whitespace-nowrap px-2 text-center lg:table-cell">
                     Gateway
                   </TableHead>
                   <TableHead className="hidden w-36 min-w-36 whitespace-nowrap px-2 text-center md:table-cell">
@@ -178,7 +179,7 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                       tabIndex={0}
                       aria-label={`Ver membros de ${group.title ?? "grupo"}`}
                     >
-                      <TableCell className="min-w-60 align-top">
+                      <TableCell className="min-w-60">
                         <div className="flex min-w-0 gap-3">
                           <ImageComponent
                             src={
@@ -249,14 +250,9 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                         />
                       </TableCell>
 
-                      <TableCell className="hidden w-32 min-w-32 text-center whitespace-nowrap lg:table-cell">
-                        <ImageComponent
-                          src={StripeIcon.src}
-                          alt="Stripe"
-                          width={32}
-                          height={32}
-                          sizes="32px"
-                          className="size-[32px] shrink-0"
+                      <TableCell className="hidden w-44 min-w-44 px-2 text-center align-top lg:table-cell">
+                        <LinkedStripePlansCell
+                          plans={group.linkedStripePlans}
                         />
                       </TableCell>
 
@@ -298,7 +294,7 @@ export function GroupsTable({ groups }: GroupsTableProps) {
 
                 {filtered.length === 0 ? (
                   <TableRow className="hover:bg-background">
-                    <TableCell colSpan={7} className="p-0">
+                    <TableCell colSpan={8} className="p-0">
                       <GroupsEmptyState
                         embedded
                         hasNoGroups={false}
@@ -319,15 +315,28 @@ export function GroupsTable({ groups }: GroupsTableProps) {
               group={membersDrawerGroup}
               open
               showTrigger={false}
+              nestedDialogOpen={quickNoticePayload !== null}
               onOpenChange={(open) => {
                 if (!open) setMembersDrawerGroup(null);
               }}
+              onQuickNoticeRequest={setQuickNoticePayload}
               onRequestRemove={() => {
                 setRemoveGroupTarget(membersDrawerGroup);
                 setMembersDrawerGroup(null);
               }}
             />
           ) : null}
+
+          <QuickNoticeDialog
+            open={quickNoticePayload !== null}
+            payload={quickNoticePayload}
+            onOpenChange={(open) => {
+              if (!open) {
+                setQuickNoticePayload(null);
+              }
+            }}
+            onSent={() => router.refresh()}
+          />
 
           <RemoveGroupDialog
             groupId={removeGroupTarget?.id ?? ""}
@@ -343,27 +352,6 @@ export function GroupsTable({ groups }: GroupsTableProps) {
               setMembersDrawerGroup(null);
               router.refresh();
             }}
-          />
-
-          <QuickNoticeDialog
-            open={quickNoticeGroup !== null}
-            payload={
-              quickNoticeGroup
-                ? {
-                    type: "group",
-                    title:
-                      quickNoticeGroup.title ?? quickNoticeGroup.telegramChatId,
-                    groupId: quickNoticeGroup.id,
-                    isForum: quickNoticeGroup.isForum,
-                  }
-                : null
-            }
-            onOpenChange={(open) => {
-              if (!open) {
-                setQuickNoticeGroup(null);
-              }
-            }}
-            onSent={() => router.refresh()}
           />
         </>
       )}

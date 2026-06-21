@@ -8,6 +8,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import type { StripeBillingConnectionDto } from "@/lib/zod/stripe-billing-schemas";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
 import { CreateAlertDialog } from "../../../../components/create-alert-dialog";
 
@@ -16,6 +17,7 @@ type AlertsEmptyStateProps = {
   searchQuery: string;
   hasActiveUrlFilters: boolean;
   groups: TelegramGroupSummaryDto[];
+  stripeConnections: StripeBillingConnectionDto[];
   onCreated: () => void;
   onClearFilters: () => void;
 };
@@ -25,6 +27,7 @@ export function AlertsEmptyState({
   searchQuery,
   hasActiveUrlFilters,
   groups,
+  stripeConnections,
   onCreated,
   onClearFilters,
 }: AlertsEmptyStateProps) {
@@ -89,7 +92,11 @@ export function AlertsEmptyState({
           </Button>
         ) : null}
         {hasNoAlerts ? (
-          <CreateAlertDialog groups={groups} onCreated={onCreated} />
+          <CreateAlertDialog
+            groups={groups}
+            stripeConnections={stripeConnections}
+            onCreated={onCreated}
+          />
         ) : null}
       </EmptyContent>
     </Empty>

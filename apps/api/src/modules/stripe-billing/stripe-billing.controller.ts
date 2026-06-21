@@ -4,15 +4,18 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Req,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
+import { z } from 'zod';
 import {
   stripeBillingConnectSchema,
   stripeBillingPreviewCatalogSchema,
+  stripeBillingUpdateLinkedGroupSchema,
 } from './schemas/stripe-billing-schemas';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { StripeBillingService } from './stripe-billing.service';
@@ -45,10 +48,33 @@ export class StripeBillingController {
     );
   }
 
+  @Post('checkout/finalize')
+  async finalizeCheckout(@Body() body: unknown) {
+    const parsed = z
+      .object({ sessionId: z.string().trim().min(1) })
+      .parse(body);
+    await this.stripeBilling.finalizeCheckoutSession(parsed.sessionId);
+    return { success: true };
+  }
+
   @Post(':connectionId/sync')
   @UseGuards(AuthGuard)
   sync(@Req() req: Request, @Param('connectionId') connectionId: string) {
     return this.stripeBilling.syncNow(this.getUserId(req), connectionId);
+  }
+
+  @Patch(':connectionId/linked-group')
+  @UseGuards(AuthGuard)
+  updateLinkedGroup(
+    @Req() req: Request,
+    @Param('connectionId') connectionId: string,
+    @Body() body: unknown,
+  ) {
+    return this.stripeBilling.updateLinkedGroup(
+      this.getUserId(req),
+      connectionId,
+      stripeBillingUpdateLinkedGroupSchema.parse(body),
+    );
   }
 
   @Delete(':connectionId')

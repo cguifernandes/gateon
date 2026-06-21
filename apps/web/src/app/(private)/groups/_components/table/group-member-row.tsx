@@ -9,6 +9,7 @@ import {
 import { SearchIcon, type SearchIconHandle } from "@/components/icons/search";
 import { MemberActionsToolbar } from "@/components/member-actions-toolbar";
 import { MemberOwnerBadge } from "@/components/member-owner-badge";
+import { MemberStripePayerBadge } from "@/components/member-stripe-payer-badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ type GroupMemberRowProps = {
   displayName: string;
   formatDateTime: (value: string) => string;
   onMemberUpdated?: () => void;
+  onSendNotice?: () => void;
 };
 
 function getMemberInitials(member: GroupMemberRowData) {
@@ -40,6 +42,7 @@ export function GroupMemberRow({
   displayName,
   formatDateTime,
   onMemberUpdated,
+  onSendNotice,
 }: GroupMemberRowProps) {
   const isInactive = member.status === "left";
   const statusDisplay = getTrackedMemberStatusDisplay(
@@ -67,6 +70,7 @@ export function GroupMemberRow({
           <p className="flex items-center gap-1 truncate font-medium text-foreground text-sm">
             {displayName}
             {member.isOwner ? <MemberOwnerBadge /> : null}
+            <MemberStripePayerBadge plans={member.linkedStripePlans} />
             <Badge
               variant="outline"
               className={cn(
@@ -91,6 +95,7 @@ export function GroupMemberRow({
         isOwner={member.isOwner}
         variant="overlay"
         onActionSuccess={onMemberUpdated}
+        onSendNotice={onSendNotice}
       />
     </li>
   );
@@ -106,6 +111,10 @@ type GroupMembersListProps = {
   members: GroupMemberRowData[];
   formatDateTime: (value: string) => string;
   onMemberUpdated?: () => void;
+  onSendMemberNotice?: (target: {
+    telegramUserId: string;
+    displayName: string;
+  }) => void;
 };
 
 export function GroupMembersList({
@@ -113,6 +122,7 @@ export function GroupMembersList({
   members,
   formatDateTime,
   onMemberUpdated,
+  onSendMemberNotice,
 }: GroupMembersListProps) {
   const [search, setSearch] = useState("");
   const searchIconRef = useRef<SearchIconHandle>(null);
@@ -188,6 +198,15 @@ export function GroupMembersList({
                 displayName={getMemberDisplayName(member)}
                 formatDateTime={formatDateTime}
                 onMemberUpdated={onMemberUpdated}
+                onSendNotice={
+                  onSendMemberNotice
+                    ? () =>
+                        onSendMemberNotice({
+                          telegramUserId: member.telegramUserId,
+                          displayName: getMemberDisplayName(member),
+                        })
+                    : undefined
+                }
               />
             ))}
           </ul>

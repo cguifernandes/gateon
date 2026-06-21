@@ -1,8 +1,14 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
+import {
+  FileTextIcon,
+  type FileTextIconHandle,
+} from "@/components/icons/file-text";
 import { LoaderIcon } from "@/components/icons/loader";
+import { Trash2Icon, type Trash2IconHandle } from "@/components/icons/trash-2";
 import { XIcon, type XIconHandle } from "@/components/icons/x";
+import { StripePrivateMessageBadge } from "@/components/stripe-private-message-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,10 +26,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { runAlertActionWithToasts } from "@/lib/alert-actions";
 import { cn } from "@/lib/utils";
 import {
   type AlertRunRecordDto,
   type AlertSummaryDto,
+  isStripeAutomationTriggerType,
   resolveAlertTriggerLabel,
 } from "@/lib/zod/alert-schemas";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
@@ -52,6 +60,8 @@ type AlertDetailDrawerProps = {
   groups: TelegramGroupSummaryDto[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onEdit?: (alert: AlertSummaryDto) => void;
+  onDeleted?: () => void;
 };
 
 function formatRunOptionLabel(run: AlertRunRecordDto) {
@@ -76,6 +86,7 @@ function AlertDetailDrawerBadges({ alert }: { alert: AlertSummaryDto }) {
   const triggerLabel = alert.triggerType
     ? resolveAlertTriggerLabel(alert.triggerType)
     : null;
+  const isStripeAlert = isStripeAutomationTriggerType(alert.triggerType);
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
@@ -98,6 +109,8 @@ function AlertDetailDrawerBadges({ alert }: { alert: AlertSummaryDto }) {
         <Badge variant="outline">{triggerLabel}</Badge>
       ) : null}
 
+      {isStripeAlert ? <StripePrivateMessageBadge /> : null}
+
       <Badge variant="outline">{alert.deliveryRate}% de entrega</Badge>
     </div>
   );
@@ -108,8 +121,13 @@ export function AlertDetailDrawer({
   groups,
   open,
   onOpenChange,
+  onEdit,
+  onDeleted,
 }: AlertDetailDrawerProps) {
   const xIconRef = useRef<XIconHandle>(null);
+  const editIconRef = useRef<FileTextIconHandle>(null);
+  const deleteIconRef = useRef<Trash2IconHandle>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const {
     runs,
     selectedRun,
@@ -127,6 +145,22 @@ export function AlertDetailDrawer({
     () => buildAlertRunFailureGroups(failedDeliveries, groups),
     [failedDeliveries, groups],
   );
+
+  async function handleDelete() {
+    if (!alert || isDeleting) return;
+
+    setIsDeleting(true);
+    try {
+      const { success } = await runAlertActionWithToasts(alert.id, "delete");
+      if (success) {
+        onDeleted?.();
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  const showFooter = Boolean(alert && (onEdit || onDeleted));
 
   return (
     <Drawer direction="right" open={open} onOpenChange={onOpenChange}>
@@ -218,6 +252,48 @@ export function AlertDetailDrawer({
               <AlertRunErrorAccordion failureGroups={failureGroups} />
             ) : null}
           </div>
+
+          {alert && showFooter ? (
+            <div className="flex shrink-0 gap-2 border-t border-border px-6 py-4">
+              {onEdit ? (
+                <Button
+                  type="button"
+                  className="flex-1"
+                  variant="outline"
+                  disabled={isDeleting}
+                  onClick={() => onEdit(alert)}
+                  onMouseEnter={() => editIconRef.current?.startAnimation()}
+                  onMouseLeave={() => editIconRef.current?.stopAnimation()}
+                >
+                  <FileTextIcon
+                    ref={editIconRef}
+                    size={16}
+                    isAnimateOnView={false}
+                  />
+                  Editar alerta
+                </Button>
+              ) : null}
+              {onDeleted ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="flex-1"
+                  loading={isDeleting}
+                  disabled={isDeleting}
+                  onClick={() => void handleDelete()}
+                  onMouseEnter={() => deleteIconRef.current?.startAnimation()}
+                  onMouseLeave={() => deleteIconRef.current?.stopAnimation()}
+                >
+                  <Trash2Icon
+                    ref={deleteIconRef}
+                    size={16}
+                    isAnimateOnView={false}
+                  />
+                  Excluir alerta
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </DrawerContent>
     </Drawer>

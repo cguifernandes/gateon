@@ -1,4 +1,9 @@
 import { cookies, headers } from "next/headers";
+import {
+  DEFAULT_PLAN_ID,
+  getMaxStripePaymentGroupsForPlan,
+  PLAN_LABELS,
+} from "@/lib/plan-limits";
 import { getServerApiBaseUrl, SESSION_COOKIE_NAME } from "@/lib/utils";
 import {
   type StripeBillingStatusDto,
@@ -18,6 +23,12 @@ const emptyStripeBillingStatus: StripeBillingStatusDto = {
     monthlyRevenueCents: 0,
     receivedPaymentCount: 0,
     failedPaymentCount: 0,
+  },
+  stripePaymentGroupLimit: {
+    planId: DEFAULT_PLAN_ID,
+    planLabel: PLAN_LABELS[DEFAULT_PLAN_ID],
+    maxDistinctGroups: getMaxStripePaymentGroupsForPlan(DEFAULT_PLAN_ID),
+    usedDistinctGroups: 0,
   },
 };
 

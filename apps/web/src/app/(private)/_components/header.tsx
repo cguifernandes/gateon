@@ -11,12 +11,12 @@ type HeaderProps = {
 
 export function Header({ user }: HeaderProps) {
   return (
-    <header className="flex h-14 w-full shrink-0 items-center justify-between gap-3 rounded-tr-xl bg-background px-4 sm:gap-4 sm:px-6 border-b border-border">
+    <header className="flex h-14 w-full shrink-0 items-center justify-between gap-3 border-b border-border bg-background px-4 sm:gap-4 sm:px-6">
       <div className="flex min-h-0 min-w-0 flex-1 items-center gap-2 sm:gap-3">
         <SidebarTrigger />
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
         <ThemeSwitcher />
         <ProfileDropdown user={user} />
       </div>

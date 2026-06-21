@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { stripePaymentGroupLimitSchema } from "./stripe-payment-group-schemas";
 
 const stripeApiKeySchema = z
   .string()
@@ -23,9 +24,20 @@ export const stripeBillingPreviewCatalogSchema = z.object({
 export const stripeBillingConnectSchema = z.object({
   apiKey: stripeApiKeySchema,
   stripePriceId: stripePriceIdSchema,
+  telegramGroupId: z
+    .string()
+    .trim()
+    .min(1, "Selecione o grupo vinculado ao plano."),
   consentAccepted: z.literal(true, {
     error: "É necessário aceitar o aviso de consentimento.",
   }),
+});
+
+export const stripeBillingUpdateLinkedGroupSchema = z.object({
+  telegramGroupId: z
+    .string()
+    .trim()
+    .min(1, "Selecione o grupo vinculado ao plano."),
 });
 
 export const stripeCatalogPriceSchema = z.object({
@@ -46,6 +58,11 @@ export const stripeBillingCatalogSchema = z.object({
   prices: z.array(stripeCatalogPriceSchema),
 });
 
+const linkedGroupSummarySchema = z.object({
+  id: z.string(),
+  title: z.string(),
+});
+
 export const stripeBillingConnectionSchema = z.object({
   id: z.string(),
   stripeAccountId: z.string().nullable(),
@@ -64,6 +81,8 @@ export const stripeBillingConnectionSchema = z.object({
   monitoredStripePriceId: z.string().nullable(),
   monitoredStripeProductId: z.string().nullable(),
   monitoredPlanLabel: z.string().nullable(),
+  telegramGroupId: z.string().nullable(),
+  linkedGroup: linkedGroupSummarySchema.nullable(),
   updatedAt: z.string().or(z.date()),
 });
 
@@ -82,6 +101,7 @@ export const stripeBillingStatusSchema = z.object({
   canConnect: z.boolean(),
   connections: z.array(stripeBillingConnectionSchema),
   totals: stripeBillingTotalsSchema,
+  stripePaymentGroupLimit: stripePaymentGroupLimitSchema,
 });
 
 export type StripeBillingPreviewCatalogInput = z.infer<
@@ -89,6 +109,9 @@ export type StripeBillingPreviewCatalogInput = z.infer<
 >;
 export type StripeBillingConnectInput = z.infer<
   typeof stripeBillingConnectSchema
+>;
+export type StripeBillingUpdateLinkedGroupInput = z.infer<
+  typeof stripeBillingUpdateLinkedGroupSchema
 >;
 export type StripeCatalogPriceDto = z.infer<typeof stripeCatalogPriceSchema>;
 export type StripeBillingCatalogDto = z.infer<

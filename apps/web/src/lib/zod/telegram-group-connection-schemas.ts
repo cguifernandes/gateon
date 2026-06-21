@@ -49,6 +49,11 @@ export const telegramGroupMemberSummarySchema = z.object({
 
 export const telegramTrackedMemberStatusSchema = z.enum(["active", "left"]);
 
+export const linkedStripePlanSummarySchema = z.object({
+  connectionId: z.string(),
+  label: z.string(),
+});
+
 export const telegramGroupChatMemberSchema = z.object({
   telegramUserId: z.string(),
   firstName: z.string().nullable(),
@@ -58,6 +63,7 @@ export const telegramGroupChatMemberSchema = z.object({
   leftAt: z.string().nullable(),
   status: telegramTrackedMemberStatusSchema,
   isOwner: z.boolean(),
+  linkedStripePlans: z.array(linkedStripePlanSummarySchema).default([]),
 });
 
 export const telegramGroupChatMemberDetailSchema =
@@ -103,6 +109,7 @@ export const telegramGroupSummarySchema = z.object({
   connectedBy: telegramGroupMemberSummarySchema.nullable(),
   connectedByProfilePhotoUrl: z.string().nullable(),
   members: z.array(telegramGroupChatMemberSchema),
+  linkedStripePlans: z.array(linkedStripePlanSummarySchema).default([]),
 });
 
 export const telegramGroupsResponseSchema = z.array(telegramGroupSummarySchema);

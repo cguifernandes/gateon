@@ -1,3 +1,5 @@
+import { GateonApiError } from "./gateon-api.js";
+
 const PERMISSION_LABELS: Record<string, string> = {
   canManageChat: "Gerenciar o chat",
   canRestrictMembers: "Banir usuários",
@@ -58,4 +60,57 @@ export function replyForTelegramConnectionReason(
   }
 
   return null;
+}
+
+export function replyForGateonApiError(error: unknown): string {
+  if (!(error instanceof GateonApiError)) {
+    return "Não foi possível concluir a operação. Tente novamente em instantes.";
+  }
+
+  const { status, apiMessage } = error;
+
+  if (
+    status === 409 &&
+    apiMessage.includes("already linked to another Gateon user")
+  ) {
+    if (apiMessage.includes("Telegram group")) {
+      return [
+        "Este grupo do Telegram já está conectado a outra conta Gateon.",
+        "",
+        "Peça ao administrador da conta que já usa este grupo ou conecte um grupo diferente.",
+      ].join("\n");
+    }
+
+    return [
+      "Esta conta do Telegram já está vinculada a outro usuário Gateon.",
+      "",
+      "Entre no painel com a mesma conta Gateon que você usou antes ou use outro perfil do Telegram para conectar um novo grupo.",
+    ].join("\n");
+  }
+
+  if (status === 401) {
+    return [
+      "Este link não corresponde à conta do Telegram que está tentando conectar.",
+      "",
+      "Gere um novo link em Grupos no painel Gateon e abra-o com o mesmo perfil do Telegram.",
+    ].join("\n");
+  }
+
+  if (apiMessage.includes("Invalid Telegram connection token")) {
+    return "Este link de conexão é inválido. Gere um novo link em Grupos no painel Gateon.";
+  }
+
+  if (apiMessage.includes("Telegram connection token expired")) {
+    return "Este link de conexão expirou. Gere um novo link em Grupos no painel Gateon.";
+  }
+
+  if (apiMessage.includes("Telegram connection token already used")) {
+    return "Este link de conexão já foi utilizado. Gere um novo link em Grupos no painel Gateon.";
+  }
+
+  if (apiMessage.includes("No active Telegram connection intent")) {
+    return "Não há uma conexão em andamento para esta conta. Abra primeiro o link privado do bot e depois selecione o grupo.";
+  }
+
+  return "Não foi possível concluir a conexão. Gere um novo link em Grupos no painel Gateon e tente novamente.";
 }

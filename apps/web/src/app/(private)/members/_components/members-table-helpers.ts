@@ -52,6 +52,10 @@ export function isMemberOwner(member: MemberSummary) {
   return member.isOwner;
 }
 
+export function isStripePayer(member: MemberSummary) {
+  return member.linkedStripePlans.length > 0;
+}
+
 export function isMemberRemovable(member: MemberSummary) {
   return member.status === "active" && !member.isOwner;
 }

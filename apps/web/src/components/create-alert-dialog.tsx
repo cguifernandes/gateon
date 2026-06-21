@@ -1,6 +1,8 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import Image from "next/image";
+import Link from "next/link";
 import {
   type ForwardRefExoticComponent,
   type HTMLAttributes,
@@ -28,6 +30,7 @@ import {
   getMemberDisplayName,
   getMemberInitials,
 } from "@/app/(private)/members/_components/members-table-helpers";
+import stripeLogo from "@/assets/gateway/stripe-4.svg";
 import { ForumTopicSelectField } from "@/components/forum-topic-select-field";
 import {
   ArrowLeftIcon,
@@ -60,20 +63,29 @@ import {
   DialogStackTrigger,
   useDialogStackNavigation,
 } from "@/components/kibo-ui/dialog-stack";
+import {
+  AlertReviewSummary,
+  formatReviewBoolean,
+  formatReviewValue,
+} from "@/components/alert-review-summary";
 import { SelectableOptionCard } from "@/components/selectable-option-card";
+import { StripePrivateMessageBadge } from "@/components/stripe-private-message-badge";
 import { TruncatedTextTooltip } from "@/components/truncated-text-tooltip";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Field,
+  FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
   FieldLegend,
   FieldSet,
+  FieldTitle,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Tooltip,
@@ -81,16 +93,23 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { IconAnimationHandle } from "@/hooks/use-icon-animation";
+import {
+  DEFAULT_ALERT_FORM_VALUES,
+  mapAlertSummaryToFormValues,
+} from "@/lib/alert-form-values";
 import { cn, withCacheBuster } from "@/lib/utils";
 import {
   type AlertDestinationType,
+  type AlertSummaryDto,
   type AlertTriggerType,
   type AlertUpsertInput,
   alertTriggerLabels,
   alertUpsertSchema,
   automationTriggerDescriptions,
+  isStripeAutomationTriggerType,
   memberAutomationTriggerTypes,
 } from "@/lib/zod/alert-schemas";
+import type { StripeBillingConnectionDto } from "@/lib/zod/stripe-billing-schemas";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
 
 const destinationLabels: Record<AlertDestinationType, string> = {
@@ -100,54 +119,6 @@ const destinationLabels: Record<AlertDestinationType, string> = {
   QUICK_ALERT: "Aviso Rápido",
   AUTOMATION: "Automação inteligente",
 };
-
-function formatReviewValue(value: string | number | undefined | null): string {
-  if (value === undefined || value === null) return "-";
-  if (typeof value === "string" && value.trim() === "") return "-";
-  return String(value);
-}
-
-function formatReviewBoolean(value: boolean | undefined): string {
-  if (value === undefined) return "-";
-  return value ? "Sim" : "Não";
-}
-
-type ReviewSummaryCellProps = {
-  label: string;
-  value: string;
-  className?: string;
-  lineClamp?: 2 | 3;
-  valueClassName?: string;
-};
-
-function ReviewSummaryCell({
-  label,
-  value,
-  className,
-  lineClamp,
-  valueClassName,
-}: ReviewSummaryCellProps) {
-  const valueTextClassName = cn(
-    "mt-1 font-medium text-sm wrap-break-word",
-    valueClassName,
-  );
-
-  return (
-    <div className={cn("p-3", className)}>
-      <p className="text-muted-foreground text-heading text-xs">{label}</p>
-      {lineClamp ? (
-        <TruncatedTextTooltip
-          text={value}
-          variant="line-clamp"
-          lineClamp={lineClamp}
-          className={valueTextClassName}
-        />
-      ) : (
-        <p className={valueTextClassName}>{value}</p>
-      )}
-    </div>
-  );
-}
 
 function formatTopicReviewSummary(
   threadIds: number[],
@@ -163,18 +134,25 @@ function formatTopicReviewSummary(
     .join(", ");
 }
 
+function formatStripeConnectionLabel(connection: StripeBillingConnectionDto) {
+  const planLabel = connection.monitoredPlanLabel?.trim() || "Plano Stripe";
+  return `${planLabel} ···${connection.apiKeyLast4}`;
+}
+
 function buildDestinationAudienceFields({
   destinationType,
   groupsSummary,
   topicsSummary,
   targetMembersCount,
   automationEventLabel,
+  stripePlanLabel,
 }: {
   destinationType?: AlertDestinationType;
   groupsSummary?: string;
   topicsSummary?: string;
   targetMembersCount: number;
   automationEventLabel?: string;
+  stripePlanLabel?: string;
 }): { label: string; value: string }[] {
   if (!destinationType) return [];
 
@@ -187,6 +165,14 @@ function buildDestinationAudienceFields({
           label: "Evento",
           value: formatReviewValue(automationEventLabel),
         },
+        ...(stripePlanLabel
+          ? [
+              {
+                label: "Plano Stripe",
+                value: formatReviewValue(stripePlanLabel),
+              },
+            ]
+          : []),
         { label: "Grupo(s)", value: formatReviewValue(groupsSummary) },
       ];
     case "TOPIC":
@@ -279,7 +265,8 @@ const automationTriggerOptions: {
   value: AlertTriggerType;
   title: string;
   description: string;
-  icon: DestinationOptionIcon;
+  icon?: DestinationOptionIcon;
+  logo?: typeof stripeLogo;
 }[] = [
   {
     value: "MEMBER_JOINED",
@@ -319,39 +306,39 @@ const automationTriggerOptions: {
   },
   {
     value: "STRIPE_PAYMENT_SUCCEEDED",
-    title: "Stripe: pagamento recebido",
+    title: "Pagamento recebido",
     description: automationTriggerDescriptions.STRIPE_PAYMENT_SUCCEEDED,
-    icon: BadgeAlertIcon,
+    logo: stripeLogo,
   },
   {
     value: "STRIPE_PAYMENT_FAILED",
-    title: "Stripe: pagamento falhou",
+    title: "Pagamento falhou",
     description: automationTriggerDescriptions.STRIPE_PAYMENT_FAILED,
-    icon: BadgeAlertIcon,
+    logo: stripeLogo,
   },
   {
     value: "STRIPE_SUBSCRIPTION_EXPIRING",
-    title: "Stripe: vencimento próximo",
+    title: "Vencimento próximo",
     description: automationTriggerDescriptions.STRIPE_SUBSCRIPTION_EXPIRING,
-    icon: BadgeAlertIcon,
+    logo: stripeLogo,
   },
   {
     value: "STRIPE_SUBSCRIPTION_EXPIRED",
-    title: "Stripe: assinatura expirada",
+    title: "Assinatura expirada",
     description: automationTriggerDescriptions.STRIPE_SUBSCRIPTION_EXPIRED,
-    icon: BadgeAlertIcon,
+    logo: stripeLogo,
   },
   {
     value: "STRIPE_SUBSCRIPTION_RENEWED",
-    title: "Stripe: assinatura renovada",
+    title: "Assinatura renovada",
     description: automationTriggerDescriptions.STRIPE_SUBSCRIPTION_RENEWED,
-    icon: BadgeAlertIcon,
+    logo: stripeLogo,
   },
   {
     value: "STRIPE_SUBSCRIPTION_CANCELED",
-    title: "Stripe: assinatura cancelada",
+    title: "Assinatura cancelada",
     description: automationTriggerDescriptions.STRIPE_SUBSCRIPTION_CANCELED,
-    icon: BadgeAlertIcon,
+    logo: stripeLogo,
   },
 ];
 
@@ -375,8 +362,13 @@ type AutomationTriggerIconRefsMap = Partial<
 
 type CreateAlertDialogProps = {
   groups: TelegramGroupSummaryDto[];
+  stripeConnections: StripeBillingConnectionDto[];
   onCreated: () => void;
   buttonText?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  showTrigger?: boolean;
+  alertToEdit?: AlertSummaryDto | null;
 };
 
 function RequiredMark() {
@@ -492,6 +484,56 @@ function getCreateAlertSuccessToast(
           "O envio para o destino configurado será iniciado em breve.",
       };
   }
+}
+
+function getUpdateAlertSuccessToast(
+  status: AlertSummaryDto["status"],
+  destinationType: AlertDestinationType,
+): { title: string; description: string } {
+  if (status === "DRAFT") {
+    return {
+      title: "Rascunho atualizado",
+      description: "As alterações foram salvas no rascunho.",
+    };
+  }
+
+  switch (destinationType) {
+    case "QUICK_ALERT":
+      return {
+        title: "Modelo atualizado",
+        description: "O aviso rápido foi atualizado com as novas configurações.",
+      };
+    case "AUTOMATION":
+      return {
+        title: "Automação atualizada",
+        description: "As alterações serão aplicadas nas próximas execuções.",
+      };
+    default:
+      return {
+        title: "Alerta atualizado",
+        description: "As alterações foram salvas com sucesso.",
+      };
+  }
+}
+
+function lockDestinationFields(
+  values: AlertUpsertInput,
+  locked: AlertUpsertInput,
+): AlertUpsertInput {
+  return {
+    ...values,
+    destinationType: locked.destinationType,
+    telegramGroupId: locked.telegramGroupId,
+    messageThreadId: locked.messageThreadId,
+    targetTelegramUserIds: locked.targetTelegramUserIds,
+    triggerType: locked.triggerType,
+    triggerConfig: {
+      ...(values.triggerConfig ?? {}),
+      targetTelegramGroupIds: locked.triggerConfig?.targetTelegramGroupIds,
+      targetMessageThreadIds: locked.triggerConfig?.targetMessageThreadIds,
+      stripeConnectionId: locked.triggerConfig?.stripeConnectionId,
+    },
+  };
 }
 
 function normalizeAlertFormValues(values: AlertUpsertInput): AlertUpsertInput {
@@ -615,6 +657,10 @@ function resetAudienceFields(form: UseFormReturn<AlertUpsertInput>) {
     shouldValidate: false,
   });
   form.setValue("triggerType", undefined, {
+    shouldDirty: true,
+    shouldValidate: false,
+  });
+  form.setValue("triggerConfig.stripeConnectionId", undefined, {
     shouldDirty: true,
     shouldValidate: false,
   });
@@ -934,7 +980,7 @@ function AutomationEventSelectField({
         )}
       >
         {visibleEventOptions.map(
-          ({ value, title, description, icon: Icon }, index) => {
+          ({ value, title, description, icon: Icon, logo }, index) => {
             const checkboxId = `${fieldIds}-automation-event-${value}`;
             const isSelected = triggerType === value;
 
@@ -942,8 +988,12 @@ function AutomationEventSelectField({
               <li
                 key={value}
                 className={cn(index > 0 && "border-border border-t")}
-                onMouseEnter={() => playEventIconAnimation(value)}
-                onMouseLeave={() => stopEventIconAnimation(value)}
+                onMouseEnter={() => {
+                  if (Icon) playEventIconAnimation(value);
+                }}
+                onMouseLeave={() => {
+                  if (Icon) stopEventIconAnimation(value);
+                }}
               >
                 <label
                   htmlFor={checkboxId}
@@ -973,22 +1023,36 @@ function AutomationEventSelectField({
                     }}
                   />
                   <div
-                    className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-primary/10 text-primary"
+                    className={cn(
+                      "inline-flex size-9 shrink-0 bg-primary/10 items-center justify-center border border-border",
+                      logo ? "rounded-lg px-1.5" : "rounded-full text-primary",
+                    )}
                     aria-hidden="true"
                   >
-                    <Icon
-                      ref={(instance) => {
-                        iconRefs.current[value] = instance;
-                      }}
-                      size={16}
-                      isAnimateOnView={false}
-                    />
+                    {logo ? (
+                      <Image
+                        src={logo}
+                        alt="Stripe"
+                        className="max-h-5 w-auto object-contain"
+                      />
+                    ) : Icon ? (
+                      <Icon
+                        ref={(instance) => {
+                          iconRefs.current[value] = instance;
+                        }}
+                        size={16}
+                        isAnimateOnView={false}
+                      />
+                    ) : null}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <TruncatedTextTooltip
-                      text={title}
-                      className="font-medium text-foreground! text-sm"
-                    />
+                    <div className="flex min-w-0 items-center gap-2">
+                      <TruncatedTextTooltip
+                        text={title}
+                        className="min-w-0 font-medium text-foreground! text-sm"
+                      />
+                      {logo ? <StripePrivateMessageBadge /> : null}
+                    </div>
                     <TruncatedTextTooltip
                       text={description}
                       className="text-muted-foreground text-xs"
@@ -1003,6 +1067,133 @@ function AutomationEventSelectField({
       {triggerType ? (
         <p className="text-muted-foreground text-xs">1 evento selecionado</p>
       ) : null}
+      {error ? <FieldError>{error}</FieldError> : null}
+    </Field>
+  );
+}
+
+type StripePlanSelectFieldProps = {
+  form: UseFormReturn<AlertUpsertInput>;
+  stripeConnections: StripeBillingConnectionDto[];
+  fieldIds: string;
+  error?: string;
+};
+
+function StripePlanSelectField({
+  form,
+  stripeConnections,
+  fieldIds,
+  error,
+}: StripePlanSelectFieldProps) {
+  const selectedConnectionId = useWatch({
+    control: form.control,
+    name: "triggerConfig.stripeConnectionId",
+  });
+  const legendId = `${fieldIds}-stripe-plan-legend`;
+  const descriptionId = `${fieldIds}-stripe-plan-desc`;
+
+  return (
+    <Field data-invalid={error ? true : undefined}>
+      <AlertFieldLabel required>
+        <span className="inline-flex items-center gap-2">
+          <span id={legendId}>Plano Stripe</span>
+          <StripePrivateMessageBadge />
+        </span>
+      </AlertFieldLabel>
+      <FieldDescription id={descriptionId}>
+        Escolha qual integração e plano monitorado devem disparar este alerta.
+      </FieldDescription>
+      {stripeConnections.length === 0 ? (
+        <FieldDescription className="rounded-lg text-center gap-y-1 h-28 flex flex-col items-center justify-center border border-border p-3 text-sm">
+          <span>Nenhum plano Stripe conectado.</span>
+          <Link
+            href="/integrations"
+            className="font-medium text-primary underline-offset-4 hover:underline"
+          >
+            Conectar na página de integrações
+          </Link>
+        </FieldDescription>
+      ) : (
+        <FieldSet
+          aria-labelledby={legendId}
+          aria-describedby={descriptionId}
+          aria-invalid={Boolean(error)}
+          className="gap-3"
+        >
+          <FieldGroup className="gap-0">
+            <RadioGroup
+              value={selectedConnectionId ?? ""}
+              onValueChange={(value) => {
+                if (!value) return;
+                form.setValue("triggerConfig.stripeConnectionId", value, {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                });
+                form.clearErrors("triggerConfig.stripeConnectionId");
+              }}
+              className={cn(
+                "overflow-hidden rounded-lg gap-0 border ring-offset-[1.5px] dark:ring-offset-neutral-800",
+                error
+                  ? "border-destructive ring-2 ring-destructive/20 dark:border-destructive/50 dark:ring-destructive/40"
+                  : "border-border",
+              )}
+            >
+              {stripeConnections.map((connection, index) => {
+                const inputId = `${fieldIds}-stripe-plan-${connection.id}`;
+                const isSelected = selectedConnectionId === connection.id;
+
+                return (
+                  <FieldLabel
+                    key={connection.id}
+                    htmlFor={inputId}
+                    className={cn(
+                      "w-full cursor-pointer border-0 shadow-none",
+                      "has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:rounded-none has-[>[data-slot=field]]:border-0",
+                      "hover:bg-muted/50",
+                      isSelected && "bg-primary/5",
+                      "has-data-checked:border-0 has-data-checked:bg-primary/5 dark:has-data-checked:bg-primary/5",
+                      index > 0 && "border-border! border-t!",
+                    )}
+                  >
+                    <Field
+                      orientation="horizontal"
+                      className="gap-3 px-3 py-2.5"
+                    >
+                      <RadioGroupItem
+                        value={connection.id}
+                        id={inputId}
+                        aria-invalid={Boolean(error)}
+                      />
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <div
+                          className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-primary/10 px-1.5"
+                          aria-hidden="true"
+                        >
+                          <Image
+                            src={stripeLogo}
+                            alt="Stripe"
+                            className="max-h-5 w-auto object-contain"
+                          />
+                        </div>
+                        <FieldContent>
+                          <FieldTitle className="line-clamp-1 font-medium text-foreground! text-sm">
+                            {formatStripeConnectionLabel(connection)}
+                          </FieldTitle>
+                          {connection.monitoredStripePriceId ? (
+                            <FieldDescription className="truncate text-muted-foreground text-xs">
+                              {connection.monitoredStripePriceId}
+                            </FieldDescription>
+                          ) : null}
+                        </FieldContent>
+                      </div>
+                    </Field>
+                  </FieldLabel>
+                );
+              })}
+            </RadioGroup>
+          </FieldGroup>
+        </FieldSet>
+      )}
       {error ? <FieldError>{error}</FieldError> : null}
     </Field>
   );
@@ -1142,9 +1333,32 @@ function GroupSelectField({
 type DetailsStepProps = {
   form: UseFormReturn<AlertUpsertInput>;
   groups: TelegramGroupSummaryDto[];
+  stripeConnections: StripeBillingConnectionDto[];
+  readOnlyDestination?: boolean;
 };
 
-function DetailsStep({ form, groups }: DetailsStepProps) {
+function DestinationReadOnlyBanner({
+  destinationType,
+}: {
+  destinationType: AlertDestinationType;
+}) {
+  return (
+    <div className="rounded-2xl border border-border bg-muted/40 p-4">
+      <p className="font-medium text-sm">Destino do alerta</p>
+      <p className="text-muted-foreground text-sm">
+        {destinationLabels[destinationType]}. O tipo de destino e o público não
+        podem ser alterados na edição.
+      </p>
+    </div>
+  );
+}
+
+function DetailsStep({
+  form,
+  groups,
+  stripeConnections,
+  readOnlyDestination = false,
+}: DetailsStepProps) {
   const fieldIds = useId();
   const { errors } = useFormState({ control: form.control });
   const destinationType = useWatch({
@@ -1221,24 +1435,67 @@ function DetailsStep({ form, groups }: DetailsStepProps) {
   const topicError = errors.triggerConfig?.targetMessageThreadIds?.message;
   const membersError = errors.targetTelegramUserIds?.message;
   const triggerTypeError = errors.triggerType?.message;
+  const stripeConnectionError =
+    errors.triggerConfig?.stripeConnectionId?.message;
   const triggerType = useWatch({ control: form.control, name: "triggerType" });
+  const selectedStripeConnectionId = useWatch({
+    control: form.control,
+    name: "triggerConfig.stripeConnectionId",
+  });
+  const isStripeTrigger = isStripeAutomationTriggerType(triggerType);
   const supportsMemberNamePlaceholder =
     triggerType != null &&
     memberAutomationTriggerTypes.includes(
       triggerType as (typeof memberAutomationTriggerTypes)[number],
     );
 
+  useEffect(() => {
+    if (!isStripeTrigger) {
+      if (selectedStripeConnectionId) {
+        form.setValue("triggerConfig.stripeConnectionId", undefined, {
+          shouldDirty: true,
+          shouldValidate: false,
+        });
+      }
+      return;
+    }
+
+    if (
+      selectedStripeConnectionId &&
+      stripeConnections.some(
+        (connection) => connection.id === selectedStripeConnectionId,
+      )
+    ) {
+      return;
+    }
+
+    if (stripeConnections.length === 1) {
+      form.setValue(
+        "triggerConfig.stripeConnectionId",
+        stripeConnections[0].id,
+        {
+          shouldDirty: true,
+          shouldValidate: true,
+        },
+      );
+    }
+  }, [form, isStripeTrigger, selectedStripeConnectionId, stripeConnections]);
+
   return (
     <div>
       <FieldGroup className="gap-6">
-        {destinationType !== "QUICK_ALERT" && (
+        {readOnlyDestination ? (
+          <DestinationReadOnlyBanner destinationType={destinationType} />
+        ) : null}
+
+        {!readOnlyDestination && destinationType !== "QUICK_ALERT" && (
           <FieldSet className="rounded-2xl border border-border p-4">
             <FieldLegend id={`${fieldIds}-destination-config-legend`}>
               Destino e público
             </FieldLegend>
             <FieldDescription id={`${fieldIds}-destination-config-desc`}>
               {isAutomation
-                ? "Selecione os grupos monitorados e, em seguida, o evento que dispara o alerta."
+                ? "Selecione os grupos monitorados, o evento e o plano Stripe integrado quando o alerta for da Stripe."
                 : "Ajuste o grupo, tópico ou membros conforme o tipo de envio."}
             </FieldDescription>
             <FieldGroup
@@ -1264,6 +1521,15 @@ function DetailsStep({ form, groups }: DetailsStepProps) {
                   selectedGroupIds={selectedDestinationGroupIds}
                   fieldIds={fieldIds}
                   error={triggerTypeError}
+                />
+              ) : null}
+
+              {isAutomation && isStripeTrigger ? (
+                <StripePlanSelectField
+                  form={form}
+                  stripeConnections={stripeConnections}
+                  fieldIds={fieldIds}
+                  error={stripeConnectionError}
                 />
               ) : null}
 
@@ -1641,6 +1907,7 @@ function DestinationStep({ form }: DestinationStepProps) {
 
 type WizardNextButtonProps = {
   stepIndex: number;
+  detailsStepIndex: number;
   form: UseFormReturn<AlertUpsertInput>;
   iconIndex: number;
   arrowRightIconRefs: MutableRefObject<(ArrowRightIconHandle | null)[]>;
@@ -1648,6 +1915,7 @@ type WizardNextButtonProps = {
 
 function WizardNextButton({
   stepIndex,
+  detailsStepIndex,
   form,
   iconIndex,
   arrowRightIconRefs,
@@ -1659,7 +1927,7 @@ function WizardNextButton({
       type="button"
       className="ml-auto w-40"
       onClick={() => {
-        if (stepIndex === 1 && !validateAlertDetailsStep(form)) {
+        if (stepIndex === detailsStepIndex && !validateAlertDetailsStep(form)) {
           return;
         }
         goNext();
@@ -1685,9 +1953,10 @@ function WizardNextButton({
 type ReviewStepProps = {
   form: UseFormReturn<AlertUpsertInput>;
   groups: TelegramGroupSummaryDto[];
+  stripeConnections: StripeBillingConnectionDto[];
 };
 
-function ReviewStep({ form, groups }: ReviewStepProps) {
+function ReviewStep({ form, groups, stripeConnections }: ReviewStepProps) {
   const [topicNamesById, setTopicNamesById] = useState<Record<number, string>>(
     {},
   );
@@ -1714,6 +1983,10 @@ function ReviewStep({ form, groups }: ReviewStepProps) {
     control: form.control,
     name: "triggerConfig.targetMessageThreadIds",
   }) ?? []) as number[];
+  const selectedStripeConnectionId = useWatch({
+    control: form.control,
+    name: "triggerConfig.stripeConnectionId",
+  });
   const selectedGroupId = selectedGroupIds[0];
 
   useEffect(() => {
@@ -1789,6 +2062,13 @@ function ReviewStep({ form, groups }: ReviewStepProps) {
       ? alertTriggerLabels[triggerType as keyof typeof alertTriggerLabels]
       : undefined;
 
+  const selectedStripeConnection = stripeConnections.find(
+    (connection) => connection.id === selectedStripeConnectionId,
+  );
+  const stripePlanLabel = selectedStripeConnection
+    ? formatStripeConnectionLabel(selectedStripeConnection)
+    : undefined;
+
   const sendTypeLabel =
     destinationType === "AUTOMATION"
       ? automationEventLabel
@@ -1823,6 +2103,7 @@ function ReviewStep({ form, groups }: ReviewStepProps) {
     topicsSummary,
     targetMembersCount: targetMembers.length,
     automationEventLabel,
+    stripePlanLabel,
   });
 
   const reviewFields: {
@@ -1871,50 +2152,27 @@ function ReviewStep({ form, groups }: ReviewStepProps) {
   ];
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-col gap-1">
-        <p className="font-medium font-heading text-muted-foreground text-xs uppercase tracking-wide">
-          Revisão final
-        </p>
-        <h3 className="font-semibold font-heading text-2xl leading-tight">
-          {formatReviewValue(alertName)}
-        </h3>
-      </div>
-      <div className="grid overflow-hidden rounded-lg border border-border sm:grid-cols-2">
-        {reviewFields.map((field, index) => {
-          const isLastOddCell =
-            reviewFields.length % 2 === 1 && index === reviewFields.length - 1;
-          const isLeftCol = index % 2 === 0;
-          const rowIndex = Math.floor(index / 2);
-          const totalRows = Math.ceil(reviewFields.length / 2);
-
-          return (
-            <ReviewSummaryCell
-              key={field.label}
-              label={field.label}
-              value={field.value}
-              lineClamp={field.lineClamp}
-              className={cn(
-                index < reviewFields.length - 1 && "border-border border-b",
-                "sm:border-b-0",
-                rowIndex < totalRows - 1 && "sm:border-border sm:border-b",
-                isLeftCol && !isLastOddCell && "sm:border-border sm:border-r",
-                isLastOddCell && "sm:col-span-2",
-              )}
-            />
-          );
-        })}
-      </div>
-    </div>
+    <AlertReviewSummary
+      title={formatReviewValue(alertName)}
+      fields={reviewFields}
+    />
   );
 }
 
 export function CreateAlertDialog({
   groups,
+  stripeConnections,
   onCreated,
   buttonText = "Criar Alerta",
+  open: openProp,
+  onOpenChange: onOpenChangeProp,
+  showTrigger = true,
+  alertToEdit = null,
 }: CreateAlertDialogProps) {
-  const [open, setOpen] = useState(false);
+  const isEditMode = Boolean(alertToEdit);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = openProp !== undefined;
+  const open = isControlled ? openProp : internalOpen;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const plusIconRef = useRef<PlusIconHandle | null>(null);
   const xIconRefs = useRef<(XIconHandle | null)[]>([]);
@@ -1923,18 +2181,7 @@ export function CreateAlertDialog({
 
   const form = useForm<AlertUpsertInput>({
     resolver: zodResolver(alertUpsertSchema) as Resolver<AlertUpsertInput>,
-    defaultValues: {
-      name: "",
-      destinationType: "GROUP",
-      content: { title: "", body: "" },
-      options: {
-        silent: false,
-        pinMessage: false,
-        mentionUsers: false,
-      },
-      targetTelegramUserIds: [],
-      triggerConfig: {},
-    },
+    defaultValues: DEFAULT_ALERT_FORM_VALUES,
   });
 
   const destinationType = form.watch("destinationType");
@@ -1943,13 +2190,28 @@ export function CreateAlertDialog({
 
   const handleOpenChange = useCallback(
     (next: boolean) => {
-      setOpen(next);
+      if (isControlled) {
+        onOpenChangeProp?.(next);
+      } else {
+        setInternalOpen(next);
+      }
       if (!next) {
-        form.reset();
+        form.reset(DEFAULT_ALERT_FORM_VALUES);
       }
     },
-    [form],
+    [form, isControlled, onOpenChangeProp],
   );
+
+  useEffect(() => {
+    if (!open) return;
+
+    if (alertToEdit) {
+      form.reset(mapAlertSummaryToFormValues(alertToEdit));
+      return;
+    }
+
+    form.reset(DEFAULT_ALERT_FORM_VALUES);
+  }, [alertToEdit, form, open]);
 
   useEffect(() => {
     const currentTelegramGroupId = form.getValues("telegramGroupId");
@@ -1998,10 +2260,18 @@ export function CreateAlertDialog({
   }, [destinationType, form, selectedDestinationGroupIds]);
 
   const submit = useCallback(
-    async (status: "DRAFT" | "ACTIVE"): Promise<boolean> => {
+    async (
+      status: AlertSummaryDto["status"] | "DRAFT" | "ACTIVE",
+    ): Promise<boolean> => {
       setIsSubmitting(true);
       const rawValues = form.getValues();
-      const values = normalizeAlertFormValues(rawValues);
+      let values = normalizeAlertFormValues(rawValues);
+      if (alertToEdit) {
+        values = lockDestinationFields(
+          values,
+          mapAlertSummaryToFormValues(alertToEdit),
+        );
+      }
       const normalizedGroupIds = (
         values.triggerConfig?.targetTelegramGroupIds ?? []
       ).filter(Boolean);
@@ -2039,20 +2309,32 @@ export function CreateAlertDialog({
         return false;
       }
 
+      const requestUrl = alertToEdit
+        ? `/api/alerts/${encodeURIComponent(alertToEdit.id)}`
+        : "/api/alerts";
+      const requestMethod = alertToEdit ? "PATCH" : "POST";
+
       try {
-        const response = await fetch("/api/alerts", {
-          method: "POST",
+        const response = await fetch(requestUrl, {
+          method: requestMethod,
           headers: { "content-type": "application/json" },
           body: JSON.stringify(result.data),
         });
         const body = await response.json().catch(() => null);
         if (!response.ok) {
-          throw new Error(body?.error ?? "Não foi possível criar o alerta.");
+          throw new Error(
+            body?.error ??
+              (alertToEdit
+                ? "Não foi possível atualizar o alerta."
+                : "Não foi possível criar o alerta."),
+          );
         }
-        const successToast = getCreateAlertSuccessToast(
-          status,
-          result.data.destinationType,
-        );
+        const successToast = alertToEdit
+          ? getUpdateAlertSuccessToast(status, result.data.destinationType)
+          : getCreateAlertSuccessToast(
+              status === "DRAFT" ? "DRAFT" : "ACTIVE",
+              result.data.destinationType,
+            );
         toast.success(successToast.title, {
           description: successToast.description,
         });
@@ -2063,52 +2345,112 @@ export function CreateAlertDialog({
         const description =
           error instanceof Error
             ? error.message
-            : "Não foi possível criar o alerta. Tente novamente.";
-        toast.error("Falha ao criar alerta", { description });
+            : alertToEdit
+              ? "Não foi possível atualizar o alerta. Tente novamente."
+              : "Não foi possível criar o alerta. Tente novamente.";
+        toast.error(
+          alertToEdit ? "Falha ao atualizar alerta" : "Falha ao criar alerta",
+          { description },
+        );
         return false;
       } finally {
         setIsSubmitting(false);
       }
     },
-    [form, handleOpenChange, onCreated],
+    [alertToEdit, form, handleOpenChange, onCreated],
   );
 
-  const steps: CreateAlertWizardStep[] = [
-    {
-      title: "Onde enviar",
-      description:
-        "Escolha o destino do alerta e veja claramente público e objetivo de cada opção antes de avançar.",
-      content: <DestinationStep form={form} />,
-      showPreviousButton: false,
-    },
-    {
-      title: "Detalhes do alerta",
-      description:
-        "Configure público, grupo/tópico quando necessário, conteúdo da mensagem, botões e opções avançadas do Telegram.",
-      content: <DetailsStep form={form} groups={groups} />,
-    },
-    {
-      title: "Revisar dados",
-      description:
-        "Revise tudo que foi definido no destino e nos detalhes antes de salvar rascunho ou publicar.",
-      content: <ReviewStep form={form} groups={groups} />,
-    },
-  ];
+  const detailsStepIndex = isEditMode ? 0 : 1;
+  const progressSteps = isEditMode
+    ? [
+        { id: "details", label: "Detalhes" },
+        { id: "review", label: "Revisão" },
+      ]
+    : [...dialogProgressSteps];
+
+  const steps: CreateAlertWizardStep[] = isEditMode
+    ? [
+        {
+          title: "Editar alerta",
+          description:
+            "Atualize o conteúdo, botões e opções de envio. O destino permanece o mesmo.",
+          content: (
+            <DetailsStep
+              form={form}
+              groups={groups}
+              stripeConnections={stripeConnections}
+              readOnlyDestination
+            />
+          ),
+          showPreviousButton: false,
+        },
+        {
+          title: "Revisar dados",
+          description:
+            "Confira as alterações antes de salvar o alerta atualizado.",
+          content: (
+            <ReviewStep
+              form={form}
+              groups={groups}
+              stripeConnections={stripeConnections}
+            />
+          ),
+        },
+      ]
+    : [
+        {
+          title: "Onde enviar",
+          description:
+            "Escolha o destino do alerta e veja claramente público e objetivo de cada opção antes de avançar.",
+          content: <DestinationStep form={form} />,
+          showPreviousButton: false,
+        },
+        {
+          title: "Detalhes do alerta",
+          description:
+            "Configure público, grupo/tópico quando necessário, conteúdo da mensagem, botões e opções avançadas do Telegram.",
+          content: (
+            <DetailsStep
+              form={form}
+              groups={groups}
+              stripeConnections={stripeConnections}
+            />
+          ),
+        },
+        {
+          title: "Revisar dados",
+          description:
+            "Revise tudo que foi definido no destino e nos detalhes antes de salvar rascunho ou publicar.",
+          content: (
+            <ReviewStep
+              form={form}
+              groups={groups}
+              stripeConnections={stripeConnections}
+            />
+          ),
+        },
+      ];
 
   return (
-    <DialogStack open={open} onOpenChange={handleOpenChange}>
-      <DialogStackTrigger asChild>
-        <Button
-          type="button"
-          variant="default"
-          onClick={() => setOpen(true)}
-          onMouseEnter={() => plusIconRef.current?.startAnimation()}
-          onMouseLeave={() => plusIconRef.current?.stopAnimation()}
-        >
-          <PlusIcon ref={plusIconRef} size={14} />
-          {buttonText}
-        </Button>
-      </DialogStackTrigger>
+    <DialogStack
+      open={open}
+      onOpenChange={handleOpenChange}
+      className={showTrigger ? undefined : "contents"}
+    >
+      {showTrigger ? (
+        <DialogStackTrigger asChild>
+          <Button
+            type="button"
+            variant="default"
+            onClick={() => handleOpenChange(true)}
+            onMouseEnter={() => plusIconRef.current?.startAnimation()}
+            onMouseLeave={() => plusIconRef.current?.stopAnimation()}
+          >
+            <PlusIcon ref={plusIconRef} size={14} />
+            {buttonText}
+          </Button>
+        </DialogStackTrigger>
+      ) : null}
 
       <DialogStackOverlay />
 
@@ -2152,7 +2494,7 @@ export function CreateAlertDialog({
                     />
                   </Button>
                 </div>
-                <DialogStackProgress steps={[...dialogProgressSteps]} />
+                <DialogStackProgress steps={progressSteps} />
               </DialogStackHeader>
 
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6">
@@ -2190,6 +2532,7 @@ export function CreateAlertDialog({
                   {hasNext ? (
                     <WizardNextButton
                       stepIndex={index}
+                      detailsStepIndex={detailsStepIndex}
                       form={form}
                       iconIndex={index}
                       arrowRightIconRefs={arrowRightIconRefs}
@@ -2218,13 +2561,23 @@ export function CreateAlertDialog({
                         loading={isSubmitting}
                         onClick={async () => {
                           if (!validateAlertDetailsStep(form)) return;
-                          await submit("ACTIVE");
+                          const primaryStatus =
+                            isEditMode &&
+                            alertToEdit &&
+                            alertToEdit.status !== "DRAFT"
+                              ? alertToEdit.status
+                              : "ACTIVE";
+                          await submit(primaryStatus);
                         }}
                       >
-                        {destinationType === "AUTOMATION" ||
-                        destinationType === "QUICK_ALERT"
-                          ? "Publicar"
-                          : "Publicar e enviar"}
+                        {isEditMode &&
+                        alertToEdit &&
+                        alertToEdit.status !== "DRAFT"
+                          ? "Salvar alterações"
+                          : destinationType === "AUTOMATION" ||
+                              destinationType === "QUICK_ALERT"
+                            ? "Publicar"
+                            : "Publicar e enviar"}
                       </Button>
                     </div>
                   )}

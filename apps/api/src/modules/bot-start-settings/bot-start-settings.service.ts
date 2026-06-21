@@ -1,0 +1,373 @@
+import { randomBytes, timingSafeEqual } from 'node:crypto';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Prisma, StripeBillingConnectionStatus } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import {
+  PUBLIC_START_TOKEN_PREFIX,
+  type TelegramBotStartPublicResponseDto,
+  type TelegramBotStartSettingsPatchInput,
+  type TelegramBotStartSettingsResponseDto,
+} from './schemas/bot-start-settings-schemas';
+
+const DEFAULT_WELCOME_MESSAGE =
+  'Olá! Bem-vindo(a). Este é o assistente configurado pelo criador do grupo.';
+
+const DEFAULT_SUPPORT_HINT =
+  'Dúvidas? Fale com o administrador do grupo ou responda neste chat.';
+
+type BotStartSettingsRow = {
+  publicStartToken: string;
+  welcomeMessageEnabled: boolean;
+  welcomeMessage: string | null;
+  showStripePlans: boolean;
+  stripeConnectionIds: string[];
+  showPaymentButtons: boolean;
+  paymentButtonConnectionIds: string[];
+  paymentButtonsGroupFirst: boolean;
+  showSupportHint: boolean;
+  supportHintText: string | null;
+  showSubscribeSteps: boolean;
+};
+
+@Injectable()
+export class BotStartSettingsService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+  ) {}
+
+  isInternalSecretValid(candidate: string | undefined): boolean {
+    const expected = this.config
+      .get<string>('TELEGRAM_BOT_INTERNAL_SECRET')
+      ?.trim();
+    if (!candidate || !expected) {
+      return false;
+    }
+
+    const expectedBuffer = Buffer.from(expected);
+    const candidateBuffer = Buffer.from(candidate.trim());
+    return (
+      expectedBuffer.length === candidateBuffer.length &&
+      timingSafeEqual(expectedBuffer, candidateBuffer)
+    );
+  }
+
+  async getForUser(
+    userId: string,
+  ): Promise<TelegramBotStartSettingsResponseDto> {
+    const settings = await this.ensureForUser(userId);
+    const availableStripeConnections = await this.listStripeConnections(userId);
+    return this.toResponse(userId, settings, availableStripeConnections);
+  }
+
+  async updateForUser(
+    userId: string,
+    input: TelegramBotStartSettingsPatchInput,
+  ): Promise<TelegramBotStartSettingsResponseDto> {
+    if (input.stripeConnectionIds) {
+      await this.assertOwnedStripeConnections(
+        userId,
+        input.stripeConnectionIds,
+      );
+    }
+
+    const current = await this.ensureForUser(userId);
+    const nextPaymentButtonConnectionIds =
+      input.paymentButtonConnectionIds ?? current.paymentButtonConnectionIds;
+    const nextShowPaymentButtons =
+      input.showPaymentButtons ?? current.showPaymentButtons;
+
+    if (input.paymentButtonConnectionIds) {
+      await this.assertOwnedStripeConnections(
+        userId,
+        input.paymentButtonConnectionIds,
+      );
+    }
+
+    if (nextShowPaymentButtons) {
+      await this.assertPaymentConnectionsReadyForCheckout(
+        userId,
+        nextPaymentButtonConnectionIds,
+      );
+    }
+
+    const updated = await this.prisma.telegramBotStartSettings.update({
+      where: { userId },
+      data: {
+        welcomeMessageEnabled:
+          input.welcomeMessageEnabled ?? current.welcomeMessageEnabled,
+        welcomeMessage:
+          input.welcomeMessage !== undefined
+            ? input.welcomeMessage.trim() || null
+            : current.welcomeMessage,
+        showStripePlans: input.showStripePlans ?? current.showStripePlans,
+        stripeConnectionIds:
+          input.stripeConnectionIds ?? current.stripeConnectionIds,
+        showPaymentButtons: nextShowPaymentButtons,
+        paymentButtonConnectionIds: nextPaymentButtonConnectionIds,
+        paymentButtonsGroupFirst:
+          input.paymentButtonsGroupFirst ?? current.paymentButtonsGroupFirst,
+        showSupportHint: input.showSupportHint ?? current.showSupportHint,
+        supportHintText:
+          input.supportHintText !== undefined
+            ? input.supportHintText.trim() || null
+            : current.supportHintText,
+        showSubscribeSteps:
+          input.showSubscribeSteps ?? current.showSubscribeSteps,
+      },
+      select: this.settingsSelect(),
+    });
+
+    const availableStripeConnections = await this.listStripeConnections(userId);
+    return this.toResponse(userId, updated, availableStripeConnections);
+  }
+
+  async getPublicByToken(
+    token: string,
+  ): Promise<TelegramBotStartPublicResponseDto> {
+    const settings = await this.prisma.telegramBotStartSettings.findUnique({
+      where: { publicStartToken: token.trim() },
+      select: {
+        userId: true,
+        ...this.settingsSelect(),
+      },
+    });
+
+    if (!settings) {
+      throw new NotFoundException('Link de /start inválido ou expirado.');
+    }
+
+    const stripePlans = settings.showStripePlans
+      ? await this.resolveVisibleStripePlans(
+          settings.userId,
+          settings.stripeConnectionIds,
+        )
+      : [];
+
+    return {
+      welcomeMessageEnabled: settings.welcomeMessageEnabled,
+      welcomeMessage: settings.welcomeMessage,
+      showStripePlans: settings.showStripePlans,
+      showPaymentButtons: settings.showPaymentButtons,
+      paymentButtonsGroupFirst: settings.paymentButtonsGroupFirst,
+      showSupportHint: settings.showSupportHint,
+      supportHintText: settings.supportHintText,
+      showSubscribeSteps: settings.showSubscribeSteps,
+      stripePlans: stripePlans.map((connection) => ({
+        connectionId: connection.id,
+        label:
+          connection.monitoredPlanLabel?.trim() ||
+          connection.monitoredStripePriceId ||
+          'Plano Stripe',
+        monitoredStripePriceId: connection.monitoredStripePriceId,
+      })),
+    };
+  }
+
+  private async ensureForUser(userId: string): Promise<BotStartSettingsRow> {
+    const existing = await this.prisma.telegramBotStartSettings.findUnique({
+      where: { userId },
+      select: this.settingsSelect(),
+    });
+
+    if (existing) {
+      return existing;
+    }
+
+    return this.prisma.telegramBotStartSettings.create({
+      data: {
+        userId,
+        publicStartToken: this.generatePublicStartToken(),
+        welcomeMessage: DEFAULT_WELCOME_MESSAGE,
+        ...this.defaultSettings(),
+      },
+      select: this.settingsSelect(),
+    });
+  }
+
+  private async listStripeConnections(userId: string) {
+    return this.prisma.stripeBillingConnections.findMany({
+      where: {
+        userId,
+        status: StripeBillingConnectionStatus.CONNECTED,
+        monitoredStripePriceId: { not: null },
+      },
+      select: {
+        id: true,
+        monitoredPlanLabel: true,
+        monitoredStripePriceId: true,
+        apiKeyLast4: true,
+        telegramGroupId: true,
+        group: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  private async resolveVisibleStripePlans(
+    userId: string,
+    selectedConnectionIds: string[],
+  ) {
+    const connections = await this.listStripeConnections(userId);
+    if (selectedConnectionIds.length === 0) {
+      return connections;
+    }
+
+    const selected = new Set(selectedConnectionIds);
+    return connections.filter((connection) => selected.has(connection.id));
+  }
+
+  private async assertOwnedStripeConnections(
+    userId: string,
+    connectionIds: string[],
+  ) {
+    if (connectionIds.length === 0) return;
+
+    const count = await this.prisma.stripeBillingConnections.count({
+      where: {
+        userId,
+        id: { in: connectionIds },
+        status: StripeBillingConnectionStatus.CONNECTED,
+      },
+    });
+
+    if (count !== connectionIds.length) {
+      throw new BadRequestException(
+        'Uma ou mais integrações Stripe selecionadas são inválidas.',
+      );
+    }
+  }
+
+  private async assertPaymentConnectionsReadyForCheckout(
+    userId: string,
+    paymentButtonConnectionIds: string[],
+  ) {
+    const allConnections = await this.listStripeConnections(userId);
+    const targetConnections =
+      paymentButtonConnectionIds.length === 0
+        ? allConnections
+        : allConnections.filter((connection) =>
+            paymentButtonConnectionIds.includes(connection.id),
+          );
+
+    if (targetConnections.length === 0) {
+      throw new BadRequestException(
+        'Conecte um plano Stripe em Integrações para habilitar os botões de pagamento.',
+      );
+    }
+
+    for (const connection of targetConnections) {
+      if (!connection.telegramGroupId) {
+        const label =
+          connection.monitoredPlanLabel?.trim() ||
+          connection.monitoredStripePriceId ||
+          'Plano Stripe';
+        throw new BadRequestException(
+          `Vincule um grupo ao plano "${label}" em Integrações antes de ativar os botões de pagamento.`,
+        );
+      }
+    }
+  }
+
+  private async toResponse(
+    userId: string,
+    settings: BotStartSettingsRow,
+    availableStripeConnections: {
+      id: string;
+      monitoredPlanLabel: string | null;
+      monitoredStripePriceId: string | null;
+      apiKeyLast4: string;
+      telegramGroupId: string | null;
+      group: { id: string; title: string | null } | null;
+    }[],
+  ): Promise<TelegramBotStartSettingsResponseDto> {
+    const botUsername = this.getBotUsername();
+
+    return {
+      welcomeMessageEnabled: settings.welcomeMessageEnabled,
+      welcomeMessage: settings.welcomeMessage ?? '',
+      showStripePlans: settings.showStripePlans,
+      stripeConnectionIds: settings.stripeConnectionIds,
+      showPaymentButtons: settings.showPaymentButtons,
+      paymentButtonConnectionIds: settings.paymentButtonConnectionIds,
+      paymentButtonsGroupFirst: settings.paymentButtonsGroupFirst,
+      showSupportHint: settings.showSupportHint,
+      supportHintText: settings.supportHintText ?? '',
+      showSubscribeSteps: settings.showSubscribeSteps,
+      publicStartToken: settings.publicStartToken,
+      publicStartUrl: `https://t.me/${botUsername}?start=${encodeURIComponent(settings.publicStartToken)}`,
+      botUsername,
+      availableStripeConnections: availableStripeConnections.map(
+        (connection) => ({
+          id: connection.id,
+          label:
+            connection.monitoredPlanLabel?.trim() ||
+            connection.monitoredStripePriceId ||
+            'Plano Stripe',
+          monitoredStripePriceId: connection.monitoredStripePriceId,
+          apiKeyLast4: connection.apiKeyLast4,
+          linkedGroup: connection.group
+            ? {
+                id: connection.group.id,
+                title: connection.group.title?.trim() || 'Grupo sem nome',
+              }
+            : null,
+        }),
+      ),
+    };
+  }
+
+  private generatePublicStartToken(): string {
+    return `${PUBLIC_START_TOKEN_PREFIX}${randomBytes(18).toString('base64url')}`;
+  }
+
+  private getBotUsername(): string {
+    const raw = this.config.get<string>('TELEGRAM_BOT_USERNAME') ?? 'GateonBot';
+    return raw.replace(/^@/, '').trim();
+  }
+
+  private defaultSettings(): Omit<
+    Prisma.TelegramBotStartSettingsUncheckedCreateInput,
+    'userId' | 'publicStartToken' | 'welcomeMessage'
+  > {
+    return {
+      welcomeMessageEnabled: true,
+      showStripePlans: false,
+      stripeConnectionIds: [],
+      showPaymentButtons: false,
+      paymentButtonConnectionIds: [],
+      paymentButtonsGroupFirst: false,
+      showSupportHint: true,
+      supportHintText: null,
+      showSubscribeSteps: true,
+    };
+  }
+
+  private settingsSelect() {
+    return {
+      publicStartToken: true,
+      welcomeMessageEnabled: true,
+      welcomeMessage: true,
+      showStripePlans: true,
+      stripeConnectionIds: true,
+      showPaymentButtons: true,
+      paymentButtonConnectionIds: true,
+      paymentButtonsGroupFirst: true,
+      showSupportHint: true,
+      supportHintText: true,
+      showSubscribeSteps: true,
+    } as const;
+  }
+
+  static readonly defaultSupportHint = DEFAULT_SUPPORT_HINT;
+}

@@ -32,6 +32,7 @@ function DrawerClose({
 
 function DrawerOverlay({
   className,
+  style,
   ...props
 }: React.ComponentProps<typeof DrawerPrimitive.Overlay>) {
   return (
@@ -42,6 +43,7 @@ function DrawerOverlay({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0, backdropFilter: "blur(0px)" }}
         transition={{ duration: 0.2, ease: "easeOut" }}
+        style={style}
         className={cn("fixed inset-0 z-50 bg-black/40", className)}
       />
     </DrawerPrimitive.Overlay>
@@ -50,12 +52,17 @@ function DrawerOverlay({
 
 function DrawerContent({
   className,
+  overlayClassName,
+  overlayStyle,
   children,
   ...props
-}: React.ComponentProps<typeof DrawerPrimitive.Content>) {
+}: React.ComponentProps<typeof DrawerPrimitive.Content> & {
+  overlayClassName?: string;
+  overlayStyle?: React.CSSProperties;
+}) {
   return (
     <DrawerPortal data-slot="drawer-portal">
-      <DrawerOverlay />
+      <DrawerOverlay className={overlayClassName} style={overlayStyle} />
       <DrawerPrimitive.Content
         data-slot="drawer-content"
         className={cn(

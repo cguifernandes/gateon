@@ -1,21 +1,67 @@
 @AGENTS.md
 
-## Gateon (Claude / Cursor) — same rules, short list
+## Gateon (Claude / Cursor) — regras rápidas
 
-1. **Page-only UI** → colocate under that page’s `_components` (split into multiple files as needed; keep page context inside that folder only).
-2. **Shared across routes** → `src/components/` (or the project’s shared folder), not page `_components`.
-3. **English** for filenames, components, types, variables, and comments; product UI text may be localized, identifiers stay English.
-4. **Zod schemas** → always create in `src/lib/zod/` (auth schemas must stay in `src/lib/zod/auth-schemas.ts`).
-5. **Nest API (`apps/api`)** → new feature modules under `apps/api/src/modules/<name>/`; register in `app.module.ts` (see `AGENTS.md`).
+Documento canônico completo: **`AGENTS.md`**. Este arquivo resume o essencial para agentes no Cursor.
 
-## Contexto do produto
+### Convenções de código
 
-Siga também o contexto completo em `AGENTS.md` com:
-- visão geral e objetivo do sistema de automação de acesso por assinatura;
-- regras de bot e integração com gateways;
-- diretrizes de segurança, lógica de assinatura e mensagens automáticas;
-- limitações, fluxo resumido e melhorias futuras.
+1. **UI só de uma rota** → `_components` da página; **compartilhada** → `src/components/`.
+2. **Inglês** em filenames, tipos, variáveis e comentários; UI do produto pode ser `pt-BR`.
+3. **Zod** → `apps/web/src/lib/zod/` (web) ou `apps/api/src/lib/zod/` / `modules/<name>/schemas/` (API).
+4. **Nest API** → módulos em `apps/api/src/modules/<name>/`; registrar em `app.module.ts`.
+5. **Lint:** Biome (web/bot), ESLint+Prettier (api).
 
-## Padrão de formulários
+### Monorepo (3 apps)
 
-Para novas telas com formulário, siga o padrão documentado em `AGENTS.md`: Client Component, `react-hook-form`, schema em `zod`, `zodResolver`, `defaultValues`, mensagens via `formState.errors` e campos usando tokens do tema/shadcn.
+| App | Stack | Porta |
+|-----|-------|-------|
+| `apps/web` | Next.js 16, React 19, Tailwind 4, shadcn v4 | 3000 |
+| `apps/api` | NestJS 11, Prisma 7, PostgreSQL | 4000 |
+| `apps/bot` | Grammy, ESM | — |
+
+- `npm run dev` → web + api; `npm run dev:bot` → bot separado.
+- Web → API via cookie `gateon.session`; Bot → API via `x-gateon-bot-secret`.
+- Sem `packages/shared` — código duplicado entre apps deve ficar em sync (ver AGENTS.md).
+
+### Produto (estado atual)
+
+Automação de acesso a grupos Telegram pagos via Stripe:
+
+- Conexão de grupos via bot (`/start` com token)
+- Stripe read-only: sync, métricas, checkout via bot, vínculo grupo↔plano
+- Alertas automatizados (Telegram + Stripe)
+- Bot start settings: mensagem `/start` personalizada com planos e botões de pagamento
+- Dashboard, membros, limites de plano (`free`/`starter`/`pro` — todos em `free` hoje)
+
+**Não faz:** processar pagamentos, criar assinaturas, armazenar dados sensíveis.
+
+### Rotas privadas principais
+
+`/dashboard` · `/groups` · `/groups/[id]/bot` · `/members` · `/alerts` · `/integrations` · `/settings`
+
+### Design system (resumo)
+
+| Item | Valor |
+|------|-------|
+| shadcn style | `base-nova`, base color `neutral` |
+| Tailwind | v4, config em `globals.css` (sem tailwind.config.js) |
+| Primitivos | Base UI (`@base-ui/react`) |
+| Fontes | Inter (corpo) + Geist Sans (títulos) |
+| Primary | `oklch(0.55 0.2 255)` ≈ `#3b82f6` |
+| Tokens extras | Paleta `surface-*` (Material-like) |
+| Ícones | Animados custom (`src/components/icons/`) > Lucide |
+| Layout | Sidebar colapsável + header; `Container max-w-7xl` |
+| Cards | `rounded-xl shadow-sm ring-1 ring-foreground/10` |
+| Tema | next-themes; privado = system/light/dark; auth = light forçado |
+| Toasts | Sonner; formulários = RHF + Zod + `FormField`/`Field` |
+
+Detalhes completos de tokens, componentes ui/, padrões de botão/badge/tabela/dialog: **`AGENTS.md` → Design System**.
+
+### Formulários
+
+Client Component + `react-hook-form` + `zodResolver` + schema Zod + `defaultValues` + erros via `formState.errors` + tokens shadcn (`border-input`, `bg-background`, `ring-primary/*`).
+
+### Ao alterar regras compartilhadas
+
+Sincronizar entre apps: `plan-limits`, `telegram-admin-rights`, `bot-start-message-builder`, `bot-start-subscribe-steps`, schemas Zod espelhados. Lista completa em **`AGENTS.md` → Código sincronizado**.

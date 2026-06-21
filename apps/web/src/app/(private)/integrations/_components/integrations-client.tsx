@@ -4,13 +4,15 @@ import { useState } from "react";
 import { StatCard } from "@/app/(private)/alerts/_components/stat-card";
 import { Badge } from "@/components/ui/badge";
 import type { StripeBillingStatusDto } from "@/lib/zod/stripe-billing-schemas";
+import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
 import { IntegrationStatCard } from "./integration-stat-card";
 import { IntegrationsPanel } from "./integrations-panel";
-import { PrivacyDetails } from "./privacy-details";
+import { StripeTelegramLinkingGuide } from "./stripe-telegram-linking-guide";
 
 type IntegrationsClientProps = {
   initialStatus: StripeBillingStatusDto;
   loadError: string | null;
+  groups: TelegramGroupSummaryDto[];
 };
 
 function formatCurrency(cents: number) {
@@ -23,6 +25,7 @@ function formatCurrency(cents: number) {
 export function IntegrationsClient({
   initialStatus,
   loadError,
+  groups,
 }: IntegrationsClientProps) {
   const [stripeStatus, setStripeStatus] = useState(initialStatus);
   const totals = stripeStatus.totals;
@@ -73,9 +76,10 @@ export function IntegrationsClient({
       <IntegrationsPanel
         stripeStatus={stripeStatus}
         onStripeStatusChange={setStripeStatus}
+        groups={groups}
       />
 
-      <PrivacyDetails />
+      <StripeTelegramLinkingGuide />
     </>
   );
 }
