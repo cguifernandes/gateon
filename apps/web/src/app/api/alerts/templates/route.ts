@@ -1,52 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getServerApiBaseUrl, SESSION_COOKIE_NAME } from "@/lib/utils";
+import { proxyAuthenticatedJsonApi } from "@/lib/server/proxy-authenticated-json-api";
 import { alertContentSchema } from "@/lib/zod/alert-schemas";
 
-const REQUEST_TIMEOUT_MS = 30_000;
-
-function unauthorizedResponse() {
-  const response = NextResponse.json(
-    { error: "Unauthorized" },
-    { status: 401 },
-  );
-  response.cookies.delete(SESSION_COOKIE_NAME);
-  return response;
-}
-
-async function proxyTemplates(request: NextRequest, init?: RequestInit) {
-  const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-  if (!sessionToken) return unauthorizedResponse();
-
-  const base = getServerApiBaseUrl();
-  if (!base) {
-    return NextResponse.json(
-      { error: "Upstream API not configured" },
-      { status: 503 },
-    );
-  }
-
-  const upstream = await fetch(`${base}/alerts/templates`, {
-    ...init,
-    headers: {
-      "content-type": "application/json",
-      Cookie: `${SESSION_COOKIE_NAME}=${sessionToken}`,
-      ...init?.headers,
-    },
-    cache: "no-store",
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-  });
-
-  if (upstream.status === 401 || upstream.status === 403) {
-    return unauthorizedResponse();
-  }
-
-  return NextResponse.json(await upstream.json().catch(() => null), {
-    status: upstream.status,
-  });
-}
-
 export async function GET(request: NextRequest) {
-  return proxyTemplates(request);
+  return proxyAuthenticatedJsonApi({
+    request,
+    upstreamPath: "/alerts/templates",
+    routeLabel: "/api/alerts/templates",
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -69,8 +30,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  return proxyTemplates(request, {
-    method: "POST",
-    body: JSON.stringify(body),
+  return proxyAuthenticatedJsonApi({
+    request,
+    upstreamPath: "/alerts/templates",
+    routeLabel: "/api/alerts/templates",
+    init: {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
   });
 }

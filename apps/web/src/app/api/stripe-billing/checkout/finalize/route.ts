@@ -1,5 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { reportBffError } from "@/lib/sentry/report-bff-error";
+import { readUpstreamError } from "@/lib/server/read-upstream-error";
 import { getServerApiBaseUrl } from "@/lib/utils";
+
+const ROUTE_LABEL = "/api/stripe-billing/checkout/finalize";
+const UPSTREAM_PATH = "/stripe-billing/checkout/finalize";
 
 export async function POST(request: NextRequest) {
   const base = getServerApiBaseUrl();
@@ -17,11 +22,14 @@ export async function POST(request: NextRequest) {
     !("sessionId" in raw) ||
     typeof (raw as { sessionId?: unknown }).sessionId !== "string"
   ) {
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid request body" },
+      { status: 400 },
+    );
   }
 
   try {
-    const upstream = await fetch(`${base}/stripe-billing/checkout/finalize`, {
+    const upstream = await fetch(`${base}${UPSTREAM_PATH}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(raw),
@@ -31,21 +39,28 @@ export async function POST(request: NextRequest) {
 
     if (!upstream.ok) {
       const body: unknown = await upstream.json().catch(() => null);
-      const error =
-        body &&
-        typeof body === "object" &&
-        "message" in body &&
-        typeof (body as { message?: unknown }).message === "string"
-          ? (body as { message: string }).message
-          : "Upstream request failed";
+      reportBffError({
+        route: ROUTE_LABEL,
+        method: "POST",
+        upstreamPath: UPSTREAM_PATH,
+        status: upstream.status,
+        message: readUpstreamError(body),
+      });
       return NextResponse.json(
-        { error },
+        { error: readUpstreamError(body) },
         { status: upstream.status >= 400 ? upstream.status : 502 },
       );
     }
 
     return NextResponse.json(await upstream.json());
-  } catch {
+  } catch (error) {
+    reportBffError({
+      route: ROUTE_LABEL,
+      method: "POST",
+      upstreamPath: UPSTREAM_PATH,
+      message: "Upstream request failed",
+      error,
+    });
     return NextResponse.json(
       { error: "Upstream request failed" },
       { status: 503 },

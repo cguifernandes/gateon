@@ -1,6 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { reportBffError } from "@/lib/sentry/report-bff-error";
 import { getServerApiBaseUrl, SESSION_COOKIE_NAME } from "@/lib/utils";
 
+const ROUTE_LABEL = "/api/auth/session";
+const UPSTREAM_PATH = "/auth/me";
 const VALIDATION_TIMEOUT_MS = 10_000;
 
 function unauthorizedResponse() {
@@ -24,7 +27,7 @@ export async function GET(request: NextRequest) {
     request.headers.get("x-forwarded-for") ?? request.headers.get("x-real-ip");
 
   try {
-    const response = await fetch(`${base}/auth/me`, {
+    const response = await fetch(`${base}${UPSTREAM_PATH}`, {
       method: "GET",
       headers: {
         Cookie: `${SESSION_COOKIE_NAME}=${sessionToken}`,
@@ -42,8 +45,22 @@ export async function GET(request: NextRequest) {
       return unauthorizedResponse();
     }
 
+    reportBffError({
+      route: ROUTE_LABEL,
+      method: "GET",
+      upstreamPath: UPSTREAM_PATH,
+      status: response.status,
+      message: "Session validation failed",
+    });
     return NextResponse.json({ ok: false }, { status: 503 });
-  } catch {
+  } catch (error) {
+    reportBffError({
+      route: ROUTE_LABEL,
+      method: "GET",
+      upstreamPath: UPSTREAM_PATH,
+      message: "Session validation failed",
+      error,
+    });
     return NextResponse.json({ ok: false }, { status: 503 });
   }
 }

@@ -1,87 +1,17 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getServerApiBaseUrl, SESSION_COOKIE_NAME } from "@/lib/utils";
+import { proxyAuthenticatedJsonApi } from "@/lib/server/proxy-authenticated-json-api";
 import {
   stripeBillingConnectSchema,
   stripeBillingStatusSchema,
 } from "@/lib/zod/stripe-billing-schemas";
 
-const REQUEST_TIMEOUT_MS = 60_000;
-
-function unauthorizedResponse() {
-  const response = NextResponse.json(
-    { error: "Unauthorized" },
-    { status: 401 },
-  );
-  response.cookies.delete(SESSION_COOKIE_NAME);
-  return response;
-}
-
-function readUpstreamError(body: unknown): string {
-  if (body && typeof body === "object") {
-    if (
-      "message" in body &&
-      typeof (body as { message?: unknown }).message === "string"
-    ) {
-      return (body as { message: string }).message;
-    }
-    if (
-      "error" in body &&
-      typeof (body as { error?: unknown }).error === "string"
-    ) {
-      return (body as { error: string }).error;
-    }
-  }
-
-  return "Upstream request failed";
-}
-
-async function proxyStripeBillingRequest(
-  request: NextRequest,
-  path = "",
-  init?: RequestInit,
-) {
-  const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-  if (!sessionToken) return unauthorizedResponse();
-
-  const base = getServerApiBaseUrl();
-  if (!base) {
-    return NextResponse.json(
-      { error: "Upstream API not configured" },
-      { status: 503 },
-    );
-  }
-
-  const forwardedFor =
-    request.headers.get("x-forwarded-for") ?? request.headers.get("x-real-ip");
-  const upstream = await fetch(`${base}/stripe-billing${path}`, {
-    ...init,
-    headers: {
-      "content-type": "application/json",
-      Cookie: `${SESSION_COOKIE_NAME}=${sessionToken}`,
-      ...(forwardedFor ? { "x-forwarded-for": forwardedFor } : {}),
-      ...init?.headers,
-    },
-    cache: "no-store",
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-  });
-
-  if (upstream.status === 401 || upstream.status === 403) {
-    return unauthorizedResponse();
-  }
-
-  const raw: unknown = await upstream.json().catch(() => null);
-  if (!upstream.ok) {
-    return NextResponse.json(
-      { error: readUpstreamError(raw) },
-      { status: upstream.status >= 400 ? upstream.status : 502 },
-    );
-  }
-
-  return NextResponse.json(raw);
-}
-
 export async function GET(request: NextRequest) {
-  const response = await proxyStripeBillingRequest(request);
+  const response = await proxyAuthenticatedJsonApi({
+    request,
+    upstreamPath: "/stripe-billing",
+    routeLabel: "/api/stripe-billing",
+    timeoutMs: 60_000,
+  });
   const body: unknown = await response
     .clone()
     .json()
@@ -111,9 +41,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  return proxyStripeBillingRequest(request, "/connect", {
-    method: "POST",
-    body: JSON.stringify(parsed.data),
+  return proxyAuthenticatedJsonApi({
+    request,
+    upstreamPath: "/stripe-billing/connect",
+    routeLabel: "/api/stripe-billing",
+    timeoutMs: 60_000,
+    init: {
+      method: "POST",
+      body: JSON.stringify(parsed.data),
+    },
   });
 }
-

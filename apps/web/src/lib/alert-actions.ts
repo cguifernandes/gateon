@@ -1,6 +1,7 @@
 "use client";
 
 import { toast } from "sonner";
+import { fetchJsonWithSentry } from "@/lib/sentry/report-client-api-error";
 
 export type AlertAction = "run" | "duplicate" | "pause" | "activate" | "delete";
 
@@ -138,10 +139,15 @@ export async function runAlertAction(
   alertId: string,
   action: AlertAction,
 ): Promise<unknown> {
-  const response =
+  const route =
     action === "delete"
-      ? await fetch(`/api/alerts/${alertId}`, { method: "DELETE" })
-      : await fetch(`/api/alerts/${alertId}/${action}`, { method: "POST" });
+      ? `/api/alerts/${alertId}`
+      : `/api/alerts/${alertId}/${action}`;
+  const response = await fetchJsonWithSentry(
+    route,
+    { method: action === "delete" ? "DELETE" : "POST" },
+    route,
+  );
 
   const body: unknown = await response.json().catch(() => null);
 
