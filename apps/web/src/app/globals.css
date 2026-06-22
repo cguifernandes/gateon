@@ -140,8 +140,16 @@ body {
 
   --scrollbar-size: 0.625rem;
   --scrollbar-track: transparent;
-  --scrollbar-thumb: color-mix(in oklch, var(--border) 55%, var(--muted-foreground) 45%);
-  --scrollbar-thumb-hover: color-mix(in oklch, var(--primary) 70%, var(--muted-foreground) 30%);
+  --scrollbar-thumb: color-mix(
+    in oklch,
+    var(--border) 55%,
+    var(--muted-foreground) 45%
+  );
+  --scrollbar-thumb-hover: color-mix(
+    in oklch,
+    var(--primary) 70%,
+    var(--muted-foreground) 30%
+  );
 }
 
 .dark {
@@ -187,8 +195,16 @@ body {
   --sidebar-ring: oklch(0.556 0 0);
 
   --scrollbar-track: transparent;
-  --scrollbar-thumb: color-mix(in oklch, var(--border) 40%, var(--muted-foreground) 60%);
-  --scrollbar-thumb-hover: color-mix(in oklch, var(--primary) 75%, var(--foreground) 25%);
+  --scrollbar-thumb: color-mix(
+    in oklch,
+    var(--border) 40%,
+    var(--muted-foreground) 60%
+  );
+  --scrollbar-thumb-hover: color-mix(
+    in oklch,
+    var(--primary) 75%,
+    var(--foreground) 25%
+  );
 }
 
 @layer base {
@@ -335,7 +351,7 @@ body {
 }
 
 *::placeholder {
-  @apply text-muted-foreground;
+  @apply text-muted-foreground md:text-sm! text-xs!;
 }
 
 /* Sonner: espaço entre ícone e conteúdo do toast */
