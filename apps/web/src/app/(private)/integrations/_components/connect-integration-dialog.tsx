@@ -58,6 +58,7 @@ import { StripeApiKeyStep } from "./stripe-api-key-step";
 import { StripeConsentStep } from "./stripe-consent-step";
 import { StripeGroupSelectStep } from "./stripe-group-select-step";
 import { StripePriceSelectStep } from "./stripe-price-select-step";
+import { StripeWebhookGuideStep } from "./stripe-webhook-guide-step";
 
 type ConnectIntegrationDialogProps = {
   open: boolean;
@@ -86,6 +87,7 @@ const dialogProgressSteps = [
   { id: "api-key", label: "Chave API" },
   { id: "plan", label: "Plano" },
   { id: "group", label: "Grupo" },
+  { id: "webhook", label: "Webhook" },
   { id: "confirm", label: "Confirmar" },
 ] as const;
 
@@ -380,7 +382,9 @@ export function ConnectIntegrationDialog({
         onStripeConnected(parsed.data);
         handleOpenChange(false);
         toast.success("Integração conectada", {
-          description: "A sincronização foi executada com segurança.",
+          description:
+            "Sincronização inicial concluída. Configure o webhook no card da Stripe para alertas em tempo real.",
+          duration: 8000,
         });
       } catch (error) {
         toast.error("Falha ao conectar integração", {
@@ -497,6 +501,20 @@ export function ConnectIntegrationDialog({
       ),
     },
     {
+      title: "Webhook para alertas em tempo real",
+      description:
+        "Entenda por que o webhook é necessário e como configurá-lo após conectar.",
+      content: <StripeWebhookGuideStep />,
+      showPreviousButton: true,
+      nextButton: (
+        <PlanNextButton
+          disabled={false}
+          arrowRightIconRefs={arrowRightIconRefs}
+          iconIndex={4}
+        />
+      ),
+    },
+    {
       title: "Confirmar integração",
       description:
         "Confira o plano monitorado, o grupo vinculado, aceite o consentimento de uso dos dados e conclua a conexão.",
@@ -522,13 +540,13 @@ export function ConnectIntegrationDialog({
               variant="outline"
               disabled={form.formState.isSubmitting}
               onMouseEnter={() =>
-                arrowLeftIconRefs.current[4]?.startAnimation()
+                arrowLeftIconRefs.current[5]?.startAnimation()
               }
-              onMouseLeave={() => arrowLeftIconRefs.current[4]?.stopAnimation()}
+              onMouseLeave={() => arrowLeftIconRefs.current[5]?.stopAnimation()}
             >
               <ArrowLeftIcon
                 ref={(element) => {
-                  arrowLeftIconRefs.current[4] = element;
+                  arrowLeftIconRefs.current[5] = element;
                 }}
                 isAnimateOnView={false}
                 size={16}

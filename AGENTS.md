@@ -42,6 +42,176 @@ Documento canônico do monorepo. `CLAUDE.md` aponta para este arquivo com um res
 - Cada feature em `apps/api/src/modules/<name>/` com `*.module.ts`, controllers, services, guards e schemas locais.
 - Código compartilhado da API: `apps/api/src/lib/`, `apps/api/src/utils/`, `apps/api/src/types/`.
 - Registrar novos módulos em `apps/api/src/app.module.ts`.
+- **Todo módulo novo ou feature relevante deve incluir testes unitários** — ver [Testes unitários da API](#testes-unitários-da-api-appsapi) abaixo.
+
+### Testes unitários da API (`apps/api`)
+
+**Regra:** ao criar ou expandir um módulo em `apps/api/src/modules/<name>/`, incluir testes Jest no mesmo conjunto de mudanças. Não mergear módulo sem cobertura mínima de comportamento.
+
+**Stack:** Jest 30 + `@nestjs/testing` + `ts-jest`. Config em `apps/api/package.json` (`testRegex`: `.*\.spec\.ts$`, `rootDir`: `src`).
+
+**Comandos** (a partir de `apps/api/`):
+
+| Comando | Uso |
+|---------|-----|
+| `npm test` | Suite completa |
+| `npm run test:watch` | Desenvolvimento |
+| `npm run test:cov` | Cobertura |
+| `npm run test:stripe` | Exemplo de filtro por feature (`jest --testPathPatterns stripe`) |
+
+#### Onde colocar os arquivos
+
+Colocar o spec **ao lado** do código testado (colocation):
+
+```
+modules/<name>/
+├── <name>.module.ts
+├── <name>.service.ts
+├── <name>.service.spec.ts      ← obrigatório se houver service
+├── <name>.controller.ts
+├── <name>.controller.spec.ts   ← opcional (controller fino que só delega)
+└── schemas/
+    ├── <name>-schemas.ts
+    └── <name>-schemas.spec.ts  ← obrigatório se houver schemas Zod
+
+lib/
+├── <helper>.ts
+└── <helper>.spec.ts            ← obrigatório para lógica pura extraída
+```
+
+- Testes que dependem de PostgreSQL: sufixo `*.integration.spec.ts` (opcional).
+- Fixtures compartilhadas de integração: `apps/api/src/testing/`.
+
+#### O que testar (mínimo por módulo)
+
+| Camada | Arquivo | Obrigatório quando | Foco |
+|--------|---------|-------------------|------|
+| **Service** | `<name>.service.spec.ts` | Existe `*.service.ts` com regras | Orquestração, filtros, erros (`NotFoundException`, `BadRequestException`), chamadas a dependências |
+| **Schemas** | `schemas/*.spec.ts` | Existe validação Zod no módulo | `safeParse` — casos válidos, inválidos e mensagens de erro |
+| **Lib pura** | `lib/<name>.spec.ts` | Lógica sem I/O em `lib/` | Funções puras, matrizes de entrada/saída, prioridade de regras |
+| **Controller** | `<name>.controller.spec.ts` | Controller com lógica própria | Delegação e guards; skip se for só proxy fino |
+| **Integração** | `*.integration.spec.ts` | Fluxo real com Prisma | `describe.skip` quando `DATABASE_URL` ausente |
+
+**Prioridade:** extrair regras de negócio testáveis para `apps/api/src/lib/` (funções puras) e manter o service fino — padrão usado em `stripe-billing-sync-events.ts`, `stripe-automation-alerts.ts`, `stripe-telegram-subscriber.ts`.
+
+#### Padrão 1 — Service NestJS (mock de dependências)
+
+```typescript
+import { Test, type TestingModule } from '@nestjs/testing';
+import { NotFoundException } from '@nestjs/common';
+import { ExampleService } from './example.service';
+import { PrismaService } from '../prisma/prisma.service';
+
+describe('ExampleService', () => {
+  let service: ExampleService;
+  const findFirst = jest.fn();
+
+  beforeEach(async () => {
+    findFirst.mockReset();
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        ExampleService,
+        {
+          provide: PrismaService,
+          useValue: { exampleModel: { findFirst } },
+        },
+      ],
+    }).compile();
+
+    service = module.get(ExampleService);
+  });
+
+  it('throws when resource is missing', async () => {
+    findFirst.mockResolvedValue(null);
+    await expect(service.getById('missing')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+});
+```
+
+- Mockar **apenas** o que o service usa (`PrismaService`, `TelegramService`, outros services).
+- Para métodos internos pesados, preferir `jest.spyOn(service, 'runX').mockResolvedValue(...)` quando o foco for outro método público.
+- Não usar banco real em `*.spec.ts`.
+
+#### Padrão 2 — Lógica pura em `lib/`
+
+```typescript
+import { resolveExampleTrigger } from './example-rules';
+
+describe('resolveExampleTrigger', () => {
+  it('returns null when input is stable', () => {
+    expect(resolveExampleTrigger(null, 'active')).toBeNull();
+  });
+
+  it('maps status transition to trigger type', () => {
+    expect(resolveExampleTrigger({ status: 'active' }, 'canceled')).toBe(
+      'EXAMPLE_CANCELED',
+    );
+  });
+});
+```
+
+- Sem `@nestjs/testing`.
+- Usar `it.each` para matrizes de casos (ver `stripe-billing-sync-events.spec.ts`, `alert-schemas-stripe.spec.ts`).
+
+#### Padrão 3 — Schemas Zod do módulo
+
+```typescript
+import { exampleUpsertSchema } from './example-schemas';
+
+describe('exampleUpsertSchema', () => {
+  it('accepts valid payload', () => {
+    const result = exampleUpsertSchema.safeParse({ name: 'Test', body: 'Hi' });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects missing required field', () => {
+    const result = exampleUpsertSchema.safeParse({ name: '' });
+    expect(result.success).toBe(false);
+  });
+});
+```
+
+#### Padrão 4 — Integração com banco (opcional)
+
+```typescript
+import { resolve } from 'node:path';
+import { config as loadDotenv } from 'dotenv';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '@prisma/client';
+
+loadDotenv({ path: resolve(__dirname, '../../../.env') });
+
+const databaseUrl = process.env.DATABASE_URL?.trim();
+const describeWithDb = databaseUrl ? describe : describe.skip;
+
+describeWithDb('Example (integration)', () => {
+  jest.setTimeout(60_000);
+  // PrismaClient + adapter; cleanup no afterAll
+});
+```
+
+Referências no repo: `stripe-alert-triggers.integration.spec.ts`, `stripe-alerts.integration.spec.ts`, `src/testing/stripe-alert-test-fixtures.ts`.
+
+#### Convenções de nomenclatura
+
+- Arquivo: `<unit-under-test>.spec.ts` (inglês, kebab-case do módulo).
+- `describe`: nome da classe ou função (`ExampleService`, `resolveExampleTrigger`).
+- `it`: frase em inglês descrevendo comportamento (`'throws when resource is missing'`).
+- Um `describe` por unidade; agrupar casos relacionados com `describe` aninhado ou `it.each`.
+
+#### Checklist — novo módulo `modules/<name>/`
+
+1. [ ] `*.module.ts` registrado em `app.module.ts`
+2. [ ] `*.service.spec.ts` com happy path + erros principais
+3. [ ] `schemas/*.spec.ts` se houver Zod no módulo
+4. [ ] Funções puras em `lib/` com `*.spec.ts` se a lógica for complexa ou reutilizada
+5. [ ] `npm test` passando em `apps/api`
+6. [ ] (Opcional) `*.integration.spec.ts` para fluxos críticos com Prisma
+
+**Anti-padrões:** testes que só assertam mocks sem comportamento; testes E2E HTTP no lugar de unitários; specs sem rodar na CI local (`npm test`).
 
 ### Lint e formatação
 
@@ -554,6 +724,7 @@ Variants: `default`, `secondary`, `destructive`, `outline`, `ghost`, `link`, `al
 - Evitar dependência de serviços instáveis
 - Arquivos > 200–300 linhas: considerar divisão
 - Não sobrescrever `.env` sem confirmação do usuário
+- **API:** novo módulo Nest → incluir testes unitários Jest no padrão de `AGENTS.md` → Testes unitários da API; rodar `npm test` em `apps/api` antes de concluir
 
 ---
 

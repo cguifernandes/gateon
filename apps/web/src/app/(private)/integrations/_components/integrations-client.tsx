@@ -40,8 +40,9 @@ export function IntegrationsClient({
               Integrações
             </h1>
             <p className="font-light text-muted-foreground text-sm">
-              Conecte gateways de pagamento para monitorar assinaturas e acionar
-              automações dentro dos seus grupos.
+              Conecte gateways de pagamento para monitorar assinaturas. Com
+              webhook Stripe configurado, alertas e automações disparam em tempo
+              real.
             </p>
           </div>
         </div>

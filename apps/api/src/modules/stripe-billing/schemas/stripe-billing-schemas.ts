@@ -16,6 +16,14 @@ const stripePriceIdSchema = z
     message: 'Informe um preço válido da Stripe.',
   });
 
+const stripeWebhookSigningSecretSchema = z
+  .string()
+  .trim()
+  .min(1, 'Informe o signing secret do webhook.')
+  .refine((value) => value.startsWith('whsec_'), {
+    message: 'Informe um signing secret válido da Stripe (whsec_...).',
+  });
+
 const stripeMessages = {
   consentRequired: 'É necessário aceitar o aviso.',
 } as const;
@@ -28,9 +36,14 @@ export const stripeBillingConnectSchema = z.object({
   apiKey: stripeApiKeySchema,
   stripePriceId: stripePriceIdSchema,
   telegramGroupId: z.string().trim().min(1, 'Selecione o grupo vinculado ao plano.'),
+  webhookSigningSecret: stripeWebhookSigningSecretSchema.optional(),
   consentAccepted: z.literal(true, {
     errorMap: () => ({ message: stripeMessages.consentRequired }),
   }),
+});
+
+export const stripeBillingUpdateWebhookSecretSchema = z.object({
+  webhookSigningSecret: stripeWebhookSigningSecretSchema,
 });
 
 export const stripeBillingUpdateLinkedGroupSchema = z.object({
@@ -63,6 +76,9 @@ export type StripeBillingConnectInput = z.infer<
 >;
 export type StripeBillingUpdateLinkedGroupInput = z.infer<
   typeof stripeBillingUpdateLinkedGroupSchema
+>;
+export type StripeBillingUpdateWebhookSecretInput = z.infer<
+  typeof stripeBillingUpdateWebhookSecretSchema
 >;
 export type StripeBillingCatalogPrice = z.infer<
   typeof stripeBillingCatalogPriceSchema

@@ -17,6 +17,7 @@ import {
   ALERT_DELIVERY_NO_TARGETS_MESSAGE,
   getAlertGroupDeliveryBlockReason,
 } from '../../lib/alert-delivery-messages';
+import { filterStripeAutomationAlerts } from '../../lib/stripe-automation-alerts';
 import {
   alertInternalTriggerSchema,
   type AlertContentInput,
@@ -377,6 +378,7 @@ export class AlertsService {
     userId: string,
     triggerType: AlertInternalTriggerInput['triggerType'],
     stripeConnectionId: string,
+    subscriber?: { telegramUserId: string; displayName?: string },
   ) {
     const automationAlerts = await this.prisma.telegramAlerts.findMany({
       where: {
@@ -389,16 +391,23 @@ export class AlertsService {
       take: 100,
     });
 
-    const matchingAlerts = automationAlerts.filter((alert) => {
-      const config = (alert.triggerConfig ?? {}) as {
-        stripeConnectionId?: string;
-      };
-      if (!config.stripeConnectionId) return true;
-      return config.stripeConnectionId === stripeConnectionId;
-    });
+    const matchingAlerts = filterStripeAutomationAlerts(
+      automationAlerts,
+      stripeConnectionId,
+    );
+
+    const runOptions: RunAlertOptions = {
+      throwOnTotalFailure: false,
+      ...(subscriber
+        ? {
+            scopeToTelegramUserId: subscriber.telegramUserId,
+            scopeToMemberDisplayName: subscriber.displayName,
+          }
+        : {}),
+    };
 
     for (const alert of matchingAlerts) {
-      await this.runAlert(alert.id, { throwOnTotalFailure: false });
+      await this.runAlert(alert.id, runOptions);
     }
 
     return { triggeredCount: matchingAlerts.length };
@@ -681,6 +690,20 @@ export class AlertsService {
       alert.destinationType === AlertDestinationType.GROUP ||
       alert.destinationType === AlertDestinationType.AUTOMATION
     ) {
+      if (
+        alert.destinationType === AlertDestinationType.AUTOMATION &&
+        options?.scopeToTelegramUserId &&
+        isStripeAutomationTriggerType(alert.triggerType)
+      ) {
+        return [
+          {
+            kind: 'member',
+            telegramUserId: options.scopeToTelegramUserId,
+            displayName: options.scopeToMemberDisplayName,
+          },
+        ];
+      }
+
       if (
         alert.destinationType === AlertDestinationType.AUTOMATION &&
         options?.scopeToTelegramChatId

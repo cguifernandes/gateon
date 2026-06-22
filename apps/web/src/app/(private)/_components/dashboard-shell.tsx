@@ -24,7 +24,7 @@ export function DashboardShell({
       defaultOpen={sidebarDefaultOpen}
     >
       <div className="flex min-h-0 w-full flex-1 overflow-hidden rounded-xl border border-border">
-        <AppSidebar />
+        <AppSidebar user={user} />
         <SidebarInset className="min-h-0 overflow-hidden rounded-br-xl">
           <Header user={user} />
           <main className="relative flex min-h-0 flex-1 flex-col overflow-y-auto bg-background overscroll-contain">

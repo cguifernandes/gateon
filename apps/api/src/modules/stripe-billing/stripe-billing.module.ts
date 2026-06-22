@@ -6,13 +6,16 @@ import { TelegramModule } from '../telegram/telegram.module';
 import { StripeBillingController } from './stripe-billing.controller';
 import { StripeBillingSyncService } from './stripe-billing-sync.service';
 import { StripeBillingService } from './stripe-billing.service';
+import { StripeBillingWebhookController } from './stripe-billing-webhook.controller';
+import { StripeBillingWebhookService } from './stripe-billing-webhook.service';
 
 @Module({
   imports: [AuthModule, AlertsModule, TelegramModule],
-  controllers: [StripeBillingController],
+  controllers: [StripeBillingController, StripeBillingWebhookController],
   providers: [
     StripeBillingService,
     StripeBillingSyncService,
+    StripeBillingWebhookService,
     GroupLimitService,
   ],
   exports: [StripeBillingService],

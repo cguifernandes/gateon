@@ -6,6 +6,7 @@ require(join(__dirname, '../../scripts/load-env.cjs'));
 
 import { setDefaultResultOrder } from 'node:dns';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { ZodValidationPipe } from 'nestjs-zod';
@@ -19,7 +20,9 @@ async function bootstrap() {
     setDefaultResultOrder('ipv4first');
   }
 
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true,
+  });
   app.use(
     helmet({
       crossOriginResourcePolicy: { policy: 'same-site' },

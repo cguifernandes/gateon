@@ -205,6 +205,20 @@ export function StripeConsentStep({
         </ul>
       </section>
 
+      <section className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+        <p className="font-heading font-medium text-foreground text-sm">
+          Próximo passo: webhook
+        </p>
+        <p className="mt-2 text-muted-foreground text-xs leading-relaxed">
+          Após conectar, configure o webhook no card da integração para que
+          alertas de pagamento, cancelamento e vencimento disparem{" "}
+          <span className="font-medium text-foreground">
+            automaticamente
+          </span>
+          , sem depender da sincronização manual.
+        </p>
+      </section>
+
       <section className="rounded-xl border border-border p-4">
         <p className="font-heading font-medium text-foreground text-sm">
           Privacidade e limites

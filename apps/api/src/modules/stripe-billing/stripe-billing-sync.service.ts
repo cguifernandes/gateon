@@ -3,11 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  AlertTriggerType,
-  Prisma,
-  StripeBillingAuditAction,
-} from '@prisma/client';
+import { Prisma, StripeBillingAuditAction } from '@prisma/client';
 import { decryptSecretValue } from '../../utils/utils';
 import { AlertsService } from '../alerts/alerts.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -15,14 +11,24 @@ import {
   getStripeCustomerId,
   getStripeCustomerSnapshot,
   getStripePaymentIntentId,
+  getStripeSubscriptionId,
   StripeBillingStripeClient,
   subscriptionIncludesPrice,
   type StripeCustomerRecord,
   type StripeInvoiceRecord,
   type StripeSubscriptionRecord,
 } from './stripe-billing-stripe-client';
+import {
+  dispatchSubscriptionStripeTrigger,
+  processInvoiceStripeEvent,
+} from '../../lib/stripe-billing-alert-dispatch';
+import {
+  resolveInvoicePaymentTrigger,
+  resolveSubscriptionStripeTrigger,
+  STRIPE_EXPIRING_WINDOW_DAYS,
+} from '../../lib/stripe-billing-sync-events';
 
-const EXPIRING_WINDOW_DAYS = 7;
+const EXPIRING_WINDOW_DAYS = STRIPE_EXPIRING_WINDOW_DAYS;
 
 @Injectable()
 export class StripeBillingSyncService {
@@ -30,6 +36,19 @@ export class StripeBillingSyncService {
     private readonly prisma: PrismaService,
     private readonly alerts: AlertsService,
   ) {}
+
+  private dispatchDeps() {
+    return {
+      alerts: this.alerts,
+      prisma: this.prisma,
+      recordAudit: (
+        userId: string,
+        connectionId: string,
+        action: StripeBillingAuditAction,
+        metadata?: Prisma.InputJsonValue,
+      ) => this.recordAudit(userId, connectionId, action, metadata),
+    };
+  }
 
   async syncConnection(userId: string, connectionId: string) {
     const connection = await this.prisma.stripeBillingConnections.findFirst({
@@ -150,6 +169,173 @@ export class StripeBillingSyncService {
     await this.prisma.stripeBillingAuditLogs.create({
       data: { userId, connectionId, action, metadata },
     });
+  }
+
+  async applySubscriptionFromWebhook(
+    connectionId: string,
+    subscription: StripeSubscriptionRecord,
+  ): Promise<void> {
+    const connection = await this.loadConnectedConnection(connectionId);
+    if (!connection?.monitoredStripePriceId) {
+      return;
+    }
+    if (
+      !subscriptionIncludesPrice(subscription, connection.monitoredStripePriceId)
+    ) {
+      return;
+    }
+
+    const client = this.createClient(connection.encryptedApiKey);
+    const customersByStripeId = await this.syncCustomersFromSubscriptions(
+      connection.userId,
+      connectionId,
+      [subscription],
+    );
+    const productNames = await this.loadProductNames(client, [subscription]);
+    await this.syncSubscriptions(
+      connection.userId,
+      connectionId,
+      [subscription],
+      customersByStripeId,
+      productNames,
+      connection.monitoredPlanLabel,
+    );
+    await this.updateConnectionMetrics(connectionId);
+  }
+
+  async applyInvoiceFromWebhook(
+    connectionId: string,
+    invoice: StripeInvoiceRecord,
+    stripeWebhookEventType?: string,
+  ): Promise<void> {
+    const connection = await this.loadConnectedConnection(connectionId);
+    if (!connection?.monitoredStripePriceId || !invoice.id) {
+      return;
+    }
+
+    const scopedConnection = {
+      id: connection.id,
+      encryptedApiKey: connection.encryptedApiKey,
+      monitoredStripePriceId: connection.monitoredStripePriceId,
+    };
+
+    const inScope = await this.isInvoiceInMonitoredScope(
+      scopedConnection,
+      invoice,
+    );
+    if (!inScope) {
+      return;
+    }
+
+    const customersByStripeId = await this.ensureInvoiceCustomer(
+      connection.userId,
+      connectionId,
+      invoice,
+    );
+    await this.syncInvoices(
+      connection.userId,
+      connectionId,
+      [invoice],
+      customersByStripeId,
+      { stripeWebhookEventType },
+    );
+    await this.updateConnectionMetrics(connectionId);
+  }
+
+  private async loadConnectedConnection(connectionId: string) {
+    return this.prisma.stripeBillingConnections.findFirst({
+      where: { id: connectionId, status: 'CONNECTED' },
+      select: {
+        id: true,
+        userId: true,
+        encryptedApiKey: true,
+        monitoredStripePriceId: true,
+        monitoredPlanLabel: true,
+      },
+    });
+  }
+
+  private createClient(encryptedApiKey: string) {
+    return new StripeBillingStripeClient(decryptSecretValue(encryptedApiKey));
+  }
+
+  private async isInvoiceInMonitoredScope(
+    connection: {
+      id: string;
+      encryptedApiKey: string;
+      monitoredStripePriceId: string;
+    },
+    invoice: StripeInvoiceRecord,
+  ): Promise<boolean> {
+    const subscriptionId = getStripeSubscriptionId(invoice.subscription);
+    if (subscriptionId) {
+      try {
+        const subscription = await this.createClient(
+          connection.encryptedApiKey,
+        ).getSubscription(subscriptionId);
+        return subscriptionIncludesPrice(
+          subscription,
+          connection.monitoredStripePriceId,
+        );
+      } catch {
+        return false;
+      }
+    }
+
+    const stripeCustomerId = getStripeCustomerId(invoice.customer);
+    if (!stripeCustomerId) {
+      return false;
+    }
+
+    const trackedSubscription =
+      await this.prisma.stripeBillingSubscriptions.findFirst({
+        where: {
+          connectionId: connection.id,
+          stripeCustomerId,
+        },
+        select: { id: true },
+      });
+    return Boolean(trackedSubscription);
+  }
+
+  private async ensureInvoiceCustomer(
+    userId: string,
+    connectionId: string,
+    invoice: StripeInvoiceRecord,
+  ) {
+    const customersByStripeId = new Map<string, string>();
+    const stripeCustomerId = getStripeCustomerId(invoice.customer);
+    if (!stripeCustomerId) {
+      return customersByStripeId;
+    }
+
+    const snapshot = getStripeCustomerSnapshot(invoice.customer);
+    const row = await this.prisma.stripeBillingCustomers.upsert({
+      where: {
+        connectionId_stripeCustomerId: {
+          connectionId,
+          stripeCustomerId,
+        },
+      },
+      create: {
+        userId,
+        connectionId,
+        stripeCustomerId,
+        name: snapshot?.name ?? null,
+        email: snapshot?.email?.toLowerCase() ?? null,
+      },
+      update: {
+        ...(snapshot
+          ? {
+              name: snapshot.name ?? null,
+              email: snapshot.email?.toLowerCase() ?? null,
+            }
+          : {}),
+      },
+      select: { id: true, stripeCustomerId: true },
+    });
+    customersByStripeId.set(row.stripeCustomerId, row.id);
+    return customersByStripeId;
   }
 
   private async loadProductNames(
@@ -286,7 +472,7 @@ export class StripeBillingSyncService {
       });
       const status = subscription.status ?? 'unknown';
       const currentPeriodEnd = this.fromUnix(subscription.current_period_end);
-      const eventType = this.resolveSubscriptionEvent(
+      const eventType = resolveSubscriptionStripeTrigger(
         existing,
         status,
         currentPeriodEnd,
@@ -331,11 +517,13 @@ export class StripeBillingSyncService {
       });
 
       if (eventType) {
-        await this.recordSubscriptionEvent(
+        await dispatchSubscriptionStripeTrigger(
+          this.dispatchDeps(),
           userId,
           connectionId,
           eventType,
           subscription.id,
+          stripeCustomerId,
         );
       }
     }
@@ -381,12 +569,24 @@ export class StripeBillingSyncService {
     connectionId: string,
     invoices: StripeInvoiceRecord[],
     customersByStripeId: Map<string, string>,
+    options?: { stripeWebhookEventType?: string },
   ) {
     const syncedInvoiceIds: string[] = [];
 
     for (const invoice of invoices.filter((row) => row.id)) {
       syncedInvoiceIds.push(invoice.id);
       const status = invoice.status ?? 'unknown';
+
+      const existing = await this.prisma.stripeBillingPayments.findUnique({
+        where: {
+          connectionId_stripeInvoiceId: {
+            connectionId,
+            stripeInvoiceId: invoice.id,
+          },
+        },
+        select: { status: true },
+      });
+      const previousStatus = existing?.status;
 
       await this.prisma.stripeBillingPayments.upsert({
         where: {
@@ -409,20 +609,28 @@ export class StripeBillingSyncService {
         ),
       });
 
-      if (status === 'paid') {
-        await this.recordAudit(userId, connectionId, 'PAYMENT_IDENTIFIED', {
-          stripeInvoiceId: invoice.id,
-        });
-        await this.triggerAutomation(
+      const paymentTrigger = resolveInvoicePaymentTrigger(
+        status,
+        options?.stripeWebhookEventType,
+      );
+      const statusChanged = previousStatus !== status;
+      const forcedFailedWebhook =
+        options?.stripeWebhookEventType === 'invoice.payment_failed';
+      const isWebhookDispatch = Boolean(options?.stripeWebhookEventType);
+      const shouldDispatch =
+        paymentTrigger &&
+        (isWebhookDispatch
+          ? statusChanged || forcedFailedWebhook || previousStatus === undefined
+          : previousStatus !== undefined && statusChanged);
+      if (shouldDispatch) {
+        const stripeCustomerId = getStripeCustomerId(invoice.customer);
+        await processInvoiceStripeEvent(
+          this.dispatchDeps(),
           userId,
           connectionId,
-          AlertTriggerType.STRIPE_PAYMENT_SUCCEEDED,
-        );
-      } else if (status === 'uncollectible' || status === 'void') {
-        await this.triggerAutomation(
-          userId,
-          connectionId,
-          AlertTriggerType.STRIPE_PAYMENT_FAILED,
+          status,
+          invoice.id,
+          stripeCustomerId,
         );
       }
     }
@@ -508,76 +716,6 @@ export class StripeBillingSyncService {
     });
   }
 
-  private resolveSubscriptionEvent(
-    existing: { status: string; currentPeriodEnd: Date | null } | null,
-    status: string,
-    currentPeriodEnd: Date | null,
-  ): AlertTriggerType | null {
-    if (!existing && status === 'canceled')
-      return AlertTriggerType.STRIPE_SUBSCRIPTION_CANCELED;
-    if (existing?.status !== status) {
-      if (status === 'canceled')
-        return AlertTriggerType.STRIPE_SUBSCRIPTION_CANCELED;
-      if (status === 'unpaid' || status === 'incomplete_expired') {
-        return AlertTriggerType.STRIPE_SUBSCRIPTION_EXPIRED;
-      }
-    }
-    if (
-      existing?.currentPeriodEnd &&
-      currentPeriodEnd &&
-      currentPeriodEnd > existing.currentPeriodEnd &&
-      (status === 'active' || status === 'trialing')
-    ) {
-      return AlertTriggerType.STRIPE_SUBSCRIPTION_RENEWED;
-    }
-    return this.isExpiringSoon(status, currentPeriodEnd)
-      ? AlertTriggerType.STRIPE_SUBSCRIPTION_EXPIRING
-      : null;
-  }
-
-  private async recordSubscriptionEvent(
-    userId: string,
-    connectionId: string,
-    triggerType: AlertTriggerType,
-    stripeSubscriptionId: string,
-  ) {
-    const actionByTrigger: Partial<
-      Record<AlertTriggerType, StripeBillingAuditAction>
-    > = {
-      STRIPE_SUBSCRIPTION_EXPIRING: 'SUBSCRIPTION_EXPIRING',
-      STRIPE_SUBSCRIPTION_EXPIRED: 'SUBSCRIPTION_EXPIRED',
-      STRIPE_SUBSCRIPTION_CANCELED: 'SUBSCRIPTION_CANCELED',
-      STRIPE_SUBSCRIPTION_RENEWED: 'SUBSCRIPTION_RENEWED',
-    };
-    const action = actionByTrigger[triggerType];
-    if (action)
-      await this.recordAudit(userId, connectionId, action, {
-        stripeSubscriptionId,
-      });
-    await this.triggerAutomation(userId, connectionId, triggerType);
-  }
-
-  private async triggerAutomation(
-    userId: string,
-    connectionId: string,
-    triggerType: AlertTriggerType,
-  ) {
-    const result = await this.alerts.triggerAutomationAlertsForUser(
-      userId,
-      triggerType,
-      connectionId,
-    );
-    if (result.triggeredCount === 0) return;
-
-    await this.prisma.stripeBillingAuditLogs.create({
-      data: {
-        userId,
-        action: 'AUTOMATION_TRIGGERED',
-        metadata: { triggerType, triggeredCount: result.triggeredCount },
-      },
-    });
-  }
-
   private getPlanName(
     subscription: StripeSubscriptionRecord,
     productNames: Map<string, string>,
@@ -595,13 +733,5 @@ export class StripeBillingSyncService {
     return typeof value === 'number' && Number.isFinite(value)
       ? new Date(value * 1000)
       : null;
-  }
-
-  private isExpiringSoon(status: string, currentPeriodEnd: Date | null) {
-    if (!currentPeriodEnd || (status !== 'active' && status !== 'trialing'))
-      return false;
-    const now = Date.now();
-    const end = currentPeriodEnd.getTime();
-    return end >= now && end <= now + EXPIRING_WINDOW_DAYS * 86_400_000;
   }
 }

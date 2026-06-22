@@ -9,7 +9,7 @@ Documento canônico completo: **`AGENTS.md`**. Este arquivo resume o essencial p
 1. **UI só de uma rota** → `_components` da página; **compartilhada** → `src/components/`.
 2. **Inglês** em filenames, tipos, variáveis e comentários; UI do produto pode ser `pt-BR`.
 3. **Zod** → `apps/web/src/lib/zod/` (web) ou `apps/api/src/lib/zod/` / `modules/<name>/schemas/` (API).
-4. **Nest API** → módulos em `apps/api/src/modules/<name>/`; registrar em `app.module.ts`.
+4. **Nest API** → módulos em `apps/api/src/modules/<name>/`; registrar em `app.module.ts`; **testes unitários obrigatórios** (`*.service.spec.ts`, `schemas/*.spec.ts`, `lib/*.spec.ts`) — ver `AGENTS.md` → Testes unitários da API.
 5. **Lint:** Biome (web/bot), ESLint+Prettier (api).
 
 ### Monorepo (3 apps)

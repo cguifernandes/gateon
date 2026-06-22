@@ -21,6 +21,7 @@ import {
 } from "@/components/icons/settings";
 import { UserIcon, type UserIconHandle } from "@/components/icons/user";
 import { UsersIcon, type UsersIconHandle } from "@/components/icons/users";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sidebar,
   SidebarContent,
@@ -37,7 +38,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { cn, getUserInitials } from "@/lib/utils";
+import type { PublicUserDto } from "@/lib/zod/auth-schemas";
 
 type AnimatedIconHandle = {
   startAnimation: () => void;
@@ -329,7 +331,89 @@ function isNavItemActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function AppSidebar() {
+type SidebarUserFooterProps = {
+  user: PublicUserDto;
+  isCollapsed: boolean;
+};
+
+function SidebarUserFooter({ user, isCollapsed }: SidebarUserFooterProps) {
+  const label = user.name ?? user.email;
+  const sublabel = user.name ? user.email : null;
+
+  const linkClassName = cn(
+    "block rounded-lg outline-none transition-colors",
+    "focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+    isCollapsed ? "px-1 py-2" : "px-2 py-2",
+  );
+
+  if (isCollapsed) {
+    return (
+      <Tooltip>
+        <TooltipTrigger
+          render={(triggerProps) => (
+            <div
+              {...triggerProps}
+              className={cn(
+                linkClassName,
+                "flex justify-center",
+                triggerProps.className,
+              )}
+            >
+              <Avatar className="size-8 shrink-0 shadow-sm ring-1 ring-border">
+                {user.image ? (
+                  <AvatarImage src={user.image} alt={label} />
+                ) : null}
+                <AvatarFallback className="text-xs">
+                  {getUserInitials(user)}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          )}
+        />
+        <TooltipContent
+          side="right"
+          sideOffset={8}
+          className="max-w-xs flex flex-col gap-0.5"
+        >
+          <p className="font-medium">{label}</p>
+          {sublabel ? <p className="text-xs">{sublabel}</p> : null}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex min-w-0 items-center gap-2.5 p-2",
+        isCollapsed ? "justify-center" : "w-full",
+      )}
+    >
+      <Avatar className="size-8 shrink-0 shadow-sm ring-1 ring-border">
+        {user.image ? <AvatarImage src={user.image} alt={label} /> : null}
+        <AvatarFallback className="text-xs">
+          {getUserInitials(user)}
+        </AvatarFallback>
+      </Avatar>
+      {!isCollapsed ? (
+        <div className="min-w-0 flex-1 text-left leading-tight">
+          <p className="truncate font-medium text-foreground text-sm">
+            {label}
+          </p>
+          {sublabel ? (
+            <p className="truncate text-muted-foreground text-xs">{sublabel}</p>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+type AppSidebarProps = {
+  user: PublicUserDto;
+};
+
+export function AppSidebar({ user }: AppSidebarProps) {
   const pathname = usePathname();
   const { open, isMobile } = useSidebar();
   const isCollapsed = !isMobile && !open;
@@ -390,15 +474,8 @@ export function AppSidebar() {
         ))}
       </SidebarContent>
 
-      <SidebarFooter className="border-border bg-muted/30">
-        <p
-          className={cn(
-            "text-center text-muted-foreground text-xs leading-snug",
-            isCollapsed && "sr-only",
-          )}
-        >
-          Automação de acesso por assinatura
-        </p>
+      <SidebarFooter className="border-border p-2">
+        <SidebarUserFooter user={user} isCollapsed={isCollapsed} />
       </SidebarFooter>
     </Sidebar>
   );

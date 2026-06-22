@@ -82,6 +82,8 @@ export const stripeBillingConnectionSchema = z.object({
   monitoredStripeProductId: z.string().nullable(),
   monitoredPlanLabel: z.string().nullable(),
   telegramGroupId: z.string().nullable(),
+  webhookConfigured: z.boolean(),
+  webhookEndpointUrl: z.string(),
   linkedGroup: linkedGroupSummarySchema.nullable(),
   updatedAt: z.string().or(z.date()),
 });

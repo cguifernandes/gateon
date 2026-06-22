@@ -1,14 +1,10 @@
 "use client";
 
-import { StripePrivateMessageBadge } from "@/components/stripe-private-message-badge";
 import { TruncatedTextTooltip } from "@/components/truncated-text-tooltip";
 import { Badge } from "@/components/ui/badge";
 import type { AlertAction } from "@/lib/alert-actions";
 import { cn } from "@/lib/utils";
-import {
-  type AlertSummaryDto,
-  isStripeAutomationTriggerType,
-} from "@/lib/zod/alert-schemas";
+import type { AlertSummaryDto } from "@/lib/zod/alert-schemas";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
 import { AlertActionsToolbar } from "./alert-actions-toolbar";
 import { AlertCardMessagePreview } from "./alert-card/alert-card-message-preview";
@@ -40,7 +36,6 @@ export function AlertCard({
 }: AlertCardProps) {
   const isActive = alert.status === "ACTIVE";
   const isAutomation = alert.destinationType === "AUTOMATION";
-  const isStripeAlert = isStripeAutomationTriggerType(alert.triggerType);
 
   function handleCardActivate() {
     onSelect?.(alert);
@@ -86,10 +81,9 @@ export function AlertCard({
                   />
                 </span>
                 <div className="flex shrink-0 flex-wrap items-center gap-1">
-                  <Badge variant="outline" className="text-[10px]">
+                  <Badge variant="outline" className="text-[10px] px-1.5">
                     {destinationLabels[alert.destinationType]}
                   </Badge>
-                  {isStripeAlert ? <StripePrivateMessageBadge /> : null}
                 </div>
               </div>
 

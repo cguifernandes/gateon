@@ -16,6 +16,7 @@ import {
   stripeBillingConnectSchema,
   stripeBillingPreviewCatalogSchema,
   stripeBillingUpdateLinkedGroupSchema,
+  stripeBillingUpdateWebhookSecretSchema,
 } from './schemas/stripe-billing-schemas';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { StripeBillingService } from './stripe-billing.service';
@@ -53,8 +54,7 @@ export class StripeBillingController {
     const parsed = z
       .object({ sessionId: z.string().trim().min(1) })
       .parse(body);
-    await this.stripeBilling.finalizeCheckoutSession(parsed.sessionId);
-    return { success: true };
+    return this.stripeBilling.finalizeCheckoutSession(parsed.sessionId);
   }
 
   @Post(':connectionId/sync')
@@ -74,6 +74,20 @@ export class StripeBillingController {
       this.getUserId(req),
       connectionId,
       stripeBillingUpdateLinkedGroupSchema.parse(body),
+    );
+  }
+
+  @Patch(':connectionId/webhook-secret')
+  @UseGuards(AuthGuard)
+  updateWebhookSecret(
+    @Req() req: Request,
+    @Param('connectionId') connectionId: string,
+    @Body() body: unknown,
+  ) {
+    return this.stripeBilling.updateWebhookSecret(
+      this.getUserId(req),
+      connectionId,
+      stripeBillingUpdateWebhookSecretSchema.parse(body),
     );
   }
 

@@ -370,6 +370,7 @@ model StripeBillingConnections {
   stripeAccountId           String?
   encryptedApiKey           String                        @db.Text
   apiKeyLast4               String
+  encryptedWebhookSigningSecret String?                   @db.Text
   status                    StripeBillingConnectionStatus @default(CONNECTED)
   lastSyncedAt              DateTime?
   consentAcceptedAt         DateTime

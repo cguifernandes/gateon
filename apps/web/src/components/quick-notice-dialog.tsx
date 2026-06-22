@@ -304,10 +304,11 @@ export function QuickNoticeDialog({
               <Button
                 type="button"
                 className="w-40"
-                disabled={isSubmitting || !selectedAlert}
+                loading={isSubmitting}
+                disabled={!selectedAlert}
                 onClick={handleSend}
               >
-                {isSubmitting ? "Enviando..." : "Enviar aviso"}
+                Enviar aviso
               </Button>
             ) : null}
           </div>

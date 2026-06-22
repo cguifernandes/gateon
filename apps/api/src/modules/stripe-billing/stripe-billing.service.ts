@@ -23,12 +23,15 @@ import {
   STRIPE_PAYMENT_GROUP_LIMIT_REACHED_CODE,
   wouldExceedStripePaymentGroupLimitForLink,
 } from '../../lib/stripe-payment-group-limits';
+import { resolveStripeCheckoutRedirectUrls } from '../../lib/stripe-checkout-redirect';
+import { buildStripeWebhookEndpointUrl } from '../../lib/stripe-billing-webhook-url';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import {
   StripeBillingConnectInput,
   StripeBillingPreviewCatalogInput,
   StripeBillingUpdateLinkedGroupInput,
+  StripeBillingUpdateWebhookSecretInput,
 } from './schemas/stripe-billing-schemas';
 import {
   getStripeCustomerId,
@@ -42,6 +45,7 @@ const connectionSelect = {
   id: true,
   stripeAccountId: true,
   apiKeyLast4: true,
+  encryptedWebhookSigningSecret: true,
   status: true,
   lastSyncedAt: true,
   consentAcceptedAt: true,
@@ -77,6 +81,10 @@ type CheckoutButtonResult = {
 @Injectable()
 export class StripeBillingService {
   private readonly logger = new Logger(StripeBillingService.name);
+  private readonly devCheckoutReconcileLoops = new Set<string>();
+
+  private static readonly DEV_CHECKOUT_RECONCILE_INTERVAL_MS = 3_000;
+  private static readonly DEV_CHECKOUT_RECONCILE_MAX_MS = 15 * 60_000;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -143,6 +151,13 @@ export class StripeBillingService {
       stripeAccountId: account.id,
       encryptedApiKey: encryptSecretValue(apiKey),
       apiKeyLast4: apiKey.slice(-4),
+      ...(input.webhookSigningSecret
+        ? {
+            encryptedWebhookSigningSecret: encryptSecretValue(
+              input.webhookSigningSecret.trim(),
+            ),
+          }
+        : {}),
       status: StripeBillingConnectionStatus.CONNECTED,
       consentAcceptedAt,
       disconnectedAt: null,
@@ -206,6 +221,25 @@ export class StripeBillingService {
     return this.getStatus(userId);
   }
 
+  async updateWebhookSecret(
+    userId: string,
+    connectionId: string,
+    input: StripeBillingUpdateWebhookSecretInput,
+  ) {
+    await this.getOwnedConnection(userId, connectionId);
+
+    await this.prisma.stripeBillingConnections.update({
+      where: { id: connectionId },
+      data: {
+        encryptedWebhookSigningSecret: encryptSecretValue(
+          input.webhookSigningSecret.trim(),
+        ),
+      },
+    });
+
+    return this.getStatus(userId);
+  }
+
   async syncNow(userId: string, connectionId: string) {
     await this.getOwnedConnection(userId, connectionId);
     await this.sync.syncConnection(userId, connectionId);
@@ -226,6 +260,7 @@ export class StripeBillingService {
         data: {
           status: StripeBillingConnectionStatus.DISCONNECTED,
           encryptedApiKey: encryptSecretValue('disconnected'),
+          encryptedWebhookSigningSecret: null,
           disconnectedAt: new Date(),
           monitoredStripePriceId: null,
           monitoredStripeProductId: null,
@@ -369,7 +404,9 @@ export class StripeBillingService {
       .sort((left, right) => left.title.localeCompare(right.title, 'pt-BR'));
   }
 
-  async finalizeCheckoutSession(sessionId: string): Promise<void> {
+  async finalizeCheckoutSession(
+    sessionId: string,
+  ): Promise<{ success: true; telegramBotUrl: string }> {
     const pending = await this.prisma.stripeTelegramCheckoutSessions.findUnique(
       {
         where: { stripeCheckoutSessionId: sessionId },
@@ -381,7 +418,10 @@ export class StripeBillingService {
     }
 
     if (pending.status === StripeTelegramCheckoutStatus.COMPLETED) {
-      return;
+      return {
+        success: true,
+        telegramBotUrl: this.getTelegramBotPublicUrl(),
+      };
     }
 
     const client = await this.getClientForConnection(pending.connectionId);
@@ -392,6 +432,11 @@ export class StripeBillingService {
     }
 
     await this.completeCheckoutRecord(pending.id, session);
+
+    return {
+      success: true,
+      telegramBotUrl: this.getTelegramBotPublicUrl(),
+    };
   }
 
   async reconcilePendingSessions(connectionId: string): Promise<void> {
@@ -441,12 +486,18 @@ export class StripeBillingService {
     label: string;
   }): Promise<CheckoutButtonResult> {
     const client = await this.getClientForConnection(input.connectionId);
-    const webBaseUrl = this.getWebBaseUrl();
+    const redirectUrls = this.resolveCheckoutRedirectUrls();
+
+    if (redirectUrls.mode === 'telegram_fallback') {
+      this.logger.log(
+        'Checkout em ambiente local: após pagar, o usuário volta ao Telegram e a API reconcilia a sessão automaticamente.',
+      );
+    }
 
     const session = await client.createCheckoutSession({
       priceId: input.stripePriceId,
-      successUrl: `${webBaseUrl}/stripe/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${webBaseUrl}/stripe/checkout/cancel`,
+      successUrl: redirectUrls.successUrl,
+      cancelUrl: redirectUrls.cancelUrl,
       metadata: {
         gateon_user_id: input.userId,
         gateon_connection_id: input.connectionId,
@@ -461,16 +512,27 @@ export class StripeBillingService {
       );
     }
 
-    await this.prisma.stripeTelegramCheckoutSessions.create({
-      data: {
-        userId: input.userId,
-        connectionId: input.connectionId,
-        telegramUserId: input.telegramUserId,
-        telegramGroupId: input.telegramGroupId,
-        stripeCheckoutSessionId: session.id,
-        stripePriceId: input.stripePriceId,
-      },
-    });
+    const checkoutRecord =
+      await this.prisma.stripeTelegramCheckoutSessions.create({
+        data: {
+          userId: input.userId,
+          connectionId: input.connectionId,
+          telegramUserId: input.telegramUserId,
+          telegramGroupId: input.telegramGroupId,
+          stripeCheckoutSessionId: session.id,
+          stripePriceId: input.stripePriceId,
+        },
+      });
+
+    if (
+      redirectUrls.shouldAutoReconcile &&
+      this.isDevAutoReconcileCheckoutEnabled()
+    ) {
+      this.scheduleDevCheckoutReconciliation(
+        input.connectionId,
+        checkoutRecord.id,
+      );
+    }
 
     return {
       connectionId: input.connectionId,
@@ -662,6 +724,86 @@ export class StripeBillingService {
     return base.replace(/\/$/, '');
   }
 
+  private resolveCheckoutRedirectUrls() {
+    return resolveStripeCheckoutRedirectUrls({
+      webBaseUrl: this.getWebBaseUrl(),
+      publicBaseUrl: this.config.get<string>('STRIPE_CHECKOUT_PUBLIC_BASE_URL'),
+      telegramBotPublicUrl: this.getTelegramBotPublicUrl(),
+      isProduction: process.env.NODE_ENV === 'production',
+    });
+  }
+
+  private isDevAutoReconcileCheckoutEnabled(): boolean {
+    return (
+      this.config.get<string>('STRIPE_DEV_AUTO_RECONCILE_CHECKOUT') !== 'false'
+    );
+  }
+
+  private scheduleDevCheckoutReconciliation(
+    connectionId: string,
+    checkoutRecordId: string,
+  ) {
+    if (process.env.NODE_ENV === 'production') {
+      return;
+    }
+
+    const loopKey = `${connectionId}:${checkoutRecordId}`;
+    if (this.devCheckoutReconcileLoops.has(loopKey)) {
+      return;
+    }
+    this.devCheckoutReconcileLoops.add(loopKey);
+
+    const startedAt = Date.now();
+
+    const tick = async () => {
+      if (
+        Date.now() - startedAt >
+        StripeBillingService.DEV_CHECKOUT_RECONCILE_MAX_MS
+      ) {
+        this.devCheckoutReconcileLoops.delete(loopKey);
+        return;
+      }
+
+      const record =
+        await this.prisma.stripeTelegramCheckoutSessions.findUnique({
+          where: { id: checkoutRecordId },
+          select: { status: true },
+        });
+
+      if (
+        !record ||
+        record.status === StripeTelegramCheckoutStatus.COMPLETED ||
+        record.status === StripeTelegramCheckoutStatus.EXPIRED ||
+        record.status === StripeTelegramCheckoutStatus.FAILED
+      ) {
+        this.devCheckoutReconcileLoops.delete(loopKey);
+        return;
+      }
+
+      try {
+        await this.reconcilePendingSessions(connectionId);
+      } catch (error) {
+        this.logger.warn(
+          `Dev checkout reconcile failed for ${checkoutRecordId}: ${
+            error instanceof Error ? error.message : 'unknown'
+          }`,
+        );
+      }
+
+      setTimeout(() => {
+        void tick();
+      }, StripeBillingService.DEV_CHECKOUT_RECONCILE_INTERVAL_MS);
+    };
+
+    void tick();
+  }
+
+  private getTelegramBotPublicUrl(): string {
+    const raw = this.config.get<string>('TELEGRAM_BOT_USERNAME') ?? 'GateonBot';
+    const username = raw.replace(/^@/, '').trim() || 'GateonBot';
+    return `https://t.me/${username}`;
+  }
+
   private async assertOwnedGroup(userId: string, groupId: string) {
     const count = await this.prisma.telegramGroups.count({
       where: { id: groupId, userId },
@@ -785,9 +927,18 @@ export class StripeBillingService {
       failedPaymentCount: number;
     },
   ) {
-    const { group, ...rest } = connection;
+    const { group, encryptedWebhookSigningSecret, ...rest } = connection;
+    const webhookConfigured =
+      Boolean(encryptedWebhookSigningSecret) ||
+      Boolean(this.config.get<string>('STRIPE_WEBHOOK_SIGNING_SECRET')?.trim());
+
     return {
       ...rest,
+      webhookConfigured,
+      webhookEndpointUrl: buildStripeWebhookEndpointUrl(
+        this.config,
+        connection.id,
+      ),
       linkedGroup: group
         ? {
             id: group.id,

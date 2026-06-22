@@ -24,6 +24,7 @@ import {
   stripeBillingStatusSchema,
 } from "@/lib/zod/stripe-billing-schemas";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
+import { StripeWebhookSetup } from "./stripe-webhook-setup";
 
 type StripeConnectedCardProps = {
   connections: StripeBillingConnectionDto[];
@@ -215,6 +216,7 @@ type StripePlanConnectionSectionProps = {
   isDisconnecting: boolean;
   onSync: () => void;
   onDisconnect: () => void;
+  onStatusChange: (status: StripeBillingStatusDto) => void;
   planCount: number;
   groups: TelegramGroupSummaryDto[];
 };
@@ -226,6 +228,7 @@ function StripePlanConnectionSection({
   isDisconnecting,
   onSync,
   onDisconnect,
+  onStatusChange,
   planCount,
   groups,
 }: StripePlanConnectionSectionProps) {
@@ -248,6 +251,11 @@ function StripePlanConnectionSection({
 
       <ReviewSummaryGrid
         fields={buildPlanReviewFields(connection, linkedGroup)}
+      />
+
+      <StripeWebhookSetup
+        connection={connection}
+        onStatusChange={onStatusChange}
       />
 
       <div className="flex flex-wrap justify-end gap-2">
@@ -386,8 +394,8 @@ export function StripeConnectedCard({
           <div>
             <CardTitle>{gatewayName}</CardTitle>
             <CardDescription>
-              Monitore assinaturas e acione automações com base no status de
-              pagamento.
+              Monitore assinaturas e dispare alertas automaticamente via
+              webhook Stripe.
             </CardDescription>
           </div>
         </div>
@@ -415,6 +423,7 @@ export function StripeConnectedCard({
               isDisconnecting={disconnectingId === connection.id}
               onSync={() => syncConnection(connection.id)}
               onDisconnect={() => disconnectConnection(connection.id)}
+              onStatusChange={onStatusChange}
               groups={groups}
             />
           </div>

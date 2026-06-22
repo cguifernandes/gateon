@@ -61,6 +61,7 @@ export type StripeSubscriptionRecord = {
 export type StripeInvoiceRecord = {
   id: string;
   customer?: string | StripeCustomerRecord | null;
+  subscription?: string | { id?: string } | null;
   payment_intent?: string | { id?: string } | null;
   status?: string;
   amount_paid?: number;
@@ -118,6 +119,17 @@ export class StripeBillingStripeClient {
       status: 'all',
       'expand[]': ['data.customer', 'data.items.data.price'],
     });
+  }
+
+  async getSubscription(
+    subscriptionId: string,
+  ): Promise<StripeSubscriptionRecord> {
+    return this.request<StripeSubscriptionRecord>(
+      `/subscriptions/${encodeURIComponent(subscriptionId)}`,
+      {
+        'expand[]': ['customer', 'items.data.price'],
+      },
+    );
   }
 
   async getProduct(

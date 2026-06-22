@@ -105,17 +105,17 @@ export const automationTriggerDescriptions = {
   MEMBER_LEFT_PRIVATE_MESSAGE:
     "Envia uma mensagem no privado do membro quando ele sai do grupo. O Telegram só entrega se ele já conversou com o bot.",
   STRIPE_PAYMENT_SUCCEEDED:
-    "Dispara quando a sincronização identifica um pagamento recebido na Stripe.",
+    "Dispara quando a sincronização identifica um pagamento recebido na Stripe. Se o assinante estiver vinculado ao Gateon, a mensagem vai para o PV dele.",
   STRIPE_PAYMENT_FAILED:
-    "Dispara quando a sincronização identifica uma falha de pagamento na Stripe.",
+    "Dispara quando a sincronização identifica uma falha de pagamento na Stripe. Se o assinante estiver vinculado ao Gateon, a mensagem vai para o PV dele.",
   STRIPE_SUBSCRIPTION_EXPIRING:
-    "Dispara quando uma assinatura monitorada está próxima do vencimento.",
+    "Dispara quando uma assinatura monitorada está próxima do vencimento. Se o assinante estiver vinculado ao Gateon, a mensagem vai para o PV dele.",
   STRIPE_SUBSCRIPTION_EXPIRED:
-    "Dispara quando uma assinatura monitorada expira ou fica sem pagamento.",
+    "Dispara quando uma assinatura monitorada expira ou fica sem pagamento. Se o assinante estiver vinculado ao Gateon, a mensagem vai para o PV dele.",
   STRIPE_SUBSCRIPTION_RENEWED:
-    "Dispara quando uma assinatura é renovada e ganha novo período de cobrança.",
+    "Dispara quando uma assinatura é renovada e ganha novo período de cobrança. Se o assinante estiver vinculado ao Gateon, a mensagem vai para o PV dele.",
   STRIPE_SUBSCRIPTION_CANCELED:
-    "Dispara quando uma assinatura monitorada é cancelada na Stripe.",
+    "Dispara quando uma assinatura monitorada é cancelada na Stripe. Se o assinante estiver vinculado ao Gateon, a mensagem vai para o PV dele.",
 } as const satisfies Record<z.infer<typeof alertTriggerTypeSchema>, string>;
 
 export const alertTableSelectionSourceSchema = z.enum(["MEMBERS", "GROUPS"], {
