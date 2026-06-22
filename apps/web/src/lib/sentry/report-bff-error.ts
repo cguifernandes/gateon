@@ -7,6 +7,7 @@ type ReportBffErrorInput = {
   status?: number;
   message: string;
   error?: unknown;
+  area?: "bff" | "server-action";
 };
 
 export function reportBffError(input: ReportBffErrorInput) {
@@ -22,10 +23,12 @@ export function reportBffError(input: ReportBffErrorInput) {
     message: input.message,
   };
 
+  const area = input.area ?? "bff";
+
   if (input.error instanceof Error) {
     Sentry.captureException(input.error, {
       tags: {
-        area: "bff",
+        area,
         route: input.route,
         method: input.method,
       },
@@ -37,7 +40,7 @@ export function reportBffError(input: ReportBffErrorInput) {
   Sentry.captureMessage(input.message, {
     level: "error",
     tags: {
-      area: "bff",
+      area,
       route: input.route,
       method: input.method,
       ...(input.status ? { upstream_status: String(input.status) } : {}),

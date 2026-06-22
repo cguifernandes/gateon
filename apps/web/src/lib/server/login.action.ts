@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies, headers } from "next/headers";
+import { reportServerActionError } from "@/lib/sentry/report-server-action-error";
 import {
   authSuccessBodySchema,
   createAuthSchema,
@@ -11,6 +12,9 @@ import {
   applySessionSetCookieFromUpstream,
   getSetCookieLines,
 } from "./apply-session-set-cookie";
+
+const ACTION = "loginAction";
+const UPSTREAM_PATH = "/auth/login";
 
 export type LoginUserResult =
   | { ok: true; user: PublicUserDto }
@@ -34,7 +38,11 @@ export async function loginAction(raw: unknown): Promise<LoginUserResult> {
   const { email, password } = parsedForm.data;
   const base = getServerApiBaseUrl();
   if (!base) {
-    console.error("[loginAction] missing API_URL or INTERNAL_API_URL");
+    reportServerActionError({
+      action: ACTION,
+      upstreamPath: UPSTREAM_PATH,
+      message: "Upstream API not configured",
+    });
     return {
       ok: false,
       code: "unknown",
@@ -48,7 +56,7 @@ export async function loginAction(raw: unknown): Promise<LoginUserResult> {
 
   let res: Response;
   try {
-    res = await fetch(`${base}/auth/login`, {
+    res = await fetch(`${base}${UPSTREAM_PATH}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -59,8 +67,13 @@ export async function loginAction(raw: unknown): Promise<LoginUserResult> {
       signal: AbortSignal.timeout(15_000),
       cache: "no-store",
     });
-  } catch {
-    console.error("[loginAction] upstream fetch failed");
+  } catch (error) {
+    reportServerActionError({
+      action: ACTION,
+      upstreamPath: UPSTREAM_PATH,
+      message: "Upstream request failed",
+      error,
+    });
     return {
       ok: false,
       code: "unknown",
@@ -74,7 +87,13 @@ export async function loginAction(raw: unknown): Promise<LoginUserResult> {
     let json: unknown;
     try {
       json = await res.json();
-    } catch {
+    } catch (error) {
+      reportServerActionError({
+        action: ACTION,
+        upstreamPath: UPSTREAM_PATH,
+        message: "Invalid upstream JSON response",
+        error,
+      });
       return {
         ok: false,
         code: "unknown",
@@ -84,6 +103,11 @@ export async function loginAction(raw: unknown): Promise<LoginUserResult> {
 
     const bodyParsed = authSuccessBodySchema.safeParse(json);
     if (!bodyParsed.success) {
+      reportServerActionError({
+        action: ACTION,
+        upstreamPath: UPSTREAM_PATH,
+        message: "Invalid upstream response shape",
+      });
       return {
         ok: false,
         code: "unknown",
@@ -130,7 +154,12 @@ export async function loginAction(raw: unknown): Promise<LoginUserResult> {
     };
   }
 
-  console.error("[loginAction] unexpected status", res.status);
+  reportServerActionError({
+    action: ACTION,
+    upstreamPath: UPSTREAM_PATH,
+    message: messageFromApi ?? "Unexpected upstream status",
+    status: res.status,
+  });
 
   return {
     ok: false,

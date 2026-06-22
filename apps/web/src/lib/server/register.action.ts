@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies, headers } from "next/headers";
+import { reportServerActionError } from "@/lib/sentry/report-server-action-error";
 import {
   authSuccessBodySchema,
   createAuthSchema,
@@ -11,6 +12,9 @@ import {
   applySessionSetCookieFromUpstream,
   getSetCookieLines,
 } from "./apply-session-set-cookie";
+
+const ACTION = "registerAction";
+const UPSTREAM_PATH = "/auth/register";
 
 export type RegisterUserResult =
   | { ok: true; user: PublicUserDto }
@@ -36,7 +40,11 @@ export async function registerAction(
   const { name, email, password } = parsedForm.data;
   const base = getServerApiBaseUrl();
   if (!base) {
-    console.error("[registerAction] missing API_URL or INTERNAL_API_URL");
+    reportServerActionError({
+      action: ACTION,
+      upstreamPath: UPSTREAM_PATH,
+      message: "Upstream API not configured",
+    });
     return {
       ok: false,
       code: "unknown",
@@ -50,7 +58,7 @@ export async function registerAction(
 
   let res: Response;
   try {
-    res = await fetch(`${base}/auth/register`, {
+    res = await fetch(`${base}${UPSTREAM_PATH}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -65,8 +73,13 @@ export async function registerAction(
       signal: AbortSignal.timeout(15_000),
       cache: "no-store",
     });
-  } catch {
-    console.error("[registerUserAction] upstream fetch failed");
+  } catch (error) {
+    reportServerActionError({
+      action: ACTION,
+      upstreamPath: UPSTREAM_PATH,
+      message: "Upstream request failed",
+      error,
+    });
     return {
       ok: false,
       code: "unknown",
@@ -80,7 +93,13 @@ export async function registerAction(
     let json: unknown;
     try {
       json = await res.json();
-    } catch {
+    } catch (error) {
+      reportServerActionError({
+        action: ACTION,
+        upstreamPath: UPSTREAM_PATH,
+        message: "Invalid upstream JSON response",
+        error,
+      });
       return {
         ok: false,
         code: "unknown",
@@ -90,6 +109,11 @@ export async function registerAction(
 
     const bodyParsed = authSuccessBodySchema.safeParse(json);
     if (!bodyParsed.success) {
+      reportServerActionError({
+        action: ACTION,
+        upstreamPath: UPSTREAM_PATH,
+        message: "Invalid upstream response shape",
+      });
       return {
         ok: false,
         code: "unknown",
@@ -136,7 +160,12 @@ export async function registerAction(
     };
   }
 
-  console.error("[registerUserAction] unexpected status", res.status);
+  reportServerActionError({
+    action: ACTION,
+    upstreamPath: UPSTREAM_PATH,
+    message: messageFromApi ?? "Unexpected upstream status",
+    status: res.status,
+  });
 
   return {
     ok: false,

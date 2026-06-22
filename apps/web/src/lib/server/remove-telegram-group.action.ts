@@ -4,8 +4,11 @@ import { revalidateTag } from "next/cache";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { telegramGroupsCacheTag } from "@/lib/cache-tags";
+import { reportServerActionError } from "@/lib/sentry/report-server-action-error";
 import { getServerApiBaseUrl, SESSION_COOKIE_NAME } from "@/lib/utils";
 import { getSessionUser } from "./get-session";
+
+const ACTION = "removeTelegramGroupAction";
 
 export async function removeTelegramGroupAction(formData: FormData) {
   const groupId = String(formData.get("groupId") ?? "").trim();
@@ -13,10 +16,22 @@ export async function removeTelegramGroupAction(formData: FormData) {
     redirect("/groups");
   }
 
+  const upstreamPath = `/telegram/groups/${encodeURIComponent(groupId)}`;
   const base = getServerApiBaseUrl();
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-  if (!base || !sessionToken) {
+
+  if (!base) {
+    reportServerActionError({
+      action: ACTION,
+      upstreamPath,
+      method: "DELETE",
+      message: "Upstream API not configured",
+    });
+    redirect("/groups");
+  }
+
+  if (!sessionToken) {
     redirect("/groups");
   }
 
@@ -24,7 +39,7 @@ export async function removeTelegramGroupAction(formData: FormData) {
   const forwardedFor = h.get("x-forwarded-for") ?? h.get("x-real-ip");
 
   try {
-    await fetch(`${base}/telegram/groups/${encodeURIComponent(groupId)}`, {
+    const response = await fetch(`${base}${upstreamPath}`, {
       method: "DELETE",
       headers: {
         Cookie: `${SESSION_COOKIE_NAME}=${sessionToken}`,
@@ -33,8 +48,24 @@ export async function removeTelegramGroupAction(formData: FormData) {
       cache: "no-store",
       signal: AbortSignal.timeout(15_000),
     });
-  } catch {
-    /* Keep this test action simple: the next render still shows current data. */
+
+    if (!response.ok && response.status !== 401 && response.status !== 404) {
+      reportServerActionError({
+        action: ACTION,
+        upstreamPath,
+        method: "DELETE",
+        message: "Unexpected upstream status while removing group",
+        status: response.status,
+      });
+    }
+  } catch (error) {
+    reportServerActionError({
+      action: ACTION,
+      upstreamPath,
+      method: "DELETE",
+      message: "Upstream request failed while removing group",
+      error,
+    });
   }
 
   const user = await getSessionUser();

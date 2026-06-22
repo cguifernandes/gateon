@@ -2,17 +2,31 @@
 
 import { refresh, revalidateTag } from "next/cache";
 import { telegramGroupsCacheTag } from "@/lib/cache-tags";
+import { reportServerActionError } from "@/lib/sentry/report-server-action-error";
 import { getSessionUser } from "./get-session";
+
+const ACTION = "revalidateTelegramGroupsAction";
 
 export async function revalidateTelegramGroupsAction(): Promise<{
   ok: boolean;
 }> {
-  const user = await getSessionUser();
-  if (!user) {
+  try {
+    const user = await getSessionUser();
+    if (!user) {
+      return { ok: false };
+    }
+
+    revalidateTag(telegramGroupsCacheTag(user.id), "max");
+    refresh();
+    return { ok: true };
+  } catch (error) {
+    reportServerActionError({
+      action: ACTION,
+      upstreamPath: "/auth/me",
+      method: "GET",
+      message: "Failed to revalidate telegram groups cache",
+      error,
+    });
     return { ok: false };
   }
-
-  revalidateTag(telegramGroupsCacheTag(user.id), "max");
-  refresh();
-  return { ok: true };
 }
