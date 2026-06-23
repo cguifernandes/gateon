@@ -32,7 +32,7 @@ model Users {
   stripeBillingSubscriptions     StripeBillingSubscriptions[]
   stripeBillingPayments          StripeBillingPayments[]
   stripeBillingAuditLogs         StripeBillingAuditLogs[]
-  telegramBotStartSettings       TelegramBotStartSettings?
+  telegramUserSettings             TelegramUserSettings?
   stripeTelegramMemberLinks      StripeTelegramMemberLinks[]
   stripeTelegramCheckoutSessions StripeTelegramCheckoutSessions[]
 }
@@ -485,22 +485,23 @@ model StripeBillingAuditLogs {
   @@index([connectionId, createdAt])
 }
 
-model TelegramBotStartSettings {
-  id                         String   @id @default(cuid())
-  userId                     String   @unique
-  publicStartToken           String   @unique
-  welcomeMessageEnabled      Boolean  @default(true)
-  welcomeMessage             String?  @db.Text
-  showStripePlans            Boolean  @default(false)
+model TelegramUserSettings {
+  id                           String   @id @default(cuid())
+  userId                       String   @unique
+  publicStartToken             String   @unique
+  welcomeMessageEnabled        Boolean  @default(true)
+  welcomeMessage               String?  @db.Text
+  showStripePlans              Boolean  @default(false)
   stripeConnectionIds          String[] @default([])
-  showPaymentButtons         Boolean  @default(false)
-  paymentButtonConnectionIds String[] @default([])
-  paymentButtonsGroupFirst   Boolean  @default(false)
-  showSupportHint            Boolean  @default(true)
-  supportHintText            String?  @db.Text
-  showSubscribeSteps         Boolean  @default(true)
-  createdAt                  DateTime @default(now())
-  updatedAt                  DateTime @updatedAt
+  showPaymentButtons           Boolean  @default(false)
+  paymentButtonConnectionIds   String[] @default([])
+  paymentButtonsGroupFirst     Boolean  @default(false)
+  showSupportHint              Boolean  @default(true)
+  supportHintText              String?  @db.Text
+  showSubscribeSteps           Boolean  @default(true)
+  autoRemoveExpiredSubscribers Boolean  @default(false)
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
 
   user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
 

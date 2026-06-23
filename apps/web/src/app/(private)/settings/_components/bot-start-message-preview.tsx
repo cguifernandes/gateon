@@ -53,6 +53,9 @@ export function BotStartMessagePreview({
         watchedValues?.supportHintText ?? defaults.supportHintText,
       showSubscribeSteps:
         watchedValues?.showSubscribeSteps ?? defaults.showSubscribeSteps,
+      autoRemoveExpiredSubscribers:
+        watchedValues?.autoRemoveExpiredSubscribers ??
+        defaults.autoRemoveExpiredSubscribers,
     };
   }, [watchedValues]);
 

@@ -48,6 +48,7 @@ function toFormValues(
     showSupportHint: settings.showSupportHint,
     supportHintText: settings.supportHintText ?? "",
     showSubscribeSteps: settings.showSubscribeSteps,
+    autoRemoveExpiredSubscribers: settings.autoRemoveExpiredSubscribers,
   };
 }
 

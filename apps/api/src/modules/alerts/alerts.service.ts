@@ -29,7 +29,7 @@ import {
   type AlertUpsertInput,
   isStripeAutomationTriggerType,
   toAlertTriggerTypeInput,
-} from './schemas/alert-schemas';
+} from '../../lib/zod/alert-schemas';
 
 const DEFAULT_RATE_LIMIT_PER_MINUTE = 20;
 

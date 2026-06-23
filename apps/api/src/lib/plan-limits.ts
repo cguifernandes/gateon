@@ -27,3 +27,7 @@ export function getMaxGroupsForPlan(planId: PlanId): number {
 export function getMaxManagedMembersPerGroupForPlan(planId: PlanId): number {
   return PLAN_GROUP_MEMBER_LIMITS[planId];
 }
+
+export function isPaidPlan(planId: PlanId): boolean {
+  return planId !== 'free';
+}

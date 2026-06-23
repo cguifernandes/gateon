@@ -16,8 +16,8 @@ import {
 import type { Request, Response } from 'express';
 import { OAUTH_STATE_COOKIE_NAME, toPublicUser } from '../../utils/utils';
 import { AuthService } from './auth.service';
-import { AuthGuard } from './guards/auth.guard';
-import { loginSchema, registerSchema } from './schemas/auth.schemas';
+import { AuthGuard } from '../../lib/guards/auth.guard';
+import { loginSchema, registerSchema } from '../../lib/zod/auth-schemas';
 
 @Controller('auth')
 export class AuthController {

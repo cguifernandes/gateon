@@ -1,6 +1,5 @@
 "use client";
 
-import { AlertTriangle } from "lucide-react";
 import type { ComponentType } from "react";
 import type { ControllerRenderProps } from "react-hook-form";
 import { BadgeAlertIcon } from "@/components/icons/badge-alert";
@@ -18,6 +17,8 @@ import {
 import { cn } from "@/lib/utils";
 import type { TelegramGroupBotSettingsDto } from "@/lib/zod/telegram-group-bot-settings-schemas";
 import type { TelegramGroupDetailDto } from "@/lib/zod/telegram-group-connection-schemas";
+import type { TelegramBotStartSettingsResponseDto } from "@/lib/zod/bot-start-settings-schemas";
+import { BotAccessAutomationSwitch } from "./bot-access-automation-switch";
 import {
   type BotPermissionStatus,
   buildBotPermissionItems,
@@ -73,14 +74,20 @@ type GeneralFields = {
   >;
 };
 
-export function BotConfigGeneralSection({ fields }: { fields: GeneralFields }) {
+export function BotConfigGeneralSection({
+  fields,
+  automationSettings,
+}: {
+  fields: GeneralFields;
+  automationSettings: TelegramBotStartSettingsResponseDto;
+}) {
   return (
     <Card className="rounded-xl">
       <CardHeader>
         <CardTitle>Configurações gerais</CardTitle>
         <CardDescription>
-          Controle se o bot permanece ativo neste grupo. Mensagens automáticas
-          são configuradas em Alertas.
+          Controle se o bot permanece ativo neste grupo e o que acontece quando
+          a assinatura Stripe de um membro expira.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -98,6 +105,7 @@ export function BotConfigGeneralSection({ fields }: { fields: GeneralFields }) {
           description="Mostra um alerta no grupo quando permissões obrigatórias forem removidas."
           tooltip="Ajuda o administrador a corrigir permissões antes da automação parar."
         />
+        <BotAccessAutomationSwitch initialSettings={automationSettings} />
       </CardContent>
     </Card>
   );

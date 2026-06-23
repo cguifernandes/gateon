@@ -3,13 +3,17 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   Param,
   Patch,
   Post,
   Req,
   UnauthorizedException,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
+import type { RawBodyRequest } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { z } from 'zod';
 import {
@@ -17,9 +21,12 @@ import {
   stripeBillingPreviewCatalogSchema,
   stripeBillingUpdateLinkedGroupSchema,
   stripeBillingUpdateWebhookSecretSchema,
-} from './schemas/stripe-billing-schemas';
-import { AuthGuard } from '../auth/guards/auth.guard';
-import { StripeBillingService } from './stripe-billing.service';
+} from '../../lib/zod/stripe-billing-schemas';
+import { AuthGuard } from '../../lib/guards/auth.guard';
+import {
+  StripeBillingService,
+  StripeBillingWebhookService,
+} from './stripe-billing.service';
 
 @Controller('stripe-billing')
 export class StripeBillingController {
@@ -103,5 +110,26 @@ export class StripeBillingController {
       throw new UnauthorizedException();
     }
     return userId;
+  }
+}
+
+@Controller('stripe-billing/webhooks')
+@SkipThrottle()
+export class StripeBillingWebhookController {
+  constructor(private readonly webhooks: StripeBillingWebhookService) {}
+
+  @Post(':connectionId')
+  async handleWebhook(
+    @Param('connectionId') connectionId: string,
+    @Headers('stripe-signature') signature: string | undefined,
+    @Req() req: RawBodyRequest<Request>,
+  ) {
+    const rawBody = req.rawBody;
+    if (!rawBody || rawBody.length === 0) {
+      throw new BadRequestException('Corpo da requisição ausente.');
+    }
+
+    await this.webhooks.handle(connectionId, signature, rawBody);
+    return { received: true };
   }
 }

@@ -1,6 +1,6 @@
 /**
  * Telegram ChatMember status persisted as `botStatus` on connected groups.
- * @see apps/api/src/modules/telegram/schemas/telegram-schemas.ts
+ * @see apps/api/src/lib/zod/telegram-schemas.ts
  */
 
 export type TelegramBotMemberStatus =

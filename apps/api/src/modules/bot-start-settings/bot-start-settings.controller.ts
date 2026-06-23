@@ -11,13 +11,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { AuthGuard } from '../auth/guards/auth.guard';
+import { AuthGuard } from '../../lib/guards/auth.guard';
 import { BotStartSettingsService } from './bot-start-settings.service';
 import {
   telegramBotStartCheckoutButtonsSchema,
   telegramBotStartPaymentGroupsSchema,
   telegramBotStartSettingsPatchSchema,
-} from './schemas/bot-start-settings-schemas';
+} from '../../lib/zod/bot-start-settings-schemas';
 import { StripeBillingService } from '../stripe-billing/stripe-billing.service';
 
 @Controller('bot-start-settings')

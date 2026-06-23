@@ -1,18 +1,31 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Prisma, StripeBillingConnectionStatus } from '@prisma/client';
+import {
+  AlertTriggerType,
+  Prisma,
+  StripeBillingConnectionStatus,
+  StripeTelegramMemberLinkStatus,
+} from '@prisma/client';
+import { GroupLimitService } from '../../lib/group-limit.service';
+import { isPaidPlan, PLAN_LABELS } from '../../lib/plan-limits';
+import { resolveStripeLinkedTelegramSubscriber } from '../../lib/stripe-telegram-subscriber';
 import { PrismaService } from '../prisma/prisma.service';
+import { TelegramService } from '../telegram/telegram.service';
 import {
   PUBLIC_START_TOKEN_PREFIX,
   type TelegramBotStartPublicResponseDto,
   type TelegramBotStartSettingsPatchInput,
   type TelegramBotStartSettingsResponseDto,
-} from './schemas/bot-start-settings-schemas';
+} from '../../lib/zod/bot-start-settings-schemas';
+
+export const PAID_PLAN_REQUIRED_CODE = 'PAID_PLAN_REQUIRED';
 
 const DEFAULT_WELCOME_MESSAGE =
   'Olá! Bem-vindo(a). Este é o assistente configurado pelo criador do grupo.';
@@ -20,7 +33,12 @@ const DEFAULT_WELCOME_MESSAGE =
 const DEFAULT_SUPPORT_HINT =
   'Dúvidas? Fale com o administrador do grupo ou responda neste chat.';
 
-type BotStartSettingsRow = {
+const AUTO_REMOVE_TRIGGER_TYPES = new Set<AlertTriggerType>([
+  AlertTriggerType.STRIPE_SUBSCRIPTION_EXPIRED,
+  AlertTriggerType.STRIPE_SUBSCRIPTION_CANCELED,
+]);
+
+type TelegramUserSettingsRow = {
   publicStartToken: string;
   welcomeMessageEnabled: boolean;
   welcomeMessage: string | null;
@@ -32,13 +50,18 @@ type BotStartSettingsRow = {
   showSupportHint: boolean;
   supportHintText: string | null;
   showSubscribeSteps: boolean;
+  autoRemoveExpiredSubscribers: boolean;
 };
 
 @Injectable()
 export class BotStartSettingsService {
+  private readonly logger = new Logger(BotStartSettingsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly groupLimit: GroupLimitService,
+    private readonly telegram: TelegramService,
   ) {}
 
   isInternalSecretValid(candidate: string | undefined): boolean {
@@ -69,6 +92,18 @@ export class BotStartSettingsService {
     userId: string,
     input: TelegramBotStartSettingsPatchInput,
   ): Promise<TelegramBotStartSettingsResponseDto> {
+    if (input.autoRemoveExpiredSubscribers === true) {
+      const planId = await this.groupLimit.resolvePlanId(userId);
+      if (!isPaidPlan(planId)) {
+        throw new ForbiddenException({
+          error: PAID_PLAN_REQUIRED_CODE,
+          message:
+            'A remoção automática de assinantes expirados está disponível apenas em planos pagos.',
+          planId,
+        });
+      }
+    }
+
     if (input.stripeConnectionIds) {
       await this.assertOwnedStripeConnections(
         userId,
@@ -96,7 +131,7 @@ export class BotStartSettingsService {
       );
     }
 
-    const updated = await this.prisma.telegramBotStartSettings.update({
+    const updated = await this.prisma.telegramUserSettings.update({
       where: { userId },
       data: {
         welcomeMessageEnabled:
@@ -119,6 +154,9 @@ export class BotStartSettingsService {
             : current.supportHintText,
         showSubscribeSteps:
           input.showSubscribeSteps ?? current.showSubscribeSteps,
+        autoRemoveExpiredSubscribers:
+          input.autoRemoveExpiredSubscribers ??
+          current.autoRemoveExpiredSubscribers,
       },
       select: this.settingsSelect(),
     });
@@ -127,10 +165,88 @@ export class BotStartSettingsService {
     return this.toResponse(userId, updated, availableStripeConnections);
   }
 
+  async tryAutoRemoveExpiredSubscriber(input: {
+    userId: string;
+    connectionId: string;
+    triggerType: AlertTriggerType;
+    stripeSubscriptionId: string;
+    stripeCustomerId?: string | null;
+  }): Promise<void> {
+    if (!AUTO_REMOVE_TRIGGER_TYPES.has(input.triggerType)) {
+      return;
+    }
+
+    const settings = await this.ensureForUser(input.userId);
+    const planId = await this.groupLimit.resolvePlanId(input.userId);
+    if (!isPaidPlan(planId) || !settings.autoRemoveExpiredSubscribers) {
+      return;
+    }
+
+    const subscriber = await resolveStripeLinkedTelegramSubscriber(
+      this.prisma,
+      {
+        connectionId: input.connectionId,
+        stripeCustomerId: input.stripeCustomerId,
+        stripeSubscriptionId: input.stripeSubscriptionId,
+      },
+    );
+
+    if (!subscriber) {
+      return;
+    }
+
+    const group = await this.prisma.telegramGroups.findFirst({
+      where: {
+        id: subscriber.telegramGroupId,
+        userId: input.userId,
+      },
+      select: { id: true, title: true },
+    });
+
+    if (!group) {
+      return;
+    }
+
+    try {
+      const result = await this.telegram.performGroupMemberActions(
+        input.userId,
+        group.id,
+        {
+          action: 'remove',
+          telegramUserIds: [subscriber.telegramUserId],
+        },
+      );
+
+      if (result.successCount > 0) {
+        await this.prisma.stripeTelegramMemberLinks.updateMany({
+          where: {
+            connectionId: input.connectionId,
+            telegramUserId: subscriber.telegramUserId,
+          },
+          data: {
+            status: StripeTelegramMemberLinkStatus.REVOKED,
+          },
+        });
+      }
+
+      if (result.failedCount > 0) {
+        this.logger.warn(
+          `Auto-remove failed for user ${input.userId} in group ${group.id}: ${result.failures[0]?.reason ?? 'unknown'}`,
+        );
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Auto-remove threw for user ${input.userId}: ${
+          error instanceof Error ? error.message : 'unknown'
+        }`,
+      );
+    }
+  }
+
   async getPublicByToken(
     token: string,
   ): Promise<TelegramBotStartPublicResponseDto> {
-    const settings = await this.prisma.telegramBotStartSettings.findUnique({
+    const settings = await this.prisma.telegramUserSettings.findUnique({
       where: { publicStartToken: token.trim() },
       select: {
         userId: true,
@@ -169,8 +285,10 @@ export class BotStartSettingsService {
     };
   }
 
-  private async ensureForUser(userId: string): Promise<BotStartSettingsRow> {
-    const existing = await this.prisma.telegramBotStartSettings.findUnique({
+  private async ensureForUser(
+    userId: string,
+  ): Promise<TelegramUserSettingsRow> {
+    const existing = await this.prisma.telegramUserSettings.findUnique({
       where: { userId },
       select: this.settingsSelect(),
     });
@@ -179,7 +297,7 @@ export class BotStartSettingsService {
       return existing;
     }
 
-    return this.prisma.telegramBotStartSettings.create({
+    return this.prisma.telegramUserSettings.create({
       data: {
         userId,
         publicStartToken: this.generatePublicStartToken(),
@@ -281,7 +399,7 @@ export class BotStartSettingsService {
 
   private async toResponse(
     userId: string,
-    settings: BotStartSettingsRow,
+    settings: TelegramUserSettingsRow,
     availableStripeConnections: {
       id: string;
       monitoredPlanLabel: string | null;
@@ -292,6 +410,8 @@ export class BotStartSettingsService {
     }[],
   ): Promise<TelegramBotStartSettingsResponseDto> {
     const botUsername = this.getBotUsername();
+    const planId = await this.groupLimit.resolvePlanId(userId);
+    const canUsePaidAutomation = isPaidPlan(planId);
 
     return {
       welcomeMessageEnabled: settings.welcomeMessageEnabled,
@@ -304,6 +424,12 @@ export class BotStartSettingsService {
       showSupportHint: settings.showSupportHint,
       supportHintText: settings.supportHintText ?? '',
       showSubscribeSteps: settings.showSubscribeSteps,
+      autoRemoveExpiredSubscribers: canUsePaidAutomation
+        ? settings.autoRemoveExpiredSubscribers
+        : false,
+      canUsePaidAutomation,
+      planId,
+      planLabel: PLAN_LABELS[planId],
       publicStartToken: settings.publicStartToken,
       publicStartUrl: `https://t.me/${botUsername}?start=${encodeURIComponent(settings.publicStartToken)}`,
       botUsername,
@@ -337,7 +463,7 @@ export class BotStartSettingsService {
   }
 
   private defaultSettings(): Omit<
-    Prisma.TelegramBotStartSettingsUncheckedCreateInput,
+    Prisma.TelegramUserSettingsUncheckedCreateInput,
     'userId' | 'publicStartToken' | 'welcomeMessage'
   > {
     return {
@@ -350,6 +476,7 @@ export class BotStartSettingsService {
       showSupportHint: true,
       supportHintText: null,
       showSubscribeSteps: true,
+      autoRemoveExpiredSubscribers: false,
     };
   }
 
@@ -366,6 +493,7 @@ export class BotStartSettingsService {
       showSupportHint: true,
       supportHintText: true,
       showSubscribeSteps: true,
+      autoRemoveExpiredSubscribers: true,
     } as const;
   }
 

@@ -19,7 +19,7 @@ import { hashSensitiveValue } from '../../utils/utils';
 import type { TelegramGroupChatNoticeRequestInput } from '../../lib/zod/telegram-group-chat-notice-schemas';
 import { GroupBotSettingsService } from '../group-bot-settings/group-bot-settings.service';
 import type { TelegramGroupMemberBulkActionInput } from '../../lib/zod/telegram-member-actions-schemas';
-import type { TelegramBotEventInput } from './schemas/telegram-schemas';
+import type { TelegramBotEventInput } from '../../lib/zod/telegram-schemas';
 import {
   listMissingRequiredAdministratorRights,
   noTelegramGroupAdministratorRights,

@@ -7,6 +7,7 @@ import { useController, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { useRefreshTelegramGroup } from "@/app/(private)/groups/_hooks/use-refresh-telegram-group";
 import { RemoveGroupDialog } from "@/components/remove-group-dialog";
+import type { TelegramBotStartSettingsResponseDto } from "@/lib/zod/bot-start-settings-schemas";
 import {
   type TelegramGroupBotSettingsDto,
   telegramGroupBotSettingsSchema,
@@ -24,9 +25,13 @@ import { BotConfigStatusPanel } from "./bot-config-status-panel";
 
 type BotConfigFormProps = {
   group: TelegramGroupDetailDto;
+  automationSettings: TelegramBotStartSettingsResponseDto;
 };
 
-export function BotConfigForm({ group }: BotConfigFormProps) {
+export function BotConfigForm({
+  group,
+  automationSettings,
+}: BotConfigFormProps) {
   const router = useRouter();
   const [removeOpen, setRemoveOpen] = useState(false);
   const { refresh, isPending: isRefreshing } = useRefreshTelegramGroup(
@@ -111,6 +116,7 @@ export function BotConfigForm({ group }: BotConfigFormProps) {
                 enabled: enabled.field,
                 notifyPermissionLoss: notifyPermissionLoss.field,
               }}
+              automationSettings={automationSettings}
             />
             <BotConfigPermissionsSection group={group} />
             <BotConfigDangerZone onDisconnect={() => setRemoveOpen(true)} />

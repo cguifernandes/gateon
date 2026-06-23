@@ -1,0 +1,1 @@
+-- No-op: groups automation was merged into TelegramUserSettings in the next migration.

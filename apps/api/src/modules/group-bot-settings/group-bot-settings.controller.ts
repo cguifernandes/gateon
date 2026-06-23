@@ -10,9 +10,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { AuthGuard } from '../auth/guards/auth.guard';
+import { AuthGuard } from '../../lib/guards/auth.guard';
 import { GroupBotSettingsService } from './group-bot-settings.service';
-import { telegramGroupBotSettingsPatchSchema } from './schemas/group-bot-settings-schemas';
+import { telegramGroupBotSettingsPatchSchema } from '../../lib/zod/group-bot-settings-schemas';
 
 @Controller('telegram/groups')
 export class GroupBotSettingsController {

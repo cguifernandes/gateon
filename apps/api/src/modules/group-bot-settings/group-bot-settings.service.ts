@@ -2,7 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-import type { TelegramGroupBotSettingsPatchInput } from './schemas/group-bot-settings-schemas';
+import type { TelegramGroupBotSettingsPatchInput } from '../../lib/zod/group-bot-settings-schemas';
 
 type TelegramGroupBotSettingsRow = {
   enabled: boolean;

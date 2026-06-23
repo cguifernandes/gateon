@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { planIdSchema } from "./plan-schemas";
 
 const botStartMessages = {
   welcomeMax: "A mensagem de boas-vindas deve ter no máximo 4096 caracteres.",
@@ -28,6 +29,7 @@ export const telegramBotStartSettingsSchema = z.object({
     .optional()
     .or(z.literal("")),
   showSubscribeSteps: z.boolean(),
+  autoRemoveExpiredSubscribers: z.boolean(),
 });
 
 export const telegramBotStartSettingsPatchSchema =
@@ -43,6 +45,9 @@ export const telegramBotStartSettingsResponseSchema =
     publicStartToken: z.string(),
     publicStartUrl: z.string(),
     botUsername: z.string(),
+    canUsePaidAutomation: z.boolean(),
+    planId: planIdSchema,
+    planLabel: z.string(),
     availableStripeConnections: z.array(
       z.object({
         id: z.string(),
@@ -76,4 +81,5 @@ export const defaultBotStartSettingsValues = {
   showSupportHint: true,
   supportHintText: "",
   showSubscribeSteps: true,
+  autoRemoveExpiredSubscribers: false,
 } satisfies TelegramBotStartSettingsDto;

@@ -3,6 +3,7 @@ import type { PrismaService } from '../modules/prisma/prisma.service';
 
 export type StripeLinkedTelegramSubscriber = {
   telegramUserId: string;
+  telegramGroupId: string;
   displayName?: string;
 };
 
@@ -74,6 +75,7 @@ export async function resolveStripeLinkedTelegramSubscriber(
 
   return {
     telegramUserId: link.telegramUserId,
+    telegramGroupId: link.telegramGroupId,
     ...(displayName ? { displayName } : {}),
   };
 }

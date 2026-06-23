@@ -42,6 +42,10 @@ export function getMaxStripePaymentGroupsForPlan(planId: PlanId): number {
   );
 }
 
+export function isPaidPlan(planId: PlanId): boolean {
+  return planId !== "free";
+}
+
 export type GroupLimitSnapshot = {
   connectedCount: number;
   maxGroups: number;

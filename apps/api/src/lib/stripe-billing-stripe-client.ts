@@ -2,7 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import {
   formatStripePlanLabel,
   formatStripePriceAmount,
-} from '../../lib/stripe-price-label';
+} from './stripe-price-label';
 
 type StripeListResponse<T> = {
   data?: T[];

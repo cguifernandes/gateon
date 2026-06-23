@@ -16,8 +16,8 @@ import {
 import type { Request } from 'express';
 import { telegramGroupChatNoticeRequestSchema } from '../../lib/zod/telegram-group-chat-notice-schemas';
 import { telegramGroupMemberBulkActionSchema } from '../../lib/zod/telegram-member-actions-schemas';
-import { telegramBotEventSchema } from './schemas/telegram-schemas';
-import { AuthGuard } from '../auth/guards/auth.guard';
+import { telegramBotEventSchema } from '../../lib/zod/telegram-schemas';
+import { AuthGuard } from '../../lib/guards/auth.guard';
 import { TelegramService } from './telegram.service';
 
 @Controller('telegram')

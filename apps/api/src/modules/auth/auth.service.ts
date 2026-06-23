@@ -21,7 +21,7 @@ import {
   hashSensitiveValue,
   toPublicUser,
 } from '../../utils/utils';
-import type { LoginInput, RegisterInput } from './schemas/auth.schemas';
+import type { LoginInput, RegisterInput } from '../../lib/zod/auth-schemas';
 
 type GoogleUserProfile = {
   sub: string;

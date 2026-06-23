@@ -13,7 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { AuthGuard } from '../auth/guards/auth.guard';
+import { AuthGuard } from '../../lib/guards/auth.guard';
 import { TelegramService } from '../telegram/telegram.service';
 import { AlertsService } from './alerts.service';
 import {
@@ -21,7 +21,7 @@ import {
   alertQuickDispatchSchema,
   alertTemplateCreateSchema,
   alertUpsertSchema,
-} from './schemas/alert-schemas';
+} from '../../lib/zod/alert-schemas';
 
 @Controller('alerts')
 export class AlertsController {

@@ -1,9 +1,8 @@
 "use client";
 
 import { cva, type VariantProps } from "class-variance-authority";
-import { PanelLeftIcon } from "lucide-react";
-import type { ComponentProps } from "react";
 import * as React from "react";
+import { type ComponentProps, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -15,6 +14,14 @@ import {
   syncSidebarOpenCookieFromStorage,
 } from "@/lib/sidebar-storage";
 import { cn } from "@/lib/utils";
+import {
+  PanelLeftCloseIcon,
+  type PanelLeftCloseIconHandle,
+} from "../icons/panel-left-close";
+import {
+  PanelLeftOpenIcon,
+  type PanelLeftOpenIconHandle,
+} from "../icons/panel-left-open";
 
 const SIDEBAR_WIDTH = "16rem";
 const SIDEBAR_WIDTH_ICON = "3.5rem";
@@ -316,25 +323,46 @@ function SidebarTrigger({
 }: ComponentProps<typeof Button>) {
   const { toggleSidebar, open, openMobile, isMobile } = useSidebar();
   const isSidebarOpen = isMobile ? openMobile : open;
+  const panelLeftCloseIconRef = useRef<PanelLeftCloseIconHandle>(null);
+  const panelLeftOpenIconRef = useRef<PanelLeftOpenIconHandle>(null);
+
+  const handleTriggerMouseEnter = () => {
+    if (isSidebarOpen) {
+      panelLeftCloseIconRef.current?.startAnimation();
+      return;
+    }
+    panelLeftOpenIconRef.current?.startAnimation();
+  };
+
+  const handleTriggerMouseLeave = () => {
+    if (isSidebarOpen) {
+      panelLeftCloseIconRef.current?.stopAnimation();
+      return;
+    }
+    panelLeftOpenIconRef.current?.stopAnimation();
+  };
 
   return (
     <Button
       type="button"
       data-slot="sidebar-trigger"
       variant="outline"
-      size="icon-sm"
+      size="icon-md"
       className={cn("shrink-0", className)}
+      onMouseEnter={handleTriggerMouseEnter}
+      onMouseLeave={handleTriggerMouseLeave}
       onClick={toggleSidebar}
       aria-expanded={isSidebarOpen}
-      aria-label={isSidebarOpen ? "Recolher menu lateral" : "Expandir menu lateral"}
+      aria-label={
+        isSidebarOpen ? "Recolher menu lateral" : "Expandir menu lateral"
+      }
       {...props}
     >
-      <PanelLeftIcon
-        className={cn(
-          "size-4 transition-transform duration-200",
-          !isSidebarOpen && "rotate-180",
-        )}
-      />
+      {isSidebarOpen ? (
+        <PanelLeftCloseIcon size={24} ref={panelLeftCloseIconRef} />
+      ) : (
+        <PanelLeftOpenIcon size={24} ref={panelLeftOpenIconRef} />
+      )}
       <span className="sr-only">
         {isSidebarOpen ? "Recolher menu lateral" : "Expandir menu lateral"}
       </span>

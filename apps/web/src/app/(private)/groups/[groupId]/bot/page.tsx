@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { getBotStartSettings } from "@/lib/server/get-bot-start-settings";
 import { getTelegramGroupById } from "@/lib/server/get-telegram-group-by-id";
 import { BotConfigForm } from "./_components/bot-config-form";
 
@@ -27,11 +28,19 @@ export async function generateMetadata({
 
 export default async function BotConfigPage({ params }: BotConfigPageProps) {
   const { groupId } = await params;
-  const { group } = await getTelegramGroupById(groupId);
+  const [{ group }, userSettings] = await Promise.all([
+    getTelegramGroupById(groupId),
+    getBotStartSettings(),
+  ]);
 
   if (!group) {
     notFound();
   }
 
-  return <BotConfigForm group={group} />;
+  return (
+    <BotConfigForm
+      group={group}
+      automationSettings={userSettings.data}
+    />
+  );
 }
