@@ -140,31 +140,6 @@ export class TelegramController {
     });
   }
 
-  @Get('groups/:groupId/connector-profile-photo')
-  @UseGuards(AuthGuard)
-  async getConnectorProfilePhoto(
-    @Req() req: Request,
-    @Param('groupId') groupId: string,
-  ): Promise<StreamableFile> {
-    const userId = req.authSession?.userId;
-    if (!userId) {
-      throw new UnauthorizedException();
-    }
-
-    const file = await this.telegram.getGroupConnectorProfilePhotoFile(
-      userId,
-      groupId,
-    );
-    if (!file) {
-      throw new NotFoundException();
-    }
-
-    return new StreamableFile(file.buffer, {
-      type: file.contentType,
-      disposition: 'inline',
-    });
-  }
-
   @Get('groups/:groupId/members/:telegramUserId/profile-photo')
   @UseGuards(AuthGuard)
   async getGroupMemberProfilePhoto(

@@ -71,20 +71,14 @@ export function replyForGateonApiError(error: unknown): string {
 
   if (
     status === 409 &&
-    apiMessage.includes("already linked to another Gateon user")
+    apiMessage.includes(
+      "This Telegram group is already linked to another Gateon user",
+    )
   ) {
-    if (apiMessage.includes("Telegram group")) {
-      return [
-        "Este grupo do Telegram já está conectado a outra conta Gateon.",
-        "",
-        "Peça ao administrador da conta que já usa este grupo ou conecte um grupo diferente.",
-      ].join("\n");
-    }
-
     return [
-      "Esta conta do Telegram já está vinculada a outro usuário Gateon.",
+      "Este grupo do Telegram já está conectado a outra conta Gateon.",
       "",
-      "Entre no painel com a mesma conta Gateon que você usou antes ou use outro perfil do Telegram para conectar um novo grupo.",
+      "Peça ao administrador da conta que já usa este grupo ou conecte um grupo diferente.",
     ].join("\n");
   }
 

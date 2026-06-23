@@ -22,7 +22,6 @@ model Users {
 
   accounts                       Accounts[]
   sessions                       Sessions[]
-  telegramAccounts               TelegramAccounts[]
   telegramGroupConnectionIntents TelegramGroupConnectionIntents[]
   telegramGroups                 TelegramGroups[]
   telegramAlerts                 TelegramAlerts[]
@@ -32,7 +31,7 @@ model Users {
   stripeBillingSubscriptions     StripeBillingSubscriptions[]
   stripeBillingPayments          StripeBillingPayments[]
   stripeBillingAuditLogs         StripeBillingAuditLogs[]
-  telegramUserSettings             TelegramUserSettings?
+  telegramUserSettings           TelegramUserSettings?
   stripeTelegramMemberLinks      StripeTelegramMemberLinks[]
   stripeTelegramCheckoutSessions StripeTelegramCheckoutSessions[]
 }
@@ -83,20 +82,6 @@ enum TelegramConnectionStatus {
   FAILED
 }
 
-model TelegramAccounts {
-  id             String   @id @default(cuid())
-  userId         String
-  telegramUserId String   @unique
-  firstName      String?
-  lastName       String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-}
-
 model TelegramGroupConnectionIntents {
   id                String                   @id @default(cuid())
   userId            String
@@ -128,12 +113,11 @@ model TelegramGroups {
   isForum                   Boolean  @default(false)
   addedByTelegramUserId     String
   botStatus                 String
-  addedByProfilePhotoFileId String?
   connectedAt               DateTime @default(now())
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
 
-  user                           Users                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                           Users                            @relation(fields: [userId], references: [id], onDelete: Cascade)
   members                        TelegramGroupMembers[]
   settings                       TelegramGroupBotSettings?
   alerts                         TelegramAlerts[]
@@ -365,35 +349,35 @@ enum StripeTelegramMemberLinkStatus {
 }
 
 model StripeBillingConnections {
-  id                        String                        @id @default(cuid())
-  userId                    String
-  stripeAccountId           String?
-  encryptedApiKey           String                        @db.Text
-  apiKeyLast4               String
-  encryptedWebhookSigningSecret String?                   @db.Text
-  status                    StripeBillingConnectionStatus @default(CONNECTED)
-  lastSyncedAt              DateTime?
-  consentAcceptedAt         DateTime
-  disconnectedAt            DateTime?
-  activeSubscriptionCount   Int                           @default(0)
-  expiringSubscriptionCount Int                           @default(0)
-  expiredSubscriptionCount  Int                           @default(0)
-  customerCount             Int                           @default(0)
-  monthlyRevenueCents       Int                           @default(0)
-  monitoredStripePriceId    String?
-  monitoredStripeProductId  String?
-  monitoredPlanLabel        String?
-  telegramGroupId           String?
-  createdAt                 DateTime                      @default(now())
-  updatedAt                 DateTime                      @updatedAt
+  id                            String                        @id @default(cuid())
+  userId                        String
+  stripeAccountId               String?
+  encryptedApiKey               String                        @db.Text
+  apiKeyLast4                   String
+  encryptedWebhookSigningSecret String?                       @db.Text
+  status                        StripeBillingConnectionStatus @default(CONNECTED)
+  lastSyncedAt                  DateTime?
+  consentAcceptedAt             DateTime
+  disconnectedAt                DateTime?
+  activeSubscriptionCount       Int                           @default(0)
+  expiringSubscriptionCount     Int                           @default(0)
+  expiredSubscriptionCount      Int                           @default(0)
+  customerCount                 Int                           @default(0)
+  monthlyRevenueCents           Int                           @default(0)
+  monitoredStripePriceId        String?
+  monitoredStripeProductId      String?
+  monitoredPlanLabel            String?
+  telegramGroupId               String?
+  createdAt                     DateTime                      @default(now())
+  updatedAt                     DateTime                      @updatedAt
 
-  user          Users                        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  group         TelegramGroups?              @relation(fields: [telegramGroupId], references: [id], onDelete: SetNull)
-  customers     StripeBillingCustomers[]
-  subscriptions StripeBillingSubscriptions[]
-  payments      StripeBillingPayments[]
-  auditLogs     StripeBillingAuditLogs[]
-  memberLinks   StripeTelegramMemberLinks[]
+  user             Users                            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group            TelegramGroups?                  @relation(fields: [telegramGroupId], references: [id], onDelete: SetNull)
+  customers        StripeBillingCustomers[]
+  subscriptions    StripeBillingSubscriptions[]
+  payments         StripeBillingPayments[]
+  auditLogs        StripeBillingAuditLogs[]
+  memberLinks      StripeTelegramMemberLinks[]
   checkoutSessions StripeTelegramCheckoutSessions[]
 
   @@index([userId, status])

@@ -42,18 +42,12 @@ export type TelegramGroupConnectionIntentStatusDto = z.infer<
   typeof telegramGroupConnectionIntentStatusSchema
 >;
 
-export const telegramGroupMemberSummarySchema = z.object({
-  telegramUserId: z.string(),
-  firstName: z.string().nullable(),
-  lastName: z.string().nullable(),
-});
-
-export const telegramTrackedMemberStatusSchema = z.enum(["active", "left"]);
-
 export const linkedStripePlanSummarySchema = z.object({
   connectionId: z.string(),
   label: z.string(),
 });
+
+export const telegramTrackedMemberStatusSchema = z.enum(["active", "left"]);
 
 export const telegramGroupChatMemberSchema = z.object({
   telegramUserId: z.string(),
@@ -107,8 +101,6 @@ export const telegramGroupSummarySchema = z.object({
   leftMemberCount: z.number().int().nonnegative(),
   trackedMemberLimitPerGroup: z.number().int().positive(),
   trackedMemberLimitReached: z.boolean(),
-  connectedBy: telegramGroupMemberSummarySchema.nullable(),
-  connectedByProfilePhotoUrl: z.string().nullable(),
   members: z.array(telegramGroupChatMemberSchema),
   linkedStripePlans: z.array(linkedStripePlanSummarySchema).default([]),
 });

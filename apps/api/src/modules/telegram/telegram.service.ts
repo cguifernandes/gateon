@@ -304,8 +304,6 @@ export class TelegramService {
         botStatus: true,
         connectedAt: true,
         updatedAt: true,
-        addedByTelegramUserId: true,
-        addedByProfilePhotoFileId: true,
         _count: {
           select: {
             members: { where: { leftAt: null } },
@@ -318,17 +316,9 @@ export class TelegramService {
       throw new NotFoundException('Telegram group connection not found.');
     }
 
-    const [settings, connectedBy, leftMemberCount, memberCount, permissions] =
+    const [settings, leftMemberCount, memberCount, permissions] =
       await Promise.all([
         this.groupBotSettings.ensureForGroup(group.id),
-        this.prisma.telegramAccounts.findFirst({
-          where: { userId, telegramUserId: group.addedByTelegramUserId },
-          select: {
-            telegramUserId: true,
-            firstName: true,
-            lastName: true,
-          },
-        }),
         this.prisma.telegramGroupMembers.count({
           where: { telegramGroupId: group.id, leftAt: { not: null } },
         }),
@@ -354,10 +344,6 @@ export class TelegramService {
       trackedMemberLimitPerGroup,
       trackedMemberLimitReached:
         group._count.members >= trackedMemberLimitPerGroup,
-      connectedBy: connectedBy ?? null,
-      connectedByProfilePhotoUrl: group.addedByProfilePhotoFileId
-        ? `/api/telegram/groups/${group.id}/connector-profile-photo`
-        : null,
       settings,
       permissions,
     };
@@ -1621,8 +1607,6 @@ export class TelegramService {
 
   private async confirmTelegramUser(token: string, actor: TelegramActor) {
     const intent = await this.findValidIntentByToken(token);
-    await this.upsertTelegramAccount(intent.userId, actor);
-
     const updated = await this.prisma.telegramGroupConnectionIntents.update({
       where: { id: intent.id },
       data: {
@@ -1663,7 +1647,6 @@ export class TelegramService {
       );
     }
 
-    await this.upsertTelegramAccount(intent.userId, actor);
     return this.persistGroupConnection(
       intent.id,
       intent.userId,
@@ -1703,33 +1686,6 @@ export class TelegramService {
       botStatus,
       administratorRights,
     );
-  }
-
-  private async upsertTelegramAccount(userId: string, actor: TelegramActor) {
-    const existing = await this.prisma.telegramAccounts.findUnique({
-      where: { telegramUserId: actor.id },
-      select: { userId: true },
-    });
-
-    if (existing && existing.userId !== userId) {
-      throw new ConflictException(
-        'This Telegram account is already linked to another Gateon user.',
-      );
-    }
-
-    return this.prisma.telegramAccounts.upsert({
-      where: { telegramUserId: actor.id },
-      update: {
-        firstName: actor.firstName,
-        lastName: actor.lastName,
-      },
-      create: {
-        userId,
-        telegramUserId: actor.id,
-        firstName: actor.firstName,
-        lastName: actor.lastName,
-      },
-    });
   }
 
   private async persistGroupConnection(
@@ -1942,22 +1898,6 @@ export class TelegramService {
     }
 
     return this.downloadTelegramFileById(group.chatPhotoFileId);
-  }
-
-  async getGroupConnectorProfilePhotoFile(
-    userId: string,
-    groupId: string,
-  ): Promise<{ buffer: Buffer; contentType: string } | null> {
-    const group = await this.prisma.telegramGroups.findFirst({
-      where: { id: groupId, userId },
-      select: { addedByProfilePhotoFileId: true },
-    });
-
-    if (!group?.addedByProfilePhotoFileId) {
-      return null;
-    }
-
-    return this.downloadTelegramFileById(group.addedByProfilePhotoFileId);
   }
 
   async getGroupMemberProfilePhotoFile(
@@ -2576,7 +2516,7 @@ export class TelegramService {
 
     const groupRow = await this.prisma.telegramGroups.findUnique({
       where: { id: groupRecordId },
-      select: { addedByTelegramUserId: true, telegramChatId: true },
+      select: { telegramChatId: true },
     });
     if (!groupRow) {
       return { migratedToForum: false, telegramChatId: chat };
@@ -2595,15 +2535,6 @@ export class TelegramService {
       }
     }
 
-    let connectorProfilePhotoFileId: string | null = null;
-    try {
-      connectorProfilePhotoFileId = await this.fetchTelegramUserProfilePhotos(
-        groupRow.addedByTelegramUserId,
-      );
-    } catch {
-      connectorProfilePhotoFileId = null;
-    }
-
     const { details } =
       initialFetch.migrateToChatId && chat !== telegramChatId.trim()
         ? await this.fetchTelegramGetChatResult(chat)
@@ -2614,10 +2545,7 @@ export class TelegramService {
       chatPhotoFileId?: string | null;
       type?: string;
       isForum?: boolean;
-      addedByProfilePhotoFileId: string | null;
-    } = {
-      addedByProfilePhotoFileId: connectorProfilePhotoFileId,
-    };
+    } = {};
 
     if (details?.title !== undefined) {
       updateData.title = details.title;

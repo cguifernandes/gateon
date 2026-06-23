@@ -63,16 +63,6 @@ function getTrackedMembersProgressPercent(tracked: number, limit: number) {
   return Math.min(100, Math.round((tracked / limit) * 100));
 }
 
-function formatConnectedByName(
-  connectedBy: TelegramGroupSummaryDto["connectedBy"],
-): string | null {
-  if (!connectedBy) return null;
-  const name = [connectedBy.firstName, connectedBy.lastName]
-    .filter(Boolean)
-    .join(" ");
-  return name || null;
-}
-
 function buildGroupAvatarStackItems(
   group: TelegramGroupSummaryDto,
 ): AvatarStackItem[] {
@@ -118,7 +108,6 @@ function SuggestedGroupCard({ group }: SuggestedGroupCardProps) {
     group.isForum,
   );
   const title = group.title?.trim() || "Grupo sem nome";
-  const connectedBy = formatConnectedByName(group.connectedBy);
   const progressPercent = getTrackedMembersProgressPercent(
     group.trackedMemberCount,
     group.trackedMemberLimitPerGroup,
@@ -226,16 +215,9 @@ function SuggestedGroupCard({ group }: SuggestedGroupCardProps) {
             avatarClassName="size-7"
             overflowButtonClassName="size-7 text-[11px]"
           />
-          {connectedBy ? (
-            <p className="truncate text-xs text-muted-foreground">
-              Conectado por{" "}
-              <span className="font-medium text-foreground">{connectedBy}</span>
-            </p>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              Abrir configuração do bot
-            </p>
-          )}
+          <p className="text-xs text-muted-foreground">
+            Abrir configuração do bot
+          </p>
         </div>
       </div>
     </Link>

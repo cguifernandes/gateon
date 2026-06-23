@@ -34,8 +34,6 @@ type GroupRow = {
   botStatus: string;
   connectedAt: Date;
   updatedAt: Date;
-  addedByTelegramUserId: string;
-  addedByProfilePhotoFileId: string | null;
   members: TrackedMemberRow[];
   _count: {
     members: number;
@@ -83,8 +81,6 @@ const groupSelect = {
   botStatus: true,
   connectedAt: true,
   updatedAt: true,
-  addedByTelegramUserId: true,
-  addedByProfilePhotoFileId: true,
   _count: {
     select: {
       members: { where: { leftAt: null } },
@@ -267,19 +263,6 @@ async function mapGroupsToResponse(
   membersView: boolean,
   query: TelegramGroupsListQueryInput,
 ) {
-  const accountIds = [...new Set(groups.map((g) => g.addedByTelegramUserId))];
-  const accounts = await deps.prisma.telegramAccounts.findMany({
-    where: { userId, telegramUserId: { in: accountIds } },
-    select: {
-      telegramUserId: true,
-      firstName: true,
-      lastName: true,
-    },
-  });
-  const accountsByTelegramId = new Map(
-    accounts.map((account) => [account.telegramUserId, account]),
-  );
-
   const groupIds = groups.map((group) => group.id);
   const stripeLinks = membersView
     ? []
@@ -376,11 +359,6 @@ async function mapGroupsToResponse(
       trackedMemberLimitPerGroup: deps.trackedMemberLimitPerGroup,
       trackedMemberLimitReached:
         group._count.members >= deps.trackedMemberLimitPerGroup,
-      connectedBy:
-        accountsByTelegramId.get(group.addedByTelegramUserId) ?? null,
-      connectedByProfilePhotoUrl: group.addedByProfilePhotoFileId
-        ? `/api/telegram/groups/${group.id}/connector-profile-photo`
-        : null,
       members,
       linkedStripePlans: membersView
         ? []
