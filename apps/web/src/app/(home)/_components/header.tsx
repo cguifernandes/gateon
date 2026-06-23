@@ -37,14 +37,17 @@ export function Header() {
               href="/login"
               className={cn(
                 buttonVariants({ variant: "outline", size: "sm" }),
-                "hidden h-9 w-24 sm:inline-flex",
+                " h-9 w-24",
               )}
             >
               Entrar
             </Link>
             <Link
               href="/register"
-              className={cn(buttonVariants({ size: "sm" }), "h-9 w-24")}
+              className={cn(
+                buttonVariants({ size: "sm" }),
+                "h-9 w-24 hidden sm:inline-flex",
+              )}
             >
               Registrar
             </Link>

@@ -351,7 +351,7 @@ body {
 }
 
 *::placeholder {
-  @apply text-muted-foreground md:text-sm! text-xs!;
+  @apply text-muted-foreground md:text-sm;
 }
 
 /* Sonner: espaço entre ícone e conteúdo do toast */
