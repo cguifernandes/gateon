@@ -419,7 +419,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
   const isCollapsed = !isMobile && !open;
 
   return (
-    <Sidebar className="rounded-l-xl border-border bg-card">
+    <Sidebar className="border-border bg-card">
       <SidebarHeader className="border-b border-border">
         {isCollapsed ? (
           <Tooltip>

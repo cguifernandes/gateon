@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { FormField } from "@/components/form-field";
+import { notifyNavigationStart } from "@/components/navigation-progress-bar";
 import { Button } from "@/components/ui/button";
 import { registerAction } from "@/lib/server/register.action";
 import { type AuthFormValues, createAuthSchema } from "@/lib/zod/auth-schemas";
@@ -37,6 +38,7 @@ export function RegisterForm() {
     }
 
     router.refresh();
+    notifyNavigationStart();
     router.push("/dashboard");
   }
 

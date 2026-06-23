@@ -9,6 +9,10 @@ import {
 } from "@/lib/zod/auth-schemas";
 import { getServerApiBaseUrl } from "../utils";
 import {
+  getUpstreamFetchTimeoutMs,
+  upstreamFetchFailedMessage,
+} from "./upstream-fetch";
+import {
   applySessionSetCookieFromUpstream,
   getSetCookieLines,
 } from "./apply-session-set-cookie";
@@ -70,7 +74,7 @@ export async function registerAction(
         email,
         password,
       }),
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(getUpstreamFetchTimeoutMs()),
       cache: "no-store",
     });
   } catch (error) {
@@ -83,7 +87,7 @@ export async function registerAction(
     return {
       ok: false,
       code: "unknown",
-      message: "Serviço indisponível. Tente novamente.",
+      message: upstreamFetchFailedMessage(error),
     };
   }
 

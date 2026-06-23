@@ -25,7 +25,7 @@ import {
 
 const SIDEBAR_WIDTH = "16rem";
 const SIDEBAR_WIDTH_ICON = "3.5rem";
-const SIDEBAR_WIDTH_MOBILE = "18rem";
+const SIDEBAR_WIDTH_MOBILE = "20rem";
 
 type SidebarContextValue = {
   open: boolean;

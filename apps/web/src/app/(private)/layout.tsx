@@ -23,7 +23,7 @@ export default async function DashboardLayout({
   const sidebarDefaultOpen = readSidebarOpenFromCookies(cookieStore);
 
   return (
-    <div className="flex h-svh min-h-0 flex-col bg-linear-to-b from-surface-container to-surface-bright p-2 dark:from-neutral-800 dark:to-neutral-900">
+    <div className="flex h-svh min-h-0">
       <SessionValidator />
       <DashboardProviders>
         <DashboardShell user={user} sidebarDefaultOpen={sidebarDefaultOpen}>

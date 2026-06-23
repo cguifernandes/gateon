@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
+import { NavigationProgressBar } from "@/components/navigation-progress-bar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -47,6 +48,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
     >
       <body className="min-h-full flex flex-col text-foreground">
         <ThemeProvider>
+          <NavigationProgressBar />
           <TooltipProvider>{children}</TooltipProvider>
           <Toaster />
         </ThemeProvider>
