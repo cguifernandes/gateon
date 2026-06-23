@@ -39,6 +39,7 @@ export function IntegrationsPanel({
           connectedPriceIds={connectedPriceIds}
           onStripeConnected={onStripeStatusChange}
           stripePaymentGroupLimit={stripeStatus.stripePaymentGroupLimit}
+          groups={groups}
           existingConnections={stripeStatus.connections.map((connection) => ({
             id: connection.id,
             telegramGroupId: connection.telegramGroupId,
@@ -76,6 +77,7 @@ export function IntegrationsPanel({
         connectedPriceIds={connectedPriceIds}
         onStripeConnected={onStripeStatusChange}
         stripePaymentGroupLimit={stripeStatus.stripePaymentGroupLimit}
+        groups={groups}
         existingConnections={stripeStatus.connections.map((connection) => ({
           id: connection.id,
           telegramGroupId: connection.telegramGroupId,

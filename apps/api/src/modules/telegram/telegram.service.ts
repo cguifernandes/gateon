@@ -10,7 +10,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import {
   TelegramConnectionStatus,
-  StripeBillingConnectionStatus,
   StripeTelegramMemberLinkStatus,
 } from '@prisma/client';
 import { GroupLimitService } from '../../lib/group-limit.service';
@@ -76,9 +75,6 @@ const ACTIVE_INTENT_STATUSES: TelegramConnectionStatus[] = [
   TelegramConnectionStatus.TELEGRAM_USER_CONFIRMED,
   TelegramConnectionStatus.WAITING_FOR_PERMISSIONS,
 ];
-
-/** Max active members returned in list groups (full count in trackedMemberCount). */
-const MEMBER_PREVIEW_LIMIT = 50;
 
 type TrackedMemberRow = {
   telegramUserId: string;
@@ -286,6 +282,73 @@ export class TelegramService {
       query,
       false,
     );
+  }
+
+  async listGroupOptions(userId: string) {
+    const trackedMemberLimitPerGroup =
+      await this.groupLimit.getMaxManagedMembersPerGroup(userId);
+    const groups = await this.prisma.telegramGroups.findMany({
+      where: { userId },
+      orderBy: { connectedAt: 'desc' },
+      select: {
+        id: true,
+        telegramChatId: true,
+        title: true,
+        chatPhotoFileId: true,
+        type: true,
+        isForum: true,
+        botStatus: true,
+        connectedAt: true,
+        updatedAt: true,
+        _count: {
+          select: {
+            members: { where: { leftAt: null } },
+          },
+        },
+      },
+    });
+
+    const leftMemberCounts =
+      groups.length > 0
+        ? await this.prisma.telegramGroupMembers.groupBy({
+            by: ['telegramGroupId'],
+            where: {
+              telegramGroupId: { in: groups.map((group) => group.id) },
+              leftAt: { not: null },
+            },
+            _count: { _all: true },
+          })
+        : [];
+    const leftMemberCountByGroupId = new Map(
+      leftMemberCounts.map((row) => [row.telegramGroupId, row._count._all]),
+    );
+
+    return {
+      groups: groups.map((group) => {
+        const trackedMemberCount = group._count.members;
+        return {
+          id: group.id,
+          telegramChatId: group.telegramChatId.trim(),
+          title: group.title,
+          chatPhotoUrl: group.chatPhotoFileId
+            ? `/api/telegram/groups/${group.id}/chat-photo`
+            : null,
+          type: group.type,
+          isForum: group.isForum,
+          botStatus: group.botStatus,
+          connectedAt: group.connectedAt,
+          updatedAt: group.updatedAt,
+          memberCount: trackedMemberCount,
+          trackedMemberCount,
+          leftMemberCount: leftMemberCountByGroupId.get(group.id) ?? 0,
+          trackedMemberLimitPerGroup,
+          trackedMemberLimitReached:
+            trackedMemberCount >= trackedMemberLimitPerGroup,
+          members: [],
+          linkedStripePlans: [],
+        };
+      }),
+    };
   }
 
   async getGroup(userId: string, groupId: string) {

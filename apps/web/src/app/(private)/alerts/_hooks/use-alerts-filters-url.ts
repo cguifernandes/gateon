@@ -9,6 +9,7 @@ import {
   useTransition,
 } from "react";
 import type { DateRangeValue } from "@/components/filters-popever";
+import { usePendingUrlFiltersApply } from "@/hooks/use-pending-url-filters";
 import {
   type AlertsUrlFiltersState,
   buildAlertsUrlFiltersSearchParams,
@@ -34,6 +35,7 @@ export type AlertsFiltersControl = {
   apply: () => void;
   clear: () => void;
   hasPendingChanges: boolean;
+  isFiltersPending: boolean;
   appliedActiveCount: number;
 };
 
@@ -50,6 +52,10 @@ export function useAlertsFiltersUrl() {
 
   const [draftFilters, setDraftFilters] =
     useState<AlertsUrlFiltersState>(urlFilters);
+  const { isFiltersPending, markFiltersPending } = usePendingUrlFiltersApply(
+    urlFilters,
+    areAlertsUrlFiltersEqual,
+  );
 
   useEffect(() => {
     setDraftFilters(urlFilters);
@@ -91,13 +97,15 @@ export function useAlertsFiltersUrl() {
   }, []);
 
   const apply = useCallback(() => {
+    markFiltersPending(draftFilters);
     pushUrlFilters(draftFilters);
-  }, [draftFilters, pushUrlFilters]);
+  }, [draftFilters, markFiltersPending, pushUrlFilters]);
 
   const clear = useCallback(() => {
     setDraftFilters(EMPTY_ALERTS_URL_FILTERS);
+    markFiltersPending(EMPTY_ALERTS_URL_FILTERS);
     pushUrlFilters(EMPTY_ALERTS_URL_FILTERS);
-  }, [pushUrlFilters]);
+  }, [markFiltersPending, pushUrlFilters]);
 
   const control: AlertsFiltersControl = {
     draft: draftFilters,
@@ -109,6 +117,7 @@ export function useAlertsFiltersUrl() {
     apply,
     clear,
     hasPendingChanges: !areAlertsUrlFiltersEqual(draftFilters, urlFilters),
+    isFiltersPending,
     appliedActiveCount: countActiveAlertsUrlFilters(urlFilters),
   };
 

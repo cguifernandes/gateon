@@ -38,6 +38,12 @@ export class StripeBillingController {
     return this.stripeBilling.getStatus(this.getUserId(req));
   }
 
+  @Get('connections/options')
+  @UseGuards(AuthGuard)
+  listConnectionOptions(@Req() req: Request) {
+    return this.stripeBilling.listConnectionOptions(this.getUserId(req));
+  }
+
   @Post('catalog')
   @UseGuards(AuthGuard)
   previewCatalog(@Req() req: Request, @Body() body: unknown) {

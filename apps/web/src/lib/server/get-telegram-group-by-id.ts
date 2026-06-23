@@ -1,11 +1,14 @@
 import { cookies, headers } from "next/headers";
+import { cache } from "react";
 import { getServerApiBaseUrl, SESSION_COOKIE_NAME } from "@/lib/utils";
 import {
   type TelegramGroupDetailDto,
   telegramGroupDetailSchema,
 } from "@/lib/zod/telegram-group-connection-schemas";
 
-export async function getTelegramGroupById(groupId: string): Promise<{
+export const getTelegramGroupById = cache(async function getTelegramGroupById(
+  groupId: string,
+): Promise<{
   group: TelegramGroupDetailDto | null;
   error: string | null;
 }> {
@@ -64,4 +67,4 @@ export async function getTelegramGroupById(groupId: string): Promise<{
       error: "A API demorou para responder. Tente novamente.",
     };
   }
-}
+});

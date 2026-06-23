@@ -106,6 +106,10 @@ export const stripeBillingStatusSchema = z.object({
   stripePaymentGroupLimit: stripePaymentGroupLimitSchema,
 });
 
+export const stripeBillingConnectionOptionsResponseSchema = z.object({
+  connections: z.array(stripeBillingConnectionSchema),
+});
+
 export type StripeBillingPreviewCatalogInput = z.infer<
   typeof stripeBillingPreviewCatalogSchema
 >;
@@ -121,6 +125,9 @@ export type StripeBillingCatalogDto = z.infer<
 >;
 export type StripeBillingConnectionDto = z.infer<
   typeof stripeBillingConnectionSchema
+>;
+export type StripeBillingConnectionOptionsResponseDto = z.infer<
+  typeof stripeBillingConnectionOptionsResponseSchema
 >;
 export type StripeBillingTotalsDto = z.infer<typeof stripeBillingTotalsSchema>;
 export type StripeBillingStatusDto = z.infer<typeof stripeBillingStatusSchema>;

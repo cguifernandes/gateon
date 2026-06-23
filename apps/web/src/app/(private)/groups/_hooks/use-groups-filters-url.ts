@@ -1,8 +1,15 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
 import type { DateRangeValue } from "@/components/filters-popever";
+import { usePendingUrlFiltersApply } from "@/hooks/use-pending-url-filters";
 import {
   areGroupsUrlFiltersEqual,
   countActiveGroupsUrlFilters,
@@ -23,6 +30,7 @@ export type GroupsFiltersPopoverControl = {
   apply: () => void;
   clear: () => void;
   hasPendingChanges: boolean;
+  isFiltersPending: boolean;
   appliedActiveCount: number;
 };
 
@@ -40,6 +48,10 @@ export function useGroupsFiltersUrl() {
   const [draftFilters, setDraftFilters] =
     useState<GroupsUrlFiltersState>(urlFilters);
   const [search, setSearch] = useState("");
+  const { isFiltersPending, markFiltersPending } = usePendingUrlFiltersApply(
+    urlFilters,
+    areGroupsUrlFiltersEqual,
+  );
 
   useEffect(() => {
     setDraftFilters(urlFilters);
@@ -70,13 +82,15 @@ export function useGroupsFiltersUrl() {
   }, []);
 
   const apply = useCallback(() => {
+    markFiltersPending(draftFilters);
     pushUrlFilters(draftFilters);
-  }, [draftFilters, pushUrlFilters]);
+  }, [draftFilters, markFiltersPending, pushUrlFilters]);
 
   const clear = useCallback(() => {
     setDraftFilters(EMPTY_GROUPS_URL_FILTERS);
+    markFiltersPending(EMPTY_GROUPS_URL_FILTERS);
     pushUrlFilters(EMPTY_GROUPS_URL_FILTERS);
-  }, [pushUrlFilters]);
+  }, [markFiltersPending, pushUrlFilters]);
 
   const clearSearch = useCallback(() => {
     setSearch("");
@@ -90,6 +104,7 @@ export function useGroupsFiltersUrl() {
     apply,
     clear,
     hasPendingChanges: !areGroupsUrlFiltersEqual(draftFilters, urlFilters),
+    isFiltersPending,
     appliedActiveCount: countActiveGroupsUrlFilters(urlFilters),
   };
 

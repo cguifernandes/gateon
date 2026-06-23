@@ -7,7 +7,10 @@ import { useController, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { useRefreshTelegramGroup } from "@/app/(private)/groups/_hooks/use-refresh-telegram-group";
 import { RemoveGroupDialog } from "@/components/remove-group-dialog";
-import type { TelegramBotStartSettingsResponseDto } from "@/lib/zod/bot-start-settings-schemas";
+import {
+  type TelegramBotStartSettingsResponseDto,
+  telegramBotStartSettingsResponseSchema,
+} from "@/lib/zod/bot-start-settings-schemas";
 import {
   type TelegramGroupBotSettingsDto,
   telegramGroupBotSettingsSchema,
@@ -34,6 +37,12 @@ export function BotConfigForm({
 }: BotConfigFormProps) {
   const router = useRouter();
   const [removeOpen, setRemoveOpen] = useState(false);
+  const [automationValue, setAutomationValue] = useState(
+    automationSettings.autoRemoveExpiredSubscribers,
+  );
+  const [savedAutomationValue, setSavedAutomationValue] = useState(
+    automationSettings.autoRemoveExpiredSubscribers,
+  );
   const { refresh, isPending: isRefreshing } = useRefreshTelegramGroup(
     group.id,
     group.title ?? undefined,
@@ -49,36 +58,87 @@ export function BotConfigForm({
     control: form.control,
     name: "notifyPermissionLoss",
   });
+  const hasAutomationChanges = automationValue !== savedAutomationValue;
+
+  function readApiError(body: unknown, fallback: string) {
+    return body &&
+      typeof body === "object" &&
+      "error" in body &&
+      typeof (body as { error?: unknown }).error === "string"
+      ? (body as { error: string }).error
+      : fallback;
+  }
+
+  async function saveGroupSettings(valuesToSave: TelegramGroupBotSettingsDto) {
+    const response = await fetch(
+      `/api/telegram/groups/${encodeURIComponent(group.id)}/bot-settings`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(valuesToSave),
+      },
+    );
+
+    const raw: unknown = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(
+        readApiError(raw, "Não foi possível salvar as configurações."),
+      );
+    }
+
+    const parsed = telegramGroupBotSettingsSchema.safeParse(raw);
+    if (!parsed.success) {
+      throw new Error("A API retornou uma resposta inválida.");
+    }
+
+    return parsed.data;
+  }
+
+  async function saveAutomationSettings() {
+    const response = await fetch("/api/bot-start-settings", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        autoRemoveExpiredSubscribers: automationValue,
+      }),
+    });
+
+    const raw: unknown = await response.json().catch(() => null);
+    if (!response.ok) {
+      throw new Error(
+        readApiError(
+          raw,
+          "Não foi possível salvar a configuração de automação.",
+        ),
+      );
+    }
+
+    const parsed = telegramBotStartSettingsResponseSchema.safeParse(raw);
+    if (!parsed.success) {
+      throw new Error("A API retornou uma resposta inválida.");
+    }
+
+    return parsed.data;
+  }
 
   async function handleSubmit(valuesToSave: TelegramGroupBotSettingsDto) {
     try {
-      const response = await fetch(
-        `/api/telegram/groups/${encodeURIComponent(group.id)}/bot-settings`,
-        {
-          method: "PATCH",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(valuesToSave),
-        },
-      );
+      const [savedGroupSettings, savedAutomationSettings] = await Promise.all([
+        form.formState.isDirty
+          ? saveGroupSettings(valuesToSave)
+          : Promise.resolve(valuesToSave),
+        hasAutomationChanges ? saveAutomationSettings() : Promise.resolve(null),
+      ]);
 
-      const raw: unknown = await response.json().catch(() => null);
-      if (!response.ok) {
-        const message =
-          raw &&
-          typeof raw === "object" &&
-          "error" in raw &&
-          typeof (raw as { error?: unknown }).error === "string"
-            ? (raw as { error: string }).error
-            : "Não foi possível salvar as configurações.";
-        throw new Error(message);
+      form.reset(savedGroupSettings);
+      if (savedAutomationSettings) {
+        setAutomationValue(
+          savedAutomationSettings.autoRemoveExpiredSubscribers,
+        );
+        setSavedAutomationValue(
+          savedAutomationSettings.autoRemoveExpiredSubscribers,
+        );
       }
-
-      const parsed = telegramGroupBotSettingsSchema.safeParse(raw);
-      if (!parsed.success) {
-        throw new Error("A API retornou uma resposta inválida.");
-      }
-
-      form.reset(parsed.data);
       toast.success("Configurações salvas", {
         description: "O comportamento do bot foi atualizado para este grupo.",
       });
@@ -117,6 +177,8 @@ export function BotConfigForm({
                 notifyPermissionLoss: notifyPermissionLoss.field,
               }}
               automationSettings={automationSettings}
+              automationValue={automationValue}
+              onAutomationChange={setAutomationValue}
             />
             <BotConfigPermissionsSection group={group} />
             <BotConfigDangerZone onDisconnect={() => setRemoveOpen(true)} />
@@ -128,9 +190,12 @@ export function BotConfigForm({
         </div>
 
         <BotConfigSaveBar
-          visible={form.formState.isDirty}
+          visible={form.formState.isDirty || hasAutomationChanges}
           isSubmitting={form.formState.isSubmitting}
-          onDiscard={() => form.reset()}
+          onDiscard={() => {
+            form.reset();
+            setAutomationValue(savedAutomationValue);
+          }}
         />
       </form>
 

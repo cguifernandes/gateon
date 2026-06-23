@@ -42,6 +42,17 @@ export class TelegramController {
     return this.telegram.listGroups(userId, parsed);
   }
 
+  @Get('groups/options')
+  @UseGuards(AuthGuard)
+  listGroupOptions(@Req() req: Request) {
+    const userId = req.authSession?.userId;
+    if (!userId) {
+      throw new UnauthorizedException();
+    }
+
+    return this.telegram.listGroupOptions(userId);
+  }
+
   @Get('groups/:groupId')
   @UseGuards(AuthGuard)
   getGroup(@Req() req: Request, @Param('groupId') groupId: string) {

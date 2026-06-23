@@ -106,8 +106,8 @@ async function buildGroupsSummary(
   });
 
   const totalGroups = groups.length;
-  const pendingPermissionsCount = groups.filter(
-    (group) => matchesBotStatusFilter(group.botStatus, 'warning'),
+  const pendingPermissionsCount = groups.filter((group) =>
+    matchesBotStatusFilter(group.botStatus, 'warning'),
   ).length;
   const totalTracked = groups.reduce(
     (sum, group) => sum + group._count.members,
@@ -166,6 +166,7 @@ async function loadGroupsByIds(
   prisma: PrismaService,
   pageIds: string[],
   membersView: boolean,
+  includeMembersPreview: boolean,
   memberWhere: Prisma.TelegramGroupMembersWhereInput,
 ) {
   if (pageIds.length === 0) {
@@ -181,7 +182,9 @@ async function loadGroupsByIds(
         orderBy: membersView
           ? [{ leftAt: 'asc' }, { updatedAt: 'desc' }]
           : { updatedAt: 'desc' },
-        ...(membersView ? {} : { take: MEMBER_PREVIEW_LIMIT }),
+        ...(membersView
+          ? {}
+          : { take: includeMembersPreview ? MEMBER_PREVIEW_LIMIT : 0 }),
         select: {
           telegramUserId: true,
           firstName: true,
@@ -204,12 +207,12 @@ async function loadGroupsByIds(
 function hasMembersViewFilters(query: TelegramGroupsListQueryInput): boolean {
   return Boolean(
     query.q?.trim() ||
-      (query.memberStatus && query.memberStatus !== 'all') ||
-      query.joinedFrom ||
-      query.joinedTo ||
-      query.leftFrom ||
-      query.leftTo ||
-      parseTelegramChatIdsFilter(query.telegramChatIds).length > 0,
+    (query.memberStatus && query.memberStatus !== 'all') ||
+    query.joinedFrom ||
+    query.joinedTo ||
+    query.leftFrom ||
+    query.leftTo ||
+    parseTelegramChatIdsFilter(query.telegramChatIds).length > 0,
   );
 }
 
@@ -219,7 +222,6 @@ function filterMembersForMembersView(
   memberWhere: Prisma.TelegramGroupMembersWhereInput,
 ) {
   const q = query.q?.trim() ?? '';
-  const popoverActive = hasMembersViewFilters(query);
 
   const filteredMembers = group.members.filter((member) => {
     const status = member.leftAt ? 'left' : 'active';
@@ -312,7 +314,9 @@ async function mapGroupsToResponse(
   );
 
   const stripePayerPlansByMemberKey = membersView
-    ? await deps.buildStripePayerPlansByMemberKey(userId, groupIds)
+    ? query.includeMemberStripePlans
+      ? await deps.buildStripePayerPlansByMemberKey(userId, groupIds)
+      : new Map<string, { connectionId: string; label: string }[]>()
     : new Map<string, { connectionId: string; label: string }[]>();
 
   const memberWhere = buildTelegramGroupMembersWhere(query);
@@ -353,7 +357,9 @@ async function mapGroupsToResponse(
       botStatus: group.botStatus,
       connectedAt: group.connectedAt,
       updatedAt: group.updatedAt,
-      memberCount: await deps.getTelegramChatMemberCount(telegramChatId),
+      memberCount: query.includeTelegramMemberCount
+        ? await deps.getTelegramChatMemberCount(telegramChatId)
+        : null,
       trackedMemberCount: group._count.members,
       leftMemberCount: leftMemberCountByGroupId.get(group.id) ?? 0,
       trackedMemberLimitPerGroup: deps.trackedMemberLimitPerGroup,
@@ -391,6 +397,7 @@ export async function resolveTelegramGroupsList(
     deps.prisma,
     pageIds,
     membersView,
+    Boolean(query.includeMembersPreview),
     memberWhere,
   );
   const mappedGroups = await mapGroupsToResponse(
@@ -402,11 +409,7 @@ export async function resolveTelegramGroupsList(
   );
 
   const [summary, membersSummary] = await Promise.all([
-    buildGroupsSummary(
-      deps.prisma,
-      userId,
-      deps.trackedMemberLimitPerGroup,
-    ),
+    buildGroupsSummary(deps.prisma, userId, deps.trackedMemberLimitPerGroup),
     membersView
       ? buildMembersSummary(deps.prisma, userId)
       : Promise.resolve(undefined),

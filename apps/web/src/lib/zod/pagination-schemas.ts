@@ -10,3 +10,5 @@ export const paginationMetaSchema = z.object({
 export type PaginationMeta = z.infer<typeof paginationMetaSchema>;
 
 export const DEFAULT_PAGE_SIZE = 10;
+export const GROUPS_TABLE_PAGE_SIZE = 10;
+export const MEMBERS_TABLE_PAGE_SIZE = 4;

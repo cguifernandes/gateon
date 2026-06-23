@@ -107,6 +107,10 @@ export const telegramGroupSummarySchema = z.object({
 
 export const telegramGroupsResponseSchema = z.array(telegramGroupSummarySchema);
 
+export const telegramGroupOptionsResponseSchema = z.object({
+  groups: z.array(telegramGroupSummarySchema),
+});
+
 export const telegramGroupsListSummarySchema = z.object({
   totalGroups: z.number().int().nonnegative(),
   pendingPermissionsCount: z.number().int().nonnegative(),
@@ -138,6 +142,10 @@ export type TelegramGroupsPaginatedResponseDto = z.infer<
 
 export type TelegramGroupSummaryDto = z.infer<
   typeof telegramGroupSummarySchema
+>;
+
+export type TelegramGroupOptionsResponseDto = z.infer<
+  typeof telegramGroupOptionsResponseSchema
 >;
 
 export const telegramBotAdministratorRightsSchema = z.object({

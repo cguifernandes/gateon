@@ -34,7 +34,7 @@ export function RefreshAllGroupsButton({
             type="button"
             variant="outline"
             size="icon"
-            className={cn("size-[36px] shrink-0", triggerProps.className)}
+            className={cn("size-[40px] shrink-0", triggerProps.className)}
             disabled={isDisabled}
             aria-label={
               isPending ? "Sincronizando grupos" : "Recarregar todos os grupos"

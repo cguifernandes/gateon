@@ -20,6 +20,7 @@ import {
 import { AlertsService } from '../alerts/alerts.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
+import { StripeBillingService } from './stripe-billing.service';
 import {
   ALL_STRIPE_ALERT_TRIGGERS,
   cleanupStripeIntegrationAlerts,
@@ -37,6 +38,80 @@ function createPrismaClient() {
   const adapter = new PrismaPg({ connectionString: databaseUrl! });
   return new PrismaClient({ adapter });
 }
+
+describe('StripeBillingService', () => {
+  describe('listConnectionOptions', () => {
+    const findMany = jest.fn();
+    const paymentCount = jest.fn();
+
+    function createService() {
+      return new StripeBillingService(
+        {
+          stripeBillingConnections: { findMany },
+          stripeBillingPayments: { count: paymentCount },
+        } as never,
+        {} as never,
+        {
+          get: jest.fn((key: string) =>
+            key === 'API_PUBLIC_BASE_URL' ? 'https://api.test' : undefined,
+          ),
+        } as never,
+        {} as never,
+        {} as never,
+      );
+    }
+
+    beforeEach(() => {
+      findMany.mockReset();
+      paymentCount.mockReset();
+    });
+
+    it('returns connected Stripe options without payment count queries', async () => {
+      findMany.mockResolvedValue([
+        {
+          id: 'conn-1',
+          stripeAccountId: 'acct_1',
+          apiKeyLast4: '1234',
+          encryptedWebhookSigningSecret: null,
+          status: 'CONNECTED',
+          lastSyncedAt: null,
+          consentAcceptedAt: new Date('2026-06-21T12:00:00.000Z'),
+          disconnectedAt: null,
+          activeSubscriptionCount: 4,
+          expiringSubscriptionCount: 1,
+          expiredSubscriptionCount: 0,
+          customerCount: 5,
+          monthlyRevenueCents: 12_000,
+          monitoredStripePriceId: 'price_123',
+          monitoredStripeProductId: 'prod_123',
+          monitoredPlanLabel: 'Plano VIP',
+          telegramGroupId: 'group-1',
+          updatedAt: new Date('2026-06-22T12:00:00.000Z'),
+          group: { id: 'group-1', title: 'Grupo VIP' },
+        },
+      ]);
+
+      const result = await createService().listConnectionOptions('user-1');
+
+      expect(findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId: 'user-1', status: 'CONNECTED' },
+          orderBy: { createdAt: 'asc' },
+        }),
+      );
+      expect(paymentCount).not.toHaveBeenCalled();
+      expect(result.connections).toEqual([
+        expect.objectContaining({
+          id: 'conn-1',
+          receivedPaymentCount: 0,
+          failedPaymentCount: 0,
+          webhookEndpointUrl: 'https://api.test/stripe-billing/webhooks/conn-1',
+          linkedGroup: { id: 'group-1', title: 'Grupo VIP' },
+        }),
+      ]);
+    });
+  });
+});
 
 describeWithDb('Stripe automation alerts (database)', () => {
   let prisma: PrismaClient;
@@ -251,17 +326,15 @@ describeWithDb('Stripe alert triggers (integration)', () => {
   });
 
   it('dispatches STRIPE_PAYMENT_FAILED when invoice is void', async () => {
-    await expectTriggerDispatched(
-      AlertTriggerType.STRIPE_PAYMENT_FAILED,
-      () =>
-        processInvoiceStripeEvent(
-          dispatchDeps,
-          fixture.userId,
-          fixture.connectionId,
-          'void',
-          `inv_test_void_${Date.now()}`,
-          fixture.testStripeCustomerId,
-        ),
+    await expectTriggerDispatched(AlertTriggerType.STRIPE_PAYMENT_FAILED, () =>
+      processInvoiceStripeEvent(
+        dispatchDeps,
+        fixture.userId,
+        fixture.connectionId,
+        'void',
+        `inv_test_void_${Date.now()}`,
+        fixture.testStripeCustomerId,
+      ),
     );
   });
 

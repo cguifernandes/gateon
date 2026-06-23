@@ -1,13 +1,16 @@
-import { formatGroupsFilterDate } from "@/lib/groups-url-filters";
 import type { GroupsUrlFiltersState } from "@/lib/groups-url-filters";
-import { DEFAULT_PAGE_SIZE } from "@/lib/zod/pagination-schemas";
+import { formatGroupsFilterDate } from "@/lib/groups-url-filters";
 import type { MembersUrlFiltersState } from "@/lib/members-url-filters";
+import { DEFAULT_PAGE_SIZE } from "@/lib/zod/pagination-schemas";
 
 type BuildGroupsListParamsInput = {
   page?: number;
   pageSize?: number;
   all?: boolean;
   view?: "members";
+  includeMembersPreview?: boolean;
+  includeTelegramMemberCount?: boolean;
+  includeMemberStripePlans?: boolean;
   search?: string;
   urlFilters?: GroupsUrlFiltersState | MembersUrlFiltersState;
 };
@@ -43,6 +46,15 @@ export function buildTelegramGroupsListSearchParams(
 
   if (input.view === "members") {
     params.set("view", "members");
+  }
+  if (input.includeMembersPreview) {
+    params.set("includeMembersPreview", "true");
+  }
+  if (input.includeTelegramMemberCount) {
+    params.set("includeTelegramMemberCount", "true");
+  }
+  if (input.includeMemberStripePlans === false) {
+    params.set("includeMemberStripePlans", "false");
   }
 
   const search = input.search?.trim();

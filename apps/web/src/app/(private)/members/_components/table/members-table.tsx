@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { DataRefreshIndicator } from "@/components/data-refresh-indicator";
 import { DataTablePagination } from "@/components/data-table-pagination";
 import { SearchIcon, type SearchIconHandle } from "@/components/icons/search";
 import { ImageComponent } from "@/components/image-component";
@@ -17,6 +18,7 @@ import { MemberOwnerBadge } from "@/components/member-owner-badge";
 import { MemberStripePayerBadge } from "@/components/member-stripe-payer-badge";
 import { QuickNoticeDialog } from "@/components/quick-notice-dialog";
 import { RefreshGroupButton } from "@/components/refresh-group-button";
+import { TableResultsEmptyState } from "@/components/table-results-empty-state";
 import { TruncatedTextTooltip } from "@/components/truncated-text-tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -34,9 +36,13 @@ import {
 } from "@/hooks/use-server-pagination-fetch";
 import { buildTelegramGroupsListSearchParams } from "@/lib/build-telegram-groups-list-search-params";
 import { countActiveMembersUrlFilters } from "@/lib/filter-utils";
+import { resolveTableEmptyState } from "@/lib/resolve-table-empty-state";
 import { getTrackedMemberStatusDisplay } from "@/lib/telegram-bot-status";
 import { cn, withCacheBuster } from "@/lib/utils";
-import type { PaginationMeta } from "@/lib/zod/pagination-schemas";
+import {
+  MEMBERS_TABLE_PAGE_SIZE,
+  type PaginationMeta,
+} from "@/lib/zod/pagination-schemas";
 import type {
   TelegramGroupSummaryDto,
   TelegramGroupsListSummaryDto,
@@ -105,9 +111,10 @@ export function MembersTable({
   }, [search]);
 
   const fetchPage = useCallback(
-    async (page: number) => {
+    async (page: number, signal?: AbortSignal) => {
       const params = buildTelegramGroupsListSearchParams({
         page,
+        pageSize: MEMBERS_TABLE_PAGE_SIZE,
         view: "members",
         search: debouncedSearch,
         urlFilters,
@@ -116,6 +123,7 @@ export function MembersTable({
         `/api/telegram/groups?${params.toString()}`,
         {
           cache: "no-store",
+          signal,
         },
       );
 
@@ -131,7 +139,7 @@ export function MembersTable({
     [debouncedSearch, urlFilters],
   );
 
-  const { data, setPage, isLoading, reload } =
+  const { data, setPage, isRefreshing, reload } =
     useServerPaginationFetch<TelegramGroupsPaginatedResponseDto>({
       fetchPage,
       resetKey: `${debouncedSearch}:${JSON.stringify(urlFilters)}`,
@@ -151,6 +159,10 @@ export function MembersTable({
     setPage,
   );
 
+  const isSearchPending = search.trim() !== debouncedSearch;
+  const showDataRefresh =
+    isRefreshing || filtersPopover.isFiltersPending || isSearchPending;
+
   const visibleGroups: VisibleGroup[] = groups.map((group) => ({
     ...group,
     visibleMembers: group.members,
@@ -159,18 +171,14 @@ export function MembersTable({
   const hasNoGroups =
     (data?.summary.totalGroups ?? initialSummary.totalGroups) === 0;
   const hasNoMembers = membersSummary.totalMembers === 0;
-  const hasActiveSearch = debouncedSearch.length > 0;
-  const isSearchEmpty =
-    !hasNoGroups &&
-    !hasNoMembers &&
-    pagination.totalItems === 0 &&
-    hasActiveSearch;
-  const isPopoverFilterEmpty =
-    !hasNoGroups &&
-    !hasNoMembers &&
-    pagination.totalItems === 0 &&
-    !hasActiveSearch &&
-    hasPopoverFilters;
+  const tableEmpty = resolveTableEmptyState({
+    visibleRowCount: paginatedGroups.length,
+    totalItems: pagination.totalItems,
+    searchInput: search,
+    debouncedSearch,
+    hasActiveFilters: hasPopoverFilters,
+    isRefreshing: showDataRefresh,
+  });
   const showFullPageEmpty = hasNoGroups || hasNoMembers;
 
   const visibleGroupIds = paginatedGroups.map((group) => group.id);
@@ -311,295 +319,296 @@ export function MembersTable({
               />
             </div>
           </div>
-          <div
-            className={cn(
-              "overflow-x-auto rounded-md border border-border bg-background shadow-xs",
-              isLoading && "opacity-60",
-            )}
-          >
-            <Table className="w-full min-w-4xl table-fixed">
-              <TableHeader>
-                <TableRow className="bg-muted hover:bg-muted!">
-                  <TableHead className="w-8 min-w-8 px-3 text-center">
-                    <MemberSelectionCheckbox
-                      checked={allVisibleSelected}
-                      indeterminate={
-                        !allVisibleSelected && hasPartialVisibleSelection
-                      }
-                      label="Selecionar grupos exibidos"
-                      onCheckedChange={toggleAllVisible}
-                    />
-                  </TableHead>
-                  <TableHead className="min-w-60">Membro</TableHead>
-                  <TableHead className="hidden w-36 min-w-36 whitespace-nowrap px-2 text-center md:table-cell">
-                    Entrada
-                  </TableHead>
-                  <TableHead className="hidden w-36 min-w-36 whitespace-nowrap px-2 text-center md:table-cell">
-                    Saída
-                  </TableHead>
-                  <TableHead className="w-40 min-w-40 whitespace-nowrap px-2 text-center">
-                    Status
-                  </TableHead>
-                  <TableHead className="w-36 min-w-36 px-2 text-center">
-                    <span className="sr-only">Ações</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
+          <div className="relative overflow-x-auto rounded-md border border-border bg-background shadow-xs">
+            <DataRefreshIndicator visible={showDataRefresh} />
+            <div
+              className={cn(
+                "transition-opacity",
+                showDataRefresh && "opacity-50 blur-xs",
+              )}
+            >
+              <Table className="w-full min-w-4xl table-fixed">
+                <TableHeader>
+                  <TableRow className="bg-muted hover:bg-muted!">
+                    <TableHead className="w-8 min-w-8 px-3 text-center">
+                      <MemberSelectionCheckbox
+                        checked={allVisibleSelected}
+                        indeterminate={
+                          !allVisibleSelected && hasPartialVisibleSelection
+                        }
+                        label="Selecionar grupos exibidos"
+                        onCheckedChange={toggleAllVisible}
+                      />
+                    </TableHead>
+                    <TableHead className="min-w-60">Membro</TableHead>
+                    <TableHead className="hidden w-36 min-w-36 whitespace-nowrap px-2 text-center md:table-cell">
+                      Entrada
+                    </TableHead>
+                    <TableHead className="hidden w-36 min-w-36 whitespace-nowrap px-2 text-center md:table-cell">
+                      Saída
+                    </TableHead>
+                    <TableHead className="w-40 min-w-40 whitespace-nowrap px-2 text-center">
+                      Status
+                    </TableHead>
+                    <TableHead className="w-36 min-w-36 px-2 text-center">
+                      <span className="sr-only">Ações</span>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
 
-              <TableBody>
-                {paginatedGroups.map((group) => {
-                  const groupMemberKeys = getGroupMemberKeys(group);
-                  const selectedMembersInGroup = groupMemberKeys.filter((key) =>
-                    selectedMemberKeys.has(key),
-                  ).length;
-                  const isGroupSelected = selectedGroupIds.has(group.id);
-                  const isGroupIndeterminate =
-                    !isGroupSelected && selectedMembersInGroup > 0;
+                <TableBody>
+                  {paginatedGroups.map((group) => {
+                    const groupMemberKeys = getGroupMemberKeys(group);
+                    const selectedMembersInGroup = groupMemberKeys.filter(
+                      (key) => selectedMemberKeys.has(key),
+                    ).length;
+                    const isGroupSelected = selectedGroupIds.has(group.id);
+                    const isGroupIndeterminate =
+                      !isGroupSelected && selectedMembersInGroup > 0;
 
-                  return (
-                    <Fragment key={group.id}>
-                      <TableRow className="bg-muted/40 hover:bg-muted/50">
-                        <TableCell className="w-8 min-w-8 px-3 text-center">
-                          <MemberSelectionCheckbox
-                            checked={isGroupSelected}
-                            indeterminate={isGroupIndeterminate}
-                            label={`Selecionar grupo ${group.title ?? group.telegramChatId}`}
-                            onCheckedChange={(checked) =>
-                              toggleGroup(group, checked)
-                            }
-                          />
-                        </TableCell>
-                        <TableCell className="overflow-hidden py-3">
-                          <div className="flex min-w-0 gap-3">
-                            <ImageComponent
-                              src={
-                                group.chatPhotoUrl
-                                  ? withCacheBuster(
-                                      group.chatPhotoUrl,
-                                      group.updatedAt,
-                                    )
-                                  : null
+                    return (
+                      <Fragment key={group.id}>
+                        <TableRow className="bg-muted/40 hover:bg-muted/50">
+                          <TableCell className="w-8 min-w-8 px-3 text-center">
+                            <MemberSelectionCheckbox
+                              checked={isGroupSelected}
+                              indeterminate={isGroupIndeterminate}
+                              label={`Selecionar grupo ${group.title ?? group.telegramChatId}`}
+                              onCheckedChange={(checked) =>
+                                toggleGroup(group, checked)
                               }
-                              alt={group.title?.trim() || "Sem título"}
-                              width={36}
-                              height={36}
-                              sizes="36px"
-                              avatarFallbackClassName="text-sm!"
-                              className="size-[36px] shrink-0 rounded-full border border-border object-cover"
                             />
-                            <div className="min-w-0 flex-1 overflow-hidden">
-                              <TruncatedTextTooltip
-                                text={group.title ?? "Grupo sem nome"}
-                                variant="truncate"
-                                className="font-heading font-semibold text-foreground"
+                          </TableCell>
+                          <TableCell className="overflow-hidden py-3">
+                            <div className="flex min-w-0 gap-3">
+                              <ImageComponent
+                                src={
+                                  group.chatPhotoUrl
+                                    ? withCacheBuster(
+                                        group.chatPhotoUrl,
+                                        group.updatedAt,
+                                      )
+                                    : null
+                                }
+                                alt={group.title?.trim() || "Sem título"}
+                                width={36}
+                                height={36}
+                                sizes="36px"
+                                avatarFallbackClassName="text-sm!"
+                                className="size-[36px] shrink-0 rounded-full border border-border object-cover"
                               />
-                              <p className="truncate text-muted-foreground text-xs">
-                                {group.telegramChatId}
-                              </p>
+                              <div className="min-w-0 flex-1 overflow-hidden">
+                                <TruncatedTextTooltip
+                                  text={group.title ?? "Grupo sem nome"}
+                                  variant="truncate"
+                                  className="font-heading font-semibold text-foreground"
+                                />
+                                <p className="truncate text-muted-foreground text-xs">
+                                  {group.telegramChatId}
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="hidden w-36 min-w-36 py-3 md:table-cell" />
-                        <TableCell className="hidden w-36 min-w-36 py-3 md:table-cell" />
-                        <TableCell className="w-40 min-w-40 py-3 text-center">
-                          <Badge
-                            variant="outline"
-                            className="mx-auto w-max whitespace-nowrap"
-                          >
-                            {formatGroupMemberStatusSummary(group.members)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="w-36 min-w-36 py-3 text-center">
-                          <div className="flex justify-end">
-                            <RefreshGroupButton
-                              groupId={group.id}
-                              groupTitle={group.title ?? undefined}
-                            />
-                          </div>
-                        </TableCell>
-                      </TableRow>
-
-                      {group.visibleMembers.length === 0 ? (
-                        <TableRow key={`${group.id}-empty`}>
-                          <TableCell
-                            colSpan={6}
-                            className="text-muted-foreground text-sm"
-                          >
-                            Nenhum membro encontrado neste grupo.
+                          </TableCell>
+                          <TableCell className="hidden w-36 min-w-36 py-3 md:table-cell" />
+                          <TableCell className="hidden w-36 min-w-36 py-3 md:table-cell" />
+                          <TableCell className="w-40 min-w-40 py-3 text-center">
+                            <Badge
+                              variant="outline"
+                              className="mx-auto w-max whitespace-nowrap"
+                            >
+                              {formatGroupMemberStatusSummary(group.members)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="w-36 min-w-36 py-3 text-center">
+                            <div className="flex justify-end">
+                              <RefreshGroupButton
+                                groupId={group.id}
+                                groupTitle={group.title ?? undefined}
+                              />
+                            </div>
                           </TableCell>
                         </TableRow>
-                      ) : (
-                        group.visibleMembers.map((member) => {
-                          const memberKey = getMemberKey(
-                            group.id,
-                            member.telegramUserId,
-                          );
-                          const isMemberSelected =
-                            isGroupSelected ||
-                            selectedMemberKeys.has(memberKey);
-                          const displayName = getMemberDisplayName(member);
-                          const memberLeft = isMemberLeft(member);
-                          const memberStatusDisplay =
-                            getTrackedMemberStatusDisplay(
-                              memberLeft ? "left" : "active",
-                            );
-                          const memberRowMutedClass = memberLeft
-                            ? "opacity-40"
-                            : undefined;
 
-                          return (
-                            <TableRow
-                              key={memberKey}
-                              data-state={
-                                isMemberSelected ? "selected" : undefined
-                              }
-                              className="group/row transition-colors hover:bg-muted/50"
+                        {group.visibleMembers.length === 0 ? (
+                          <TableRow key={`${group.id}-empty`}>
+                            <TableCell
+                              colSpan={6}
+                              className="text-muted-foreground text-sm"
                             >
-                              <TableCell
-                                className={cn(
-                                  "w-8 min-w-8 px-3 text-center",
-                                  memberRowMutedClass,
-                                )}
-                              >
-                                <MemberSelectionCheckbox
-                                  checked={isMemberSelected}
-                                  label={`Selecionar ${displayName}`}
-                                  onCheckedChange={(checked) =>
-                                    toggleMember(group, member, checked)
-                                  }
-                                />
-                              </TableCell>
-                              <TableCell
-                                className={cn(
-                                  "overflow-hidden py-2 pl-8",
-                                  memberRowMutedClass,
-                                )}
-                              >
-                                <div className="flex min-w-0 gap-3">
-                                  <ImageComponent
-                                    src={member.profilePhotoUrl ?? null}
-                                    alt={displayName}
-                                    width={32}
-                                    height={32}
-                                    sizes="32px"
-                                    fallback={
-                                      <span className="text-xs font-semibold uppercase">
-                                        {getMemberInitials(member)}
-                                      </span>
-                                    }
-                                    className="size-[32px] shrink-0 rounded-full border border-border object-cover"
-                                  />
-                                  <div className="min-w-0 flex-1 overflow-hidden">
-                                    <div className="flex min-w-0 items-center gap-1.5">
-                                      <div className="min-w-0 max-w-40 overflow-hidden">
-                                        <TruncatedTextTooltip
-                                          text={displayName}
-                                          variant="truncate"
-                                          className="font-medium text-foreground"
-                                        />
-                                      </div>
-                                      <div className="flex shrink-0 items-center gap-1.5">
-                                        {isMemberOwner(member) ? (
-                                          <MemberOwnerBadge />
-                                        ) : null}
-                                        <MemberStripePayerBadge
-                                          plans={member.linkedStripePlans}
-                                        />
-                                      </div>
-                                    </div>
-                                    <span className="truncate text-muted-foreground text-xs">
-                                      {member.telegramUserId}
-                                    </span>
-                                  </div>
-                                </div>
-                              </TableCell>
-                              <TableCell
-                                className={cn(
-                                  "hidden w-36 min-w-36 text-center whitespace-nowrap text-muted-foreground align-middle md:table-cell",
-                                  memberRowMutedClass,
-                                )}
-                              >
-                                {formatMemberDate(member.joinedAt)}
-                              </TableCell>
-                              <TableCell
-                                className={cn(
-                                  "hidden w-36 min-w-36 text-center whitespace-nowrap text-muted-foreground align-middle md:table-cell",
-                                  memberRowMutedClass,
-                                )}
-                              >
-                                {member.leftAt
-                                  ? formatMemberDate(member.leftAt)
-                                  : "-"}
-                              </TableCell>
+                              Nenhum membro encontrado neste grupo.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          group.visibleMembers.map((member) => {
+                            const memberKey = getMemberKey(
+                              group.id,
+                              member.telegramUserId,
+                            );
+                            const isMemberSelected =
+                              isGroupSelected ||
+                              selectedMemberKeys.has(memberKey);
+                            const displayName = getMemberDisplayName(member);
+                            const memberLeft = isMemberLeft(member);
+                            const memberStatusDisplay =
+                              getTrackedMemberStatusDisplay(
+                                memberLeft ? "left" : "active",
+                              );
+                            const memberRowMutedClass = memberLeft
+                              ? "opacity-40"
+                              : undefined;
 
-                              <TableCell
-                                className={cn(
-                                  "w-40 min-w-40 text-center align-middle",
-                                  memberRowMutedClass,
-                                )}
+                            return (
+                              <TableRow
+                                key={memberKey}
+                                data-state={
+                                  isMemberSelected ? "selected" : undefined
+                                }
+                                className="group/row transition-colors hover:bg-muted/50"
                               >
-                                <Badge
-                                  variant="outline"
+                                <TableCell
                                   className={cn(
-                                    "mx-auto w-max shrink-0 gap-1.5 text-xs font-medium whitespace-nowrap",
-                                    memberStatusDisplay.className,
+                                    "w-8 min-w-8 px-3 text-center",
+                                    memberRowMutedClass,
                                   )}
                                 >
-                                  {memberLeft ? "Saiu" : "Ativo"}
-                                </Badge>
-                              </TableCell>
-                              <TableCell
-                                className={cn(
-                                  "w-36 min-w-36 py-2 align-middle",
-                                  memberRowMutedClass,
-                                )}
-                              >
-                                <MemberActionsToolbar
-                                  groupId={group.id}
-                                  telegramUserId={member.telegramUserId}
-                                  displayName={displayName}
-                                  isInactive={memberLeft}
-                                  isOwner={member.isOwner}
-                                  onSendNotice={() =>
-                                    setQuickNoticePayload({
-                                      type: "members",
-                                      title: displayName,
-                                      targets: [
-                                        {
-                                          telegramUserId: member.telegramUserId,
-                                          displayName,
-                                        },
-                                      ],
-                                    })
-                                  }
-                                />
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
-                      )}
-                    </Fragment>
-                  );
-                })}
+                                  <MemberSelectionCheckbox
+                                    checked={isMemberSelected}
+                                    label={`Selecionar ${displayName}`}
+                                    onCheckedChange={(checked) =>
+                                      toggleMember(group, member, checked)
+                                    }
+                                  />
+                                </TableCell>
+                                <TableCell
+                                  className={cn(
+                                    "overflow-hidden py-2 pl-8",
+                                    memberRowMutedClass,
+                                  )}
+                                >
+                                  <div className="flex min-w-0 gap-3">
+                                    <ImageComponent
+                                      src={member.profilePhotoUrl ?? null}
+                                      alt={displayName}
+                                      width={32}
+                                      height={32}
+                                      sizes="32px"
+                                      fallback={
+                                        <span className="text-xs font-semibold uppercase">
+                                          {getMemberInitials(member)}
+                                        </span>
+                                      }
+                                      className="size-[32px] shrink-0 rounded-full border border-border object-cover"
+                                    />
+                                    <div className="min-w-0 flex-1 overflow-hidden">
+                                      <div className="flex min-w-0 items-center gap-1.5">
+                                        <div className="min-w-0 max-w-40 overflow-hidden">
+                                          <TruncatedTextTooltip
+                                            text={displayName}
+                                            variant="truncate"
+                                            className="font-medium text-foreground"
+                                          />
+                                        </div>
+                                        <div className="flex shrink-0 items-center gap-1.5">
+                                          {isMemberOwner(member) ? (
+                                            <MemberOwnerBadge />
+                                          ) : null}
+                                          <MemberStripePayerBadge
+                                            plans={member.linkedStripePlans}
+                                          />
+                                        </div>
+                                      </div>
+                                      <span className="truncate text-muted-foreground text-xs">
+                                        {member.telegramUserId}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell
+                                  className={cn(
+                                    "hidden w-36 min-w-36 text-center whitespace-nowrap text-muted-foreground align-middle md:table-cell",
+                                    memberRowMutedClass,
+                                  )}
+                                >
+                                  {formatMemberDate(member.joinedAt)}
+                                </TableCell>
+                                <TableCell
+                                  className={cn(
+                                    "hidden w-36 min-w-36 text-center whitespace-nowrap text-muted-foreground align-middle md:table-cell",
+                                    memberRowMutedClass,
+                                  )}
+                                >
+                                  {member.leftAt
+                                    ? formatMemberDate(member.leftAt)
+                                    : "-"}
+                                </TableCell>
 
-                {isSearchEmpty ||
-                (isPopoverFilterEmpty && visibleGroups.length === 0) ? (
-                  <TableRow className="hover:bg-background">
-                    <TableCell colSpan={6} className="p-0">
-                      <MembersEmptyState
-                        embedded
-                        hasNoGroups={false}
-                        hasNoMembers={false}
-                        isSearchEmpty={isSearchEmpty}
-                        isPopoverFilterEmpty={isPopoverFilterEmpty}
-                        onClearSearch={clearSearch}
-                        onClearPopoverFilters={filtersPopover.clear}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ) : null}
-              </TableBody>
-            </Table>
+                                <TableCell
+                                  className={cn(
+                                    "w-40 min-w-40 text-center align-middle",
+                                    memberRowMutedClass,
+                                  )}
+                                >
+                                  <Badge
+                                    variant="outline"
+                                    className={cn(
+                                      "mx-auto w-max shrink-0 gap-1.5 text-xs font-medium whitespace-nowrap",
+                                      memberStatusDisplay.className,
+                                    )}
+                                  >
+                                    {memberLeft ? "Saiu" : "Ativo"}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell
+                                  className={cn(
+                                    "w-36 min-w-36 py-2 align-middle",
+                                    memberRowMutedClass,
+                                  )}
+                                >
+                                  <MemberActionsToolbar
+                                    groupId={group.id}
+                                    telegramUserId={member.telegramUserId}
+                                    displayName={displayName}
+                                    isInactive={memberLeft}
+                                    isOwner={member.isOwner}
+                                    onSendNotice={() =>
+                                      setQuickNoticePayload({
+                                        type: "members",
+                                        title: displayName,
+                                        targets: [
+                                          {
+                                            telegramUserId:
+                                              member.telegramUserId,
+                                            displayName,
+                                          },
+                                        ],
+                                      })
+                                    }
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
+                        )}
+                      </Fragment>
+                    );
+                  })}
+
+                  {tableEmpty.show && tableEmpty.kind ? (
+                    <TableRow className="hover:bg-background">
+                      <TableCell colSpan={6} className="p-0">
+                        <TableResultsEmptyState
+                          kind={tableEmpty.kind}
+                          resource="members"
+                          isRefreshing={showDataRefresh}
+                          onClearSearch={clearSearch}
+                          onClearFilters={filtersPopover.clear}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                </TableBody>
+              </Table>
+            </div>
           </div>
         </>
       )}

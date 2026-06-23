@@ -5,6 +5,7 @@ import {
   type ReactNode,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -43,6 +44,10 @@ export function GroupLimitProvider({
   const [connectedCount, setConnectedCountState] = useState(
     initialConnectedCount,
   );
+
+  useEffect(() => {
+    setPlanId(initialPlanId);
+  }, [initialPlanId]);
 
   const maxGroups = getMaxGroupsForPlan(planId);
 

@@ -22,7 +22,7 @@ export default async function GroupsPage() {
     !error && summary.totalGroups >= getMaxGroupsForPlan(planId);
 
   return (
-    <div className="relative flex flex-col gap-6">
+    <div className="relative flex flex-col gap-6 pb-10">
       {!error ? <SyncGroupLimit connectedCount={summary.totalGroups} /> : null}
 
       <div className={cn("flex flex-col gap-3", isAtLimit && "mt-[46px]")}>
@@ -44,7 +44,7 @@ export default async function GroupsPage() {
       ) : (
         <Suspense fallback={<LoaderPage />}>
           <GroupsTable
-            initialGroups={groups}
+            initialGroups={groups.slice(0, 2)}
             initialPagination={pagination}
             initialSummary={summary}
           />

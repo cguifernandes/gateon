@@ -56,7 +56,7 @@ function NavigationProgressBarInner() {
     }
   }, []);
 
-  const start = useCallback(() => {
+  const runStart = useCallback(() => {
     clearTrickle();
     activeRef.current = true;
     setVisible(true);
@@ -72,6 +72,10 @@ function NavigationProgressBarInner() {
       });
     }, TRICKLE_MS);
   }, [clearTrickle]);
+
+  const start = useCallback(() => {
+    queueMicrotask(runStart);
+  }, [runStart]);
 
   const complete = useCallback(() => {
     if (!activeRef.current) {

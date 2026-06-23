@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { LoaderPage } from "@/components/loader-page";
+import { getTelegramGroupOptions } from "@/lib/server/get-telegram-group-options";
 import { getTelegramGroupsForMembers } from "@/lib/server/get-telegram-groups-for-members";
+import { MEMBERS_TABLE_PAGE_SIZE } from "@/lib/zod/pagination-schemas";
 import { MemberSummaryStats } from "./_components/member-summary-stats";
 import { MembersTable } from "./_components/table/members-table";
 
@@ -13,14 +15,15 @@ export const metadata: Metadata = {
 export default async function MembersPage() {
   const [
     { groups, pagination, membersSummary, summary, error },
-    { groups: filterGroups },
+    { groups: filterGroups, error: filterGroupsError },
   ] = await Promise.all([
-    getTelegramGroupsForMembers(),
-    getTelegramGroupsForMembers({ all: true }),
+    getTelegramGroupsForMembers({ pageSize: MEMBERS_TABLE_PAGE_SIZE }),
+    getTelegramGroupOptions(),
   ]);
+  const pageError = error ?? filterGroupsError;
 
   return (
-    <div className="relative flex flex-col gap-6">
+    <div className="relative flex flex-col gap-6 pb-10">
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
           <h1 className="font-heading text-2xl font-extrabold leading-[1.08] tracking-tight text-foreground">
@@ -35,9 +38,9 @@ export default async function MembersPage() {
         {!error ? <MemberSummaryStats summary={membersSummary} /> : null}
       </div>
 
-      {error ? (
+      {pageError ? (
         <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-destructive text-sm">
-          {error}
+          {pageError}
         </div>
       ) : (
         <Suspense fallback={<LoaderPage />}>

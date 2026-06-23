@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import type { DateRangeValue } from "@/components/filters-popever";
+import { usePendingUrlFiltersApply } from "@/hooks/use-pending-url-filters";
 import {
   areMembersUrlFiltersEqual,
   countActiveMembersUrlFilters,
@@ -25,6 +26,7 @@ export type MembersFiltersPopoverControl = {
   apply: () => void;
   clear: () => void;
   hasPendingChanges: boolean;
+  isFiltersPending: boolean;
   appliedActiveCount: number;
 };
 
@@ -42,6 +44,10 @@ export function useMembersFiltersUrl() {
   const [draftFilters, setDraftFilters] =
     useState<MembersUrlFiltersState>(urlFilters);
   const [search, setSearch] = useState("");
+  const { isFiltersPending, markFiltersPending } = usePendingUrlFiltersApply(
+    urlFilters,
+    areMembersUrlFiltersEqual,
+  );
 
   useEffect(() => {
     setDraftFilters(urlFilters);
@@ -80,13 +86,15 @@ export function useMembersFiltersUrl() {
   }, []);
 
   const apply = useCallback(() => {
+    markFiltersPending(draftFilters);
     pushUrlFilters(draftFilters);
-  }, [draftFilters, pushUrlFilters]);
+  }, [draftFilters, markFiltersPending, pushUrlFilters]);
 
   const clear = useCallback(() => {
     setDraftFilters(EMPTY_MEMBERS_URL_FILTERS);
+    markFiltersPending(EMPTY_MEMBERS_URL_FILTERS);
     pushUrlFilters(EMPTY_MEMBERS_URL_FILTERS);
-  }, [pushUrlFilters]);
+  }, [markFiltersPending, pushUrlFilters]);
 
   const clearSearch = useCallback(() => {
     setSearch("");
@@ -102,6 +110,7 @@ export function useMembersFiltersUrl() {
     apply,
     clear,
     hasPendingChanges: !areMembersUrlFiltersEqual(draftFilters, urlFilters),
+    isFiltersPending,
     appliedActiveCount: countActiveMembersUrlFilters(urlFilters),
   };
 

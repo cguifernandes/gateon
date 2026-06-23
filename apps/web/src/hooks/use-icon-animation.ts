@@ -41,7 +41,12 @@ export function useIconAnimation<T extends IconAnimationHandle>(
   const isControlledRef = useRef(false);
   const isMountedRef = useRef(false);
   const refElement = useRef<HTMLDivElement>(null);
-  const isInView = useInView(refElement, { once: true, amount: 0.1 });
+  const shouldAnimateOnView = isAnimateOnView;
+  const isInView = useInView(refElement, {
+    once: true,
+    amount: 0.1,
+    margin: shouldAnimateOnView ? "0px" : "-100000px 0px",
+  });
 
   useEffect(() => {
     isMountedRef.current = true;

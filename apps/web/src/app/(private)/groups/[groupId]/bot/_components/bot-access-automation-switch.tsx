@@ -1,108 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { toast } from "sonner";
 import { LockIcon } from "@/components/icons/lock";
 import { buttonVariants } from "@/components/ui/button";
 import { PLAN_LABELS } from "@/lib/plan-limits";
 import { cn } from "@/lib/utils";
-import {
-  type TelegramBotStartSettingsResponseDto,
-  telegramBotStartSettingsResponseSchema,
-} from "@/lib/zod/bot-start-settings-schemas";
+import type { TelegramBotStartSettingsResponseDto } from "@/lib/zod/bot-start-settings-schemas";
 import { BotSettingSwitch } from "./bot-setting-switch";
 
 const UPGRADE_PLAN_ID = "starter";
 
 type BotAccessAutomationSwitchProps = {
-  initialSettings: TelegramBotStartSettingsResponseDto;
+  settings: TelegramBotStartSettingsResponseDto;
+  value: boolean;
+  onChange: (checked: boolean) => void;
 };
 
-function getErrorMessage(body: unknown, fallback: string) {
-  if (
-    body &&
-    typeof body === "object" &&
-    "error" in body &&
-    typeof (body as { error?: unknown }).error === "string"
-  ) {
-    return (body as { error: string }).error;
-  }
-  if (
-    body &&
-    typeof body === "object" &&
-    "message" in body &&
-    typeof (body as { message?: unknown }).message === "string"
-  ) {
-    return (body as { message: string }).message;
-  }
-  return fallback;
-}
-
 export function BotAccessAutomationSwitch({
-  initialSettings,
+  settings,
+  value,
+  onChange,
 }: BotAccessAutomationSwitchProps) {
-  const [settings, setSettings] =
-    useState<TelegramBotStartSettingsResponseDto>(initialSettings);
-  const [isSaving, setIsSaving] = useState(false);
   const isLocked = !settings.canUsePaidAutomation;
 
-  async function handleToggle(checked: boolean) {
+  function handleToggle(checked: boolean) {
     if (isLocked) {
       return;
     }
-
-    const previous = settings;
-    setSettings((current) => ({
-      ...current,
-      autoRemoveExpiredSubscribers: checked,
-    }));
-    setIsSaving(true);
-
-    try {
-      const response = await fetch("/api/bot-start-settings", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ autoRemoveExpiredSubscribers: checked }),
-      });
-
-      const body: unknown = await response.json().catch(() => null);
-      if (!response.ok) {
-        throw new Error(
-          getErrorMessage(
-            body,
-            "Não foi possível salvar a configuração de automação.",
-          ),
-        );
-      }
-
-      const parsed = telegramBotStartSettingsResponseSchema.safeParse(body);
-      if (!parsed.success) {
-        throw new Error("A API retornou uma resposta inválida.");
-      }
-
-      setSettings(parsed.data);
-      toast.success(
-        checked
-          ? "Remoção automática ativada"
-          : "Remoção automática desativada",
-        {
-          description: checked
-            ? "Membros serão removidos quando a assinatura for cancelada ou marcada como inadimplente na Stripe."
-            : "Nenhuma remoção automática por expiração ou cancelamento.",
-        },
-      );
-    } catch (error) {
-      setSettings(previous);
-      toast.error("Falha ao salvar", {
-        description:
-          error instanceof Error
-            ? error.message
-            : "Tente novamente em instantes.",
-      });
-    } finally {
-      setIsSaving(false);
-    }
+    onChange(checked);
   }
 
   return (
@@ -115,8 +40,8 @@ export function BotAccessAutomationSwitch({
         aria-hidden={isLocked}
       >
         <BotSettingSwitch
-          checked={settings.autoRemoveExpiredSubscribers}
-          disabled={isSaving || isLocked}
+          checked={value}
+          disabled={isLocked}
           onCheckedChange={handleToggle}
           title="Remover automaticamente ao expirar"
           description="O bot remove o membro quando a Stripe alterar a assinatura para cancelada ou inadimplente. Não remove no instante em que um pagamento falha."

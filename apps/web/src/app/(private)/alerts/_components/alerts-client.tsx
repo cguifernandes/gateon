@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { DataRefreshIndicator } from "@/components/data-refresh-indicator";
 import { DataTablePagination } from "@/components/data-table-pagination";
 import { SearchIcon, type SearchIconHandle } from "@/components/icons/search";
+import { TableResultsEmptyState } from "@/components/table-results-empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,6 +13,7 @@ import {
   useServerPaginationFetch,
 } from "@/hooks/use-server-pagination-fetch";
 import { buildAlertsListSearchParams } from "@/lib/build-alerts-list-search-params";
+import { resolveTableEmptyState } from "@/lib/resolve-table-empty-state";
 import { cn } from "@/lib/utils";
 import {
   type AlertSummaryDto,
@@ -32,25 +35,6 @@ type AlertsClientProps = {
   groups: TelegramGroupSummaryDto[];
   stripeConnections: StripeBillingConnectionDto[];
 };
-
-function readRefreshAlertsError(body: unknown): string {
-  if (body && typeof body === "object") {
-    if (
-      "error" in body &&
-      typeof (body as { error?: unknown }).error === "string"
-    ) {
-      return (body as { error: string }).error;
-    }
-    if (
-      "message" in body &&
-      typeof (body as { message?: unknown }).message === "string"
-    ) {
-      return (body as { message: string }).message;
-    }
-  }
-
-  return "Não foi possível atualizar a lista de alertas.";
-}
 
 export function AlertsClient({
   initialData,
@@ -77,7 +61,7 @@ export function AlertsClient({
   }, [query]);
 
   const fetchPage = useCallback(
-    async (page: number) => {
+    async (page: number, signal?: AbortSignal) => {
       const params = buildAlertsListSearchParams({
         page,
         search: debouncedSearch,
@@ -86,6 +70,7 @@ export function AlertsClient({
       const response = await fetch(`/api/alerts?${params.toString()}`, {
         cache: "no-store",
         headers: { "Cache-Control": "no-cache" },
+        signal,
       });
 
       if (!response.ok) {
@@ -98,7 +83,7 @@ export function AlertsClient({
     [debouncedSearch, urlFilters],
   );
 
-  const { data, setPage, isLoading, reload } =
+  const { data, setPage, isRefreshing, reload } =
     useServerPaginationFetch<AlertsResponseDto>({
       fetchPage,
       resetKey: `${debouncedSearch}:${JSON.stringify(urlFilters)}`,
@@ -112,6 +97,20 @@ export function AlertsClient({
     data?.pagination ?? initialData.pagination,
     setPage,
   );
+
+  const isSearchPending = query.trim() !== debouncedSearch;
+  const showDataRefresh =
+    isRefreshing || filtersControl.isFiltersPending || isSearchPending;
+
+  const tableEmpty = resolveTableEmptyState({
+    visibleRowCount: alerts.length,
+    totalItems: pagination.totalItems,
+    searchInput: query,
+    debouncedSearch,
+    hasActiveFilters: filtersControl.appliedActiveCount > 0,
+    isRefreshing: showDataRefresh,
+  });
+  const hasVisibleAlerts = alerts.length > 0;
 
   const refreshAlerts = useCallback(async () => {
     try {
@@ -201,38 +200,55 @@ export function AlertsClient({
           <AlertsFiltersSidebar groups={groups} control={filtersControl} />
 
           <div className="min-w-0">
-            {pagination.totalItems > 0 ? (
-              <div
-                className={cn("flex flex-col gap-4", isLoading && "opacity-60")}
-              >
-                <div className="columns-1 gap-4 space-y-4 xl:columns-2">
-                  {alerts.map((alert) => (
-                    <div key={alert.id} className="break-inside-avoid">
-                      <AlertCard
-                        alert={alert}
-                        groups={groups}
-                        onSelect={setSelectedAlert}
-                        onActionSuccess={() => void refreshAlerts()}
-                      />
-                    </div>
-                  ))}
-                </div>
-                <DataTablePagination
-                  pagination={pagination}
-                  itemLabel="alerta"
-                  itemLabelPlural="alertas"
-                />
-              </div>
-            ) : (
+            {hasNoAlerts ? (
               <AlertsEmptyState
-                hasNoAlerts={hasNoAlerts}
-                searchQuery={query}
-                hasActiveUrlFilters={filtersControl.appliedActiveCount > 0}
                 groups={groups}
                 stripeConnections={stripeConnections}
                 onCreated={refreshAlerts}
-                onClearFilters={filtersControl.clear}
               />
+            ) : (
+              <div className="relative flex flex-col gap-4">
+                <DataRefreshIndicator visible={showDataRefresh} />
+                <div
+                  className={cn(
+                    "flex flex-col gap-4 transition-opacity",
+                    showDataRefresh && "opacity-50 blur-xs",
+                  )}
+                >
+                  {hasVisibleAlerts ? (
+                    <>
+                      <div className="columns-1 gap-4 space-y-4 xl:columns-2">
+                        {alerts.map((alert) => (
+                          <div key={alert.id} className="break-inside-avoid">
+                            <AlertCard
+                              alert={alert}
+                              groups={groups}
+                              onSelect={setSelectedAlert}
+                              onActionSuccess={() => void refreshAlerts()}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      {pagination.totalItems > 0 ? (
+                        <DataTablePagination
+                          pagination={pagination}
+                          itemLabel="alerta"
+                          itemLabelPlural="alertas"
+                        />
+                      ) : null}
+                    </>
+                  ) : tableEmpty.show && tableEmpty.kind ? (
+                    <TableResultsEmptyState
+                      kind={tableEmpty.kind}
+                      resource="alerts"
+                      embedded={false}
+                      isRefreshing={showDataRefresh}
+                      onClearSearch={() => setQuery("")}
+                      onClearFilters={filtersControl.clear}
+                    />
+                  ) : null}
+                </div>
+              </div>
             )}
           </div>
         </div>

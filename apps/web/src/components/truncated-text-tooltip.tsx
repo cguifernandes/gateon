@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Tooltip,
   TooltipContent,
@@ -72,20 +72,24 @@ export function TruncatedTextTooltip({
   const checkTruncation = useCallback(() => {
     const element = ref.current;
     if (!element || text.length === 0) {
-      setIsTruncated(false);
+      queueMicrotask(() => setIsTruncated(false));
       return;
     }
-    setIsTruncated(isTextTruncated(element, variant));
+
+    const truncated = isTextTruncated(element, variant);
+    queueMicrotask(() => {
+      setIsTruncated((current) =>
+        current === truncated ? current : truncated,
+      );
+    });
   }, [variant, text]);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const element = ref.current;
     if (!element) return;
 
     const runCheck = () => {
-      requestAnimationFrame(() => {
-        checkTruncation();
-      });
+      requestAnimationFrame(checkTruncation);
     };
 
     runCheck();

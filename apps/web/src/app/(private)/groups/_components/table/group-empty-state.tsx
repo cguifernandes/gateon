@@ -82,7 +82,12 @@ export function GroupsEmptyState({
       </EmptyHeader>
       <EmptyContent className="flex flex-wrap justify-center gap-2">
         {isSearchEmpty ? (
-          <Button type="button" variant="outline" onClick={onClearSearch}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onClearSearch}
+          >
             Limpar busca
           </Button>
         ) : null}
@@ -90,6 +95,7 @@ export function GroupsEmptyState({
           <Button
             type="button"
             variant="outline"
+            size="sm"
             onClick={onClearPopoverFilters}
           >
             Limpar filtros

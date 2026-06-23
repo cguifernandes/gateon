@@ -26,14 +26,21 @@ export function useClientPagination<T>(
   useEffect(() => {
     if (previousResetKeyRef.current === undefined) {
       previousResetKeyRef.current = resetKey;
-    } else if (previousResetKeyRef.current !== resetKey) {
-      previousResetKeyRef.current = resetKey;
-      setPage(1);
       return;
     }
 
-    setPage((current) => Math.min(Math.max(1, current), totalPages));
-  }, [resetKey, totalPages]);
+    if (previousResetKeyRef.current !== resetKey) {
+      previousResetKeyRef.current = resetKey;
+      setPage(1);
+    }
+  }, [resetKey]);
+
+  useEffect(() => {
+    setPage((current) => {
+      const clamped = Math.min(Math.max(1, current), totalPages);
+      return clamped === current ? current : clamped;
+    });
+  }, [totalPages]);
 
   const paginatedItems = useMemo(() => {
     const start = (safePage - 1) * pageSize;

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { TelegramGroupTypeCell } from "@/app/(private)/groups/_components/table/telegram-group-type-badges";
 import { AddGroupBotDialog } from "@/components/add-group-bot-dialog";
+import { DataRefreshIndicator } from "@/components/data-refresh-indicator";
 import { DataTablePagination } from "@/components/data-table-pagination";
 import { SearchIcon, type SearchIconHandle } from "@/components/icons/search";
 import { ImageComponent } from "@/components/image-component";
@@ -12,6 +13,7 @@ import {
   type QuickNoticePayload,
 } from "@/components/quick-notice-dialog";
 import { RemoveGroupDialog } from "@/components/remove-group-dialog";
+import { TableResultsEmptyState } from "@/components/table-results-empty-state";
 import { TruncatedTextTooltip } from "@/components/truncated-text-tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -30,9 +32,13 @@ import {
 } from "@/hooks/use-server-pagination-fetch";
 import { buildTelegramGroupsListSearchParams } from "@/lib/build-telegram-groups-list-search-params";
 import { countActiveGroupsUrlFilters } from "@/lib/filter-utils";
+import { resolveTableEmptyState } from "@/lib/resolve-table-empty-state";
 import { getBotStatusDisplay } from "@/lib/telegram-bot-status";
 import { cn, withCacheBuster } from "@/lib/utils";
-import type { PaginationMeta } from "@/lib/zod/pagination-schemas";
+import {
+  GROUPS_TABLE_PAGE_SIZE,
+  type PaginationMeta,
+} from "@/lib/zod/pagination-schemas";
 import type {
   TelegramGroupSummaryDto,
   TelegramGroupsListSummaryDto,
@@ -83,9 +89,10 @@ export function GroupsTable({
   }, [search]);
 
   const fetchPage = useCallback(
-    async (page: number) => {
+    async (page: number, signal?: AbortSignal) => {
       const params = buildTelegramGroupsListSearchParams({
         page,
+        pageSize: GROUPS_TABLE_PAGE_SIZE,
         search: debouncedSearch,
         urlFilters,
       });
@@ -93,6 +100,7 @@ export function GroupsTable({
         `/api/telegram/groups?${params.toString()}`,
         {
           cache: "no-store",
+          signal,
         },
       );
 
@@ -108,7 +116,7 @@ export function GroupsTable({
     [debouncedSearch, urlFilters],
   );
 
-  const { data, setPage, isLoading, reload } =
+  const { data, setPage, isRefreshing, reload } =
     useServerPaginationFetch<TelegramGroupsPaginatedResponseDto>({
       fetchPage,
       resetKey: `${debouncedSearch}:${JSON.stringify(urlFilters)}`,
@@ -143,16 +151,20 @@ export function GroupsTable({
     }
   }, [groups, membersDrawerGroup]);
 
+  const isSearchPending = search.trim() !== debouncedSearch;
+  const showDataRefresh =
+    isRefreshing || filtersPopover.isFiltersPending || isSearchPending;
+
   const hasPopoverFilters = countActiveGroupsUrlFilters(urlFilters) > 0;
   const hasNoGroups = summary.totalGroups === 0;
-  const hasActiveSearch = debouncedSearch.length > 0;
-  const isSearchEmpty =
-    !hasNoGroups && pagination.totalItems === 0 && hasActiveSearch;
-  const isPopoverFilterEmpty =
-    !hasNoGroups &&
-    pagination.totalItems === 0 &&
-    !hasActiveSearch &&
-    hasPopoverFilters;
+  const tableEmpty = resolveTableEmptyState({
+    visibleRowCount: groups.length,
+    totalItems: pagination.totalItems,
+    searchInput: search,
+    debouncedSearch,
+    hasActiveFilters: hasPopoverFilters,
+    isRefreshing: showDataRefresh,
+  });
 
   return (
     <div className="relative flex flex-col gap-3">
@@ -192,182 +204,186 @@ export function GroupsTable({
               onConnectionCompleted={handleGroupConnectionCompleted}
             />
           </div>
-          <div
-            className={cn(
-              "overflow-x-auto rounded-md border border-border bg-background shadow-xs",
-              isLoading && "opacity-60",
-            )}
-          >
-            <Table className="w-full min-w-max table-auto">
-              <TableHeader>
-                <TableRow className="bg-muted hover:bg-muted!">
-                  <TableHead className="min-w-60">Grupo</TableHead>
-                  <TableHead className="w-55 min-w-55">Membros</TableHead>
-                  <TableHead className="hidden w-32 min-w-32 whitespace-nowrap px-2 text-center sm:table-cell">
-                    Tipo
-                  </TableHead>
-                  <TableHead className="hidden w-44 min-w-44 whitespace-nowrap px-2 text-center lg:table-cell">
-                    Planos
-                  </TableHead>
-                  <TableHead className="hidden w-36 min-w-36 whitespace-nowrap px-2 text-center md:table-cell">
-                    Conectado em
-                  </TableHead>
-                  <TableHead className="w-40 min-w-40 whitespace-nowrap px-2 text-center">
-                    Status
-                  </TableHead>
-                  <TableHead className="w-20 min-w-20 px-2 text-center">
-                    <span className="sr-only">Ações</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
+          <div className="relative overflow-x-auto rounded-md border border-border bg-background shadow-xs">
+            <DataRefreshIndicator visible={showDataRefresh} />
+            <div
+              className={cn(
+                "transition-opacity",
+                showDataRefresh && "opacity-50 blur-xs",
+              )}
+            >
+              <Table className="w-full min-w-max table-auto">
+                <TableHeader>
+                  <TableRow className="bg-muted hover:bg-muted!">
+                    <TableHead className="min-w-60">Grupo</TableHead>
+                    <TableHead className="w-55 min-w-55">Membros</TableHead>
+                    <TableHead className="hidden w-32 min-w-32 whitespace-nowrap px-2 text-center sm:table-cell">
+                      Tipo
+                    </TableHead>
+                    <TableHead className="hidden w-44 min-w-44 whitespace-nowrap px-2 text-center lg:table-cell">
+                      Planos
+                    </TableHead>
+                    <TableHead className="hidden w-36 min-w-36 whitespace-nowrap px-2 text-center md:table-cell">
+                      Conectado em
+                    </TableHead>
+                    <TableHead className="w-40 min-w-40 whitespace-nowrap px-2 text-center">
+                      Status
+                    </TableHead>
+                    <TableHead className="w-20 min-w-20 px-2 text-center">
+                      <span className="sr-only">Ações</span>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
 
-              <TableBody>
-                {groups.map((group) => {
-                  const botDisplay = getBotStatusDisplay(group.botStatus);
+                <TableBody>
+                  {groups.map((group) => {
+                    const botDisplay = getBotStatusDisplay(group.botStatus);
 
-                  return (
-                    <TableRow
-                      className="group/row cursor-pointer transition-colors hover:bg-muted/50"
-                      key={group.id}
-                      onClick={() => setMembersDrawerGroup(group)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          setMembersDrawerGroup(group);
-                        }
-                      }}
-                      tabIndex={0}
-                      aria-label={`Ver membros de ${group.title ?? "grupo"}`}
-                    >
-                      <TableCell className="min-w-60">
-                        <div className="flex min-w-0 gap-3">
-                          <ImageComponent
-                            src={
-                              group.chatPhotoUrl
-                                ? withCacheBuster(
-                                    group.chatPhotoUrl,
-                                    group.updatedAt,
-                                  )
-                                : null
-                            }
-                            alt={group.title?.trim() || "Sem título"}
-                            width={38}
-                            height={38}
-                            sizes="38px"
-                            avatarFallbackClassName="text-sm!"
-                            className="size-[38px] shrink-0 rounded-full border border-border object-cover"
-                          />
-                          <div className="min-w-0 flex-1 overflow-hidden">
-                            <TruncatedTextTooltip
-                              text={group.title ?? "Sem título"}
-                              variant="truncate"
-                              className="font-heading font-medium leading-tight text-foreground"
-                            />
-                            <span className="text-xs text-muted-foreground">
-                              {group.telegramChatId}
-                            </span>
-                          </div>
-                        </div>
-                      </TableCell>
-
-                      <TableCell className="w-55 min-w-55">
-                        <div className="flex min-w-0 flex-col gap-1">
-                          <div className="flex items-baseline justify-between gap-1 text-[11px]">
-                            <span className="text-muted-foreground">
-                              Gerenciados neste grupo
-                            </span>
-                            <span
-                              className={cn(
-                                "shrink-0 font-medium tabular-nums",
-                                group.trackedMemberLimitReached
-                                  ? "text-amber-600 dark:text-amber-500"
-                                  : "text-foreground",
-                              )}
-                            >
-                              {group.trackedMemberCount} /{" "}
-                              {group.trackedMemberLimitPerGroup}
-                            </span>
-                          </div>
-                          <Progress
-                            value={getTrackedMembersProgressPercent(
-                              group.trackedMemberCount,
-                              group.trackedMemberLimitPerGroup,
-                            )}
-                            className={cn(
-                              "w-full flex-nowrap gap-0",
-                              group.trackedMemberLimitReached &&
-                                "**:data-[slot=progress-indicator]:bg-amber-500",
-                            )}
-                            aria-label={`Membros gerenciados neste grupo: ${group.trackedMemberCount} de ${group.trackedMemberLimitPerGroup}`}
-                          />
-                        </div>
-                      </TableCell>
-
-                      <TableCell className="hidden w-32 min-w-32 align-middle sm:table-cell">
-                        <TelegramGroupTypeCell
-                          type={group.type}
-                          isForum={group.isForum}
-                        />
-                      </TableCell>
-
-                      <TableCell className="hidden w-44 min-w-44 px-2 text-center align-center lg:table-cell">
-                        <LinkedStripePlansCell
-                          plans={group.linkedStripePlans}
-                        />
-                      </TableCell>
-
-                      <TableCell className="hidden w-36 min-w-36 text-center whitespace-nowrap align-middle md:table-cell">
-                        <span className="text-xs text-muted-foreground">
-                          {formatDate(group.connectedAt)}
-                        </span>
-                      </TableCell>
-
-                      <TableCell className="w-40 min-w-40 px-2 align-middle">
-                        <div className="flex min-w-0 justify-center">
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "h-auto min-w-0 max-w-full shrink gap-1.5 py-0.5 font-medium",
-                              botDisplay.className,
-                            )}
-                            title={botDisplay.label}
-                          >
-                            <span className="truncate">{botDisplay.label}</span>
-                          </Badge>
-                        </div>
-                      </TableCell>
-
-                      <TableCell
-                        className="w-20 min-w-20 px-1 text-center align-middle"
-                        onClick={(event) => event.stopPropagation()}
-                        onKeyDown={(event) => event.stopPropagation()}
+                    return (
+                      <TableRow
+                        className="group/row cursor-pointer transition-colors hover:bg-muted/50"
+                        key={group.id}
+                        onClick={() => setMembersDrawerGroup(group)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            setMembersDrawerGroup(group);
+                          }
+                        }}
+                        tabIndex={0}
+                        aria-label={`Ver membros de ${group.title ?? "grupo"}`}
                       >
-                        <GroupRowActionsMenu
-                          groupId={group.id}
-                          groupTitle={group.title ?? ""}
-                          onViewMembers={() => setMembersDrawerGroup(group)}
+                        <TableCell className="min-w-60">
+                          <div className="flex min-w-0 gap-3">
+                            <ImageComponent
+                              src={
+                                group.chatPhotoUrl
+                                  ? withCacheBuster(
+                                      group.chatPhotoUrl,
+                                      group.updatedAt,
+                                    )
+                                  : null
+                              }
+                              alt={group.title?.trim() || "Sem título"}
+                              width={38}
+                              height={38}
+                              sizes="38px"
+                              avatarFallbackClassName="text-sm!"
+                              className="size-[38px] shrink-0 rounded-full border border-border object-cover"
+                            />
+                            <div className="min-w-0 flex-1 overflow-hidden">
+                              <TruncatedTextTooltip
+                                text={group.title ?? "Sem título"}
+                                variant="truncate"
+                                className="font-heading font-medium leading-tight text-foreground"
+                              />
+                              <span className="text-xs text-muted-foreground">
+                                {group.telegramChatId}
+                              </span>
+                            </div>
+                          </div>
+                        </TableCell>
+
+                        <TableCell className="w-55 min-w-55">
+                          <div className="flex min-w-0 flex-col gap-1">
+                            <div className="flex items-baseline justify-between gap-1 text-[11px]">
+                              <span className="text-muted-foreground">
+                                Gerenciados neste grupo
+                              </span>
+                              <span
+                                className={cn(
+                                  "shrink-0 font-medium tabular-nums",
+                                  group.trackedMemberLimitReached
+                                    ? "text-amber-600 dark:text-amber-500"
+                                    : "text-foreground",
+                                )}
+                              >
+                                {group.trackedMemberCount} /{" "}
+                                {group.trackedMemberLimitPerGroup}
+                              </span>
+                            </div>
+                            <Progress
+                              value={getTrackedMembersProgressPercent(
+                                group.trackedMemberCount,
+                                group.trackedMemberLimitPerGroup,
+                              )}
+                              className={cn(
+                                "w-full flex-nowrap gap-0",
+                                group.trackedMemberLimitReached &&
+                                  "**:data-[slot=progress-indicator]:bg-amber-500",
+                              )}
+                              aria-label={`Membros gerenciados neste grupo: ${group.trackedMemberCount} de ${group.trackedMemberLimitPerGroup}`}
+                            />
+                          </div>
+                        </TableCell>
+
+                        <TableCell className="hidden w-32 min-w-32 align-middle sm:table-cell">
+                          <TelegramGroupTypeCell
+                            type={group.type}
+                            isForum={group.isForum}
+                          />
+                        </TableCell>
+
+                        <TableCell className="hidden w-44 min-w-44 px-2 text-center align-center lg:table-cell">
+                          <LinkedStripePlansCell
+                            plans={group.linkedStripePlans}
+                          />
+                        </TableCell>
+
+                        <TableCell className="hidden w-36 min-w-36 text-center whitespace-nowrap align-middle md:table-cell">
+                          <span className="text-xs text-muted-foreground">
+                            {formatDate(group.connectedAt)}
+                          </span>
+                        </TableCell>
+
+                        <TableCell className="w-40 min-w-40 px-2 align-middle">
+                          <div className="flex min-w-0 justify-center">
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "h-auto min-w-0 max-w-full shrink gap-1.5 py-0.5 font-medium",
+                                botDisplay.className,
+                              )}
+                              title={botDisplay.label}
+                            >
+                              <span className="truncate">
+                                {botDisplay.label}
+                              </span>
+                            </Badge>
+                          </div>
+                        </TableCell>
+
+                        <TableCell
+                          className="w-20 min-w-20 px-1 text-center align-middle"
+                          onClick={(event) => event.stopPropagation()}
+                          onKeyDown={(event) => event.stopPropagation()}
+                        >
+                          <GroupRowActionsMenu
+                            groupId={group.id}
+                            groupTitle={group.title ?? ""}
+                            onViewMembers={() => setMembersDrawerGroup(group)}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+
+                  {tableEmpty.show && tableEmpty.kind ? (
+                    <TableRow className="hover:bg-background">
+                      <TableCell colSpan={8} className="p-0">
+                        <TableResultsEmptyState
+                          kind={tableEmpty.kind}
+                          resource="groups"
+                          isRefreshing={showDataRefresh}
+                          onClearSearch={clearSearch}
+                          onClearFilters={filtersPopover.clear}
                         />
                       </TableCell>
                     </TableRow>
-                  );
-                })}
-
-                {pagination.totalItems === 0 ? (
-                  <TableRow className="hover:bg-background">
-                    <TableCell colSpan={8} className="p-0">
-                      <GroupsEmptyState
-                        embedded
-                        hasNoGroups={false}
-                        isPopoverFilterEmpty={isPopoverFilterEmpty}
-                        isSearchEmpty={isSearchEmpty}
-                        onClearPopoverFilters={filtersPopover.clear}
-                        onClearSearch={clearSearch}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ) : null}
-              </TableBody>
-            </Table>
+                  ) : null}
+                </TableBody>
+              </Table>
+            </div>
           </div>
 
           {membersDrawerGroup ? (

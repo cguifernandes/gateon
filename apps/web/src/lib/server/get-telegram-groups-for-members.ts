@@ -10,7 +10,7 @@ import {
   telegramGroupsPaginatedResponseSchema,
 } from "@/lib/zod/telegram-group-connection-schemas";
 import type { PaginationMeta } from "@/lib/zod/pagination-schemas";
-import { DEFAULT_PAGE_SIZE } from "@/lib/zod/pagination-schemas";
+import { MEMBERS_TABLE_PAGE_SIZE } from "@/lib/zod/pagination-schemas";
 import { getSessionUser } from "./get-session";
 
 const EMPTY_GROUPS_SUMMARY: TelegramGroupsListSummaryDto = {
@@ -27,7 +27,7 @@ const EMPTY_MEMBERS_SUMMARY: TelegramMembersListSummaryDto = {
 
 const EMPTY_PAGINATION: PaginationMeta = {
   page: 1,
-  pageSize: DEFAULT_PAGE_SIZE,
+  pageSize: MEMBERS_TABLE_PAGE_SIZE,
   totalItems: 0,
   totalPages: 1,
 };
@@ -36,6 +36,7 @@ type GetTelegramGroupsForMembersOptions = {
   page?: number;
   pageSize?: number;
   all?: boolean;
+  includeMemberStripePlans?: boolean;
   search?: string;
   urlFilters?: MembersUrlFiltersState;
 };
@@ -87,6 +88,7 @@ export async function getTelegramGroupsForMembers(
   const forwardedFor =
     requestHeaders.get("x-forwarded-for") ?? requestHeaders.get("x-real-ip");
   const searchParams = buildTelegramGroupsListSearchParams({
+    pageSize: MEMBERS_TABLE_PAGE_SIZE,
     ...options,
     view: "members",
   });

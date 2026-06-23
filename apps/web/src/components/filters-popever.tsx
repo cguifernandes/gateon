@@ -145,7 +145,7 @@ export function FiltersPopover({
                   {...tooltipProps}
                   variant={hasAppliedFilters ? "default" : "outline"}
                   className={cn(
-                    "relative size-[36px] shrink-0 overflow-visible",
+                    "relative size-[40px] shrink-0 overflow-visible",
                     popoverProps.className,
                     tooltipProps.className,
                   )}

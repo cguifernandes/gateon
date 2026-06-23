@@ -1,11 +1,11 @@
 import { AppNotFound } from "@/components/app-not-found";
 import { getAlerts } from "@/lib/server/get-alerts";
-import { getTelegramGroups } from "@/lib/server/get-telegram-groups";
+import { getTelegramGroupOptions } from "@/lib/server/get-telegram-group-options";
 
 export default async function PrivateNotFound() {
   const [{ groups }, { data: alertsData }] = await Promise.all([
-    getTelegramGroups({ all: true }),
-    getAlerts({ all: true }),
+    getTelegramGroupOptions(),
+    getAlerts({ pageSize: 3 }),
   ]);
 
   return (

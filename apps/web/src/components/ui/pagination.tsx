@@ -10,7 +10,6 @@ import {
   ChevronRightIcon,
   type ChevronRightIconHandle,
 } from "@/components/icons/chevron-right";
-import { EllipsisHorizontalIcon } from "@/components/icons/ellipsis-horizontal";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -165,7 +164,9 @@ function PaginationEllipsis({
       )}
       {...props}
     >
-      <EllipsisHorizontalIcon size={16} isAnimateOnView={false} />
+      <span className="inline-flex size-4 items-center justify-center text-muted-foreground">
+        …
+      </span>
       <span className="sr-only">Mais páginas</span>
     </span>
   );

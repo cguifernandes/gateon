@@ -1,9 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { BadgeAlertIcon } from "@/components/icons/badge-alert";
-import { LoaderIcon } from "@/components/icons/loader";
 import { UsersIcon } from "@/components/icons/users";
 import { ImageComponent } from "@/components/image-component";
 import { SelectableOptionCard } from "@/components/selectable-option-card";
@@ -19,13 +17,11 @@ import {
 import { cn, withCacheBuster } from "@/lib/utils";
 import type { StripePaymentGroupLimit } from "@/lib/zod/stripe-payment-group-schemas";
 import { getSelectableStripeLinkGroupIds } from "@/lib/zod/stripe-payment-group-schemas";
-import {
-  type TelegramGroupSummaryDto,
-  telegramGroupsPaginatedResponseSchema,
-} from "@/lib/zod/telegram-group-connection-schemas";
+import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
 import { StripePaymentGroupLimitBadge } from "./stripe-payment-group-limit-badge";
 
 type StripeGroupSelectStepProps = {
+  groups: TelegramGroupSummaryDto[];
   selectedGroupId: string | null;
   onSelectGroup: (group: TelegramGroupSummaryDto) => void;
   stripePaymentGroupLimit: StripePaymentGroupLimit;
@@ -35,81 +31,13 @@ type StripeGroupSelectStepProps = {
   }>;
 };
 
-function readErrorMessage(body: unknown, fallback: string) {
-  if (
-    body &&
-    typeof body === "object" &&
-    "error" in body &&
-    typeof (body as { error?: unknown }).error === "string"
-  ) {
-    return (body as { error: string }).error;
-  }
-
-  return fallback;
-}
-
 export function StripeGroupSelectStep({
+  groups,
   selectedGroupId,
   onSelectGroup,
   stripePaymentGroupLimit,
   existingConnections,
 }: StripeGroupSelectStepProps) {
-  const [groups, setGroups] = useState<TelegramGroupSummaryDto[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadGroups() {
-      setIsLoading(true);
-      setErrorMessage(null);
-
-      try {
-        const response = await fetch("/api/telegram/groups?all=true", {
-          cache: "no-store",
-        });
-        const body: unknown = await response.json().catch(() => null);
-
-        if (cancelled) return;
-
-        if (!response.ok) {
-          setGroups([]);
-          setErrorMessage(
-            readErrorMessage(
-              body,
-              "Não foi possível carregar os grupos conectados.",
-            ),
-          );
-          return;
-        }
-
-        const parsed = telegramGroupsPaginatedResponseSchema.safeParse(body);
-        if (!parsed.success) {
-          setGroups([]);
-          setErrorMessage("A resposta da API veio em formato inválido.");
-          return;
-        }
-
-        setGroups(parsed.data.groups);
-      } catch {
-        if (cancelled) return;
-        setGroups([]);
-        setErrorMessage("A API demorou para responder. Tente novamente.");
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    void loadGroups();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   const selectableGroupIds = getSelectableStripeLinkGroupIds({
     connections: existingConnections,
     maxDistinctGroups: stripePaymentGroupLimit.maxDistinctGroups,
@@ -118,22 +46,6 @@ export function StripeGroupSelectStep({
   const selectableGroups = groups.filter((group) =>
     selectableGroupIds.includes(group.id),
   );
-
-  if (isLoading) {
-    return (
-      <div className="flex h-full w-full items-center justify-center">
-        <LoaderIcon size={20} />
-      </div>
-    );
-  }
-
-  if (errorMessage) {
-    return (
-      <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-destructive text-sm">
-        {errorMessage}
-      </div>
-    );
-  }
 
   if (groups.length === 0) {
     return (

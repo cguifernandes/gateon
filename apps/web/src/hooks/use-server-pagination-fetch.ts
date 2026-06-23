@@ -5,7 +5,7 @@ import type { PaginationMeta } from "@/lib/zod/pagination-schemas";
 import { DEFAULT_PAGE_SIZE } from "@/lib/zod/pagination-schemas";
 
 type UseServerPaginationFetchOptions<TResponse> = {
-  fetchPage: (page: number) => Promise<TResponse | null>;
+  fetchPage: (page: number, signal?: AbortSignal) => Promise<TResponse | null>;
   resetKey: string;
   initialData?: TResponse | null;
   initialPage?: number;
@@ -20,36 +20,50 @@ export function useServerPaginationFetch<TResponse>({
   const [page, setPage] = useState(initialPage);
   const [data, setData] = useState<TResponse | null>(initialData);
   const [isLoading, setIsLoading] = useState(false);
+  const [fetchedResetKey, setFetchedResetKey] = useState(resetKey);
   const [error, setError] = useState<string | null>(null);
   const previousResetKeyRef = useRef<string | undefined>(undefined);
   const requestIdRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const isRefreshing = resetKey !== fetchedResetKey || isLoading;
 
   const loadPage = useCallback(
-    async (targetPage: number) => {
+    async (targetPage: number, requestResetKey: string) => {
       const requestId = ++requestIdRef.current;
+      abortControllerRef.current?.abort();
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
       setIsLoading(true);
       setError(null);
 
       try {
-        const response = await fetchPage(targetPage);
+        const response = await fetchPage(targetPage, abortController.signal);
         if (requestId !== requestIdRef.current) {
           return;
         }
 
         if (!response) {
           setError("Não foi possível carregar os dados.");
+          setFetchedResetKey(requestResetKey);
           return;
         }
 
         setData(response);
         setPage(targetPage);
-      } catch {
+        setFetchedResetKey(requestResetKey);
+      } catch (error) {
         if (requestId !== requestIdRef.current) {
           return;
         }
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
         setError("Não foi possível carregar os dados.");
+        setFetchedResetKey(requestResetKey);
       } finally {
         if (requestId === requestIdRef.current) {
+          abortControllerRef.current = null;
           setIsLoading(false);
         }
       }
@@ -65,21 +79,25 @@ export function useServerPaginationFetch<TResponse>({
 
     if (previousResetKeyRef.current !== resetKey) {
       previousResetKeyRef.current = resetKey;
-      void loadPage(1);
+      void loadPage(1, resetKey);
     }
   }, [resetKey, loadPage]);
+
+  useEffect(
+    () => () => {
+      abortControllerRef.current?.abort();
+    },
+    [],
+  );
 
   return {
     data,
     page,
-    setPage: (nextPage: number) => {
-      void loadPage(nextPage);
-    },
+    setPage: (targetPage: number) => loadPage(targetPage, resetKey),
     isLoading,
+    isRefreshing,
     error,
-    reload: () => {
-      void loadPage(page);
-    },
+    reload: () => loadPage(page, resetKey),
   };
 }
 

@@ -66,6 +66,7 @@ type ConnectIntegrationDialogProps = {
   connectedPriceIds?: string[];
   onStripeConnected: (status: StripeBillingStatusDto) => void;
   stripePaymentGroupLimit: StripePaymentGroupLimit;
+  groups: TelegramGroupSummaryDto[];
   existingConnections: Array<{
     id: string;
     telegramGroupId: string | null;
@@ -290,6 +291,7 @@ export function ConnectIntegrationDialog({
   connectedPriceIds = [],
   onStripeConnected,
   stripePaymentGroupLimit,
+  groups,
   existingConnections,
 }: ConnectIntegrationDialogProps) {
   const [wizardKey, setWizardKey] = useState(0);
@@ -479,6 +481,7 @@ export function ConnectIntegrationDialog({
         "Defina para qual grupo do Telegram os assinantes deste plano serão enviados após o pagamento.",
       content: (
         <StripeGroupSelectStep
+          groups={groups}
           selectedGroupId={selectedGroupId || null}
           onSelectGroup={(group) => {
             form.setValue("telegramGroupId", group.id, {

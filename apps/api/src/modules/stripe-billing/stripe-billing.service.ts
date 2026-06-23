@@ -835,6 +835,27 @@ export class StripeBillingService {
     return this.buildStatusPayload(userId);
   }
 
+  async listConnectionOptions(userId: string) {
+    const connections = await this.prisma.stripeBillingConnections.findMany({
+      where: {
+        userId,
+        status: StripeBillingConnectionStatus.CONNECTED,
+      },
+      select: connectionSelect,
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return {
+      connections: connections.map((connection) =>
+        this.mapConnectionForResponse({
+          ...connection,
+          receivedPaymentCount: 0,
+          failedPaymentCount: 0,
+        }),
+      ),
+    };
+  }
+
   async previewCatalog(
     _userId: string,
     input: StripeBillingPreviewCatalogInput,

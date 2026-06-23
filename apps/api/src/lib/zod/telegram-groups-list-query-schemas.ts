@@ -18,6 +18,18 @@ export const memberStatusFilterSchema = z.enum(['all', 'active', 'left']);
 
 export const telegramGroupsListQuerySchema = paginationQuerySchema.extend({
   view: z.enum(['members']).optional(),
+  includeMembersPreview: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((value) => value === 'true'),
+  includeTelegramMemberCount: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((value) => value === 'true'),
+  includeMemberStripePlans: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((value) => value !== 'false'),
   q: z.string().trim().optional(),
   status: botStatusFilterSchema.optional().default('all'),
   from: optionalDateParam,

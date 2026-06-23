@@ -31,6 +31,11 @@ import {
   getMemberInitials,
 } from "@/app/(private)/members/_components/members-table-helpers";
 import stripeLogo from "@/assets/gateway/stripe-4.svg";
+import {
+  AlertReviewSummary,
+  formatReviewBoolean,
+  formatReviewValue,
+} from "@/components/alert-review-summary";
 import { ForumTopicSelectField } from "@/components/forum-topic-select-field";
 import {
   ArrowLeftIcon,
@@ -63,11 +68,6 @@ import {
   DialogStackTrigger,
   useDialogStackNavigation,
 } from "@/components/kibo-ui/dialog-stack";
-import {
-  AlertReviewSummary,
-  formatReviewBoolean,
-  formatReviewValue,
-} from "@/components/alert-review-summary";
 import { SelectableOptionCard } from "@/components/selectable-option-card";
 import { StripePrivateMessageBadge } from "@/components/stripe-private-message-badge";
 import { TruncatedTextTooltip } from "@/components/truncated-text-tooltip";
@@ -110,7 +110,10 @@ import {
   memberAutomationTriggerTypes,
 } from "@/lib/zod/alert-schemas";
 import type { StripeBillingConnectionDto } from "@/lib/zod/stripe-billing-schemas";
-import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
+import {
+  type TelegramGroupSummaryDto,
+  telegramGroupsPaginatedResponseSchema,
+} from "@/lib/zod/telegram-group-connection-schemas";
 
 const destinationLabels: Record<AlertDestinationType, string> = {
   GROUP: "Grupo inteiro",
@@ -501,7 +504,8 @@ function getUpdateAlertSuccessToast(
     case "QUICK_ALERT":
       return {
         title: "Modelo atualizado",
-        description: "O aviso rápido foi atualizado com as novas configurações.",
+        description:
+          "O aviso rápido foi atualizado com as novas configurações.",
       };
     case "AUTOMATION":
       return {
@@ -2174,6 +2178,9 @@ export function CreateAlertDialog({
   const isControlled = openProp !== undefined;
   const open = isControlled ? openProp : internalOpen;
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [groupsWithMembers, setGroupsWithMembers] = useState<
+    TelegramGroupSummaryDto[] | null
+  >(null);
   const plusIconRef = useRef<PlusIconHandle | null>(null);
   const xIconRefs = useRef<(XIconHandle | null)[]>([]);
   const arrowLeftIconRefs = useRef<(ArrowLeftIconHandle | null)[]>([]);
@@ -2212,6 +2219,43 @@ export function CreateAlertDialog({
 
     form.reset(DEFAULT_ALERT_FORM_VALUES);
   }, [alertToEdit, form, open]);
+
+  useEffect(() => {
+    if (!open || groupsWithMembers) return;
+
+    let cancelled = false;
+
+    async function loadGroupsWithMembers() {
+      try {
+        const response = await fetch(
+          "/api/telegram/groups?all=true&view=members",
+          { cache: "no-store" },
+        );
+        const body: unknown = await response.json().catch(() => null);
+        if (cancelled) return;
+
+        const parsed = telegramGroupsPaginatedResponseSchema.safeParse(body);
+        if (!response.ok || !parsed.success) {
+          throw new Error("Não foi possível carregar os membros dos grupos.");
+        }
+
+        setGroupsWithMembers(parsed.data.groups);
+      } catch {
+        if (!cancelled) {
+          toast.error("Falha ao carregar membros", {
+            description:
+              "A seleção de membros pode ficar indisponível. Tente abrir o alerta novamente.",
+          });
+        }
+      }
+    }
+
+    void loadGroupsWithMembers();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [groupsWithMembers, open]);
 
   useEffect(() => {
     const currentTelegramGroupId = form.getValues("telegramGroupId");
@@ -2367,6 +2411,7 @@ export function CreateAlertDialog({
         { id: "review", label: "Revisão" },
       ]
     : [...dialogProgressSteps];
+  const dialogGroups = groupsWithMembers ?? groups;
 
   const steps: CreateAlertWizardStep[] = isEditMode
     ? [
@@ -2377,7 +2422,7 @@ export function CreateAlertDialog({
           content: (
             <DetailsStep
               form={form}
-              groups={groups}
+              groups={dialogGroups}
               stripeConnections={stripeConnections}
               readOnlyDestination
             />
@@ -2391,7 +2436,7 @@ export function CreateAlertDialog({
           content: (
             <ReviewStep
               form={form}
-              groups={groups}
+              groups={dialogGroups}
               stripeConnections={stripeConnections}
             />
           ),
@@ -2412,7 +2457,7 @@ export function CreateAlertDialog({
           content: (
             <DetailsStep
               form={form}
-              groups={groups}
+              groups={dialogGroups}
               stripeConnections={stripeConnections}
             />
           ),
@@ -2424,7 +2469,7 @@ export function CreateAlertDialog({
           content: (
             <ReviewStep
               form={form}
-              groups={groups}
+              groups={dialogGroups}
               stripeConnections={stripeConnections}
             />
           ),
