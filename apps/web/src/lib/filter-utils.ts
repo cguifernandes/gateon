@@ -27,6 +27,7 @@ export function areDateRangesEqual(
 export const EMPTY_GROUPS_URL_FILTERS: GroupsUrlFiltersState = {
   botStatus: "all",
   connectedRange: undefined,
+  stripeConnectionIds: [],
 };
 
 export const EMPTY_ALERTS_URL_FILTERS: AlertsUrlFiltersState = {
@@ -38,6 +39,7 @@ export const EMPTY_ALERTS_URL_FILTERS: AlertsUrlFiltersState = {
 
 export const EMPTY_MEMBERS_URL_FILTERS: MembersUrlFiltersState = {
   memberStatus: "all",
+  stripePayer: "all",
   joinedRange: undefined,
   leftRange: undefined,
   telegramChatIds: [],
@@ -61,6 +63,7 @@ export function areGroupsUrlFiltersEqual(
 ): boolean {
   return (
     a.botStatus === b.botStatus &&
+    areTelegramChatIdListsEqual(a.stripeConnectionIds, b.stripeConnectionIds) &&
     areDateRangesEqual(a.connectedRange, b.connectedRange)
   );
 }
@@ -82,13 +85,16 @@ export function areMembersUrlFiltersEqual(
 ): boolean {
   return (
     a.memberStatus === b.memberStatus &&
+    a.stripePayer === b.stripePayer &&
     areTelegramChatIdListsEqual(a.telegramChatIds, b.telegramChatIds) &&
     areDateRangesEqual(a.joinedRange, b.joinedRange) &&
     areDateRangesEqual(a.leftRange, b.leftRange)
   );
 }
 
-export function countActiveGroupsUrlFilters(state: GroupsUrlFiltersState): number {
+export function countActiveGroupsUrlFilters(
+  state: GroupsUrlFiltersState,
+): number {
   let count = 0;
 
   if (state.botStatus !== "all") {
@@ -99,10 +105,16 @@ export function countActiveGroupsUrlFilters(state: GroupsUrlFiltersState): numbe
     count += 1;
   }
 
+  if (state.stripeConnectionIds.length > 0) {
+    count += 1;
+  }
+
   return count;
 }
 
-export function countActiveAlertsUrlFilters(state: AlertsUrlFiltersState): number {
+export function countActiveAlertsUrlFilters(
+  state: AlertsUrlFiltersState,
+): number {
   let count = 0;
 
   if (state.status !== "all") {
@@ -130,6 +142,10 @@ export function countActiveMembersUrlFilters(
   let count = 0;
 
   if (state.memberStatus !== "all") {
+    count += 1;
+  }
+
+  if (state.stripePayer !== "all") {
     count += 1;
   }
 

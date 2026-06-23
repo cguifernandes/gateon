@@ -1,4 +1,5 @@
 import type { Prisma } from '@prisma/client';
+import { StripeBillingConnectionStatus } from '@prisma/client';
 import { endOfDay, startOfDay } from 'date-fns';
 import type { TelegramGroupsListQueryInput } from './zod/telegram-groups-list-query-schemas';
 
@@ -35,9 +36,7 @@ function buildDateRange(
   };
 }
 
-export function parseTelegramChatIdsFilter(
-  raw?: string,
-): string[] {
+export function parseCommaSeparatedIdsFilter(raw?: string): string[] {
   if (!raw?.trim()) {
     return [];
   }
@@ -48,12 +47,23 @@ export function parseTelegramChatIdsFilter(
     .filter(Boolean);
 }
 
+export function parseTelegramChatIdsFilter(raw?: string): string[] {
+  return parseCommaSeparatedIdsFilter(raw);
+}
+
+export function parseStripeConnectionIdsFilter(raw?: string): string[] {
+  return parseCommaSeparatedIdsFilter(raw);
+}
+
 export function buildTelegramGroupsBaseWhere(
   userId: string,
   query: TelegramGroupsListQueryInput,
 ): Prisma.TelegramGroupsWhereInput {
   const connectedRange = buildDateRange(query.from, query.to);
   const telegramChatIds = parseTelegramChatIdsFilter(query.telegramChatIds);
+  const stripeConnectionIds = parseStripeConnectionIdsFilter(
+    query.stripeConnectionIds,
+  );
   const q = query.q?.trim();
 
   const where: Prisma.TelegramGroupsWhereInput = {
@@ -61,6 +71,16 @@ export function buildTelegramGroupsBaseWhere(
     ...(connectedRange ? { connectedAt: connectedRange } : {}),
     ...(telegramChatIds.length > 0
       ? { telegramChatId: { in: telegramChatIds } }
+      : {}),
+    ...(stripeConnectionIds.length > 0
+      ? {
+          stripeBillingConnections: {
+            some: {
+              id: { in: stripeConnectionIds },
+              status: StripeBillingConnectionStatus.CONNECTED,
+            },
+          },
+        }
       : {}),
   };
 

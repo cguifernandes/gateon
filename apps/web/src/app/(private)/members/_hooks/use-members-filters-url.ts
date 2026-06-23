@@ -10,6 +10,7 @@ import {
   EMPTY_MEMBERS_URL_FILTERS,
 } from "@/lib/filter-utils";
 import type { MemberStatusFilterValue } from "@/lib/members-filter";
+import type { StripePayerFilterValue } from "@/lib/stripe-payer-filter";
 import {
   buildMembersUrlFiltersSearchParams,
   type MembersUrlFiltersState,
@@ -19,6 +20,7 @@ import {
 export type MembersFiltersPopoverControl = {
   draft: MembersUrlFiltersState;
   setMemberStatus: (value: MemberStatusFilterValue) => void;
+  setStripePayer: (value: StripePayerFilterValue) => void;
   setJoinedRange: (value: DateRangeValue) => void;
   setLeftRange: (value: DateRangeValue) => void;
   setTelegramChatIds: (value: string[]) => void;
@@ -73,6 +75,10 @@ export function useMembersFiltersUrl() {
     setDraftFilters((current) => ({ ...current, memberStatus }));
   }, []);
 
+  const setStripePayer = useCallback((stripePayer: StripePayerFilterValue) => {
+    setDraftFilters((current) => ({ ...current, stripePayer }));
+  }, []);
+
   const setJoinedRange = useCallback((joinedRange: DateRangeValue) => {
     setDraftFilters((current) => ({ ...current, joinedRange }));
   }, []);
@@ -103,6 +109,7 @@ export function useMembersFiltersUrl() {
   const filtersPopover: MembersFiltersPopoverControl = {
     draft: draftFilters,
     setMemberStatus,
+    setStripePayer,
     setJoinedRange,
     setLeftRange,
     setTelegramChatIds,

@@ -208,6 +208,7 @@ function hasMembersViewFilters(query: TelegramGroupsListQueryInput): boolean {
   return Boolean(
     query.q?.trim() ||
     (query.memberStatus && query.memberStatus !== 'all') ||
+    (query.stripePayer && query.stripePayer !== 'all') ||
     query.joinedFrom ||
     query.joinedTo ||
     query.leftFrom ||
@@ -216,10 +217,27 @@ function hasMembersViewFilters(query: TelegramGroupsListQueryInput): boolean {
   );
 }
 
+function memberIsStripePayer(
+  groupId: string,
+  telegramUserId: string,
+  stripePayerPlansByMemberKey: Map<
+    string,
+    { connectionId: string; label: string }[]
+  >,
+): boolean {
+  const plans =
+    stripePayerPlansByMemberKey.get(`${groupId}:${telegramUserId}`) ?? [];
+  return plans.length > 0;
+}
+
 function filterMembersForMembersView(
   group: GroupRow,
   query: TelegramGroupsListQueryInput,
   memberWhere: Prisma.TelegramGroupMembersWhereInput,
+  stripePayerPlansByMemberKey: Map<
+    string,
+    { connectionId: string; label: string }[]
+  >,
 ) {
   const q = query.q?.trim() ?? '';
 
@@ -242,6 +260,30 @@ function filterMembersForMembersView(
       const range = memberWhere.leftAt as { gte?: Date; lte?: Date };
       if (range.gte && member.leftAt < range.gte) return false;
       if (range.lte && member.leftAt > range.lte) return false;
+    }
+
+    if (query.stripePayer === 'payer') {
+      if (
+        !memberIsStripePayer(
+          group.id,
+          member.telegramUserId,
+          stripePayerPlansByMemberKey,
+        )
+      ) {
+        return false;
+      }
+    }
+
+    if (query.stripePayer === 'non_payer') {
+      if (
+        memberIsStripePayer(
+          group.id,
+          member.telegramUserId,
+          stripePayerPlansByMemberKey,
+        )
+      ) {
+        return false;
+      }
     }
 
     return true;
@@ -314,7 +356,8 @@ async function mapGroupsToResponse(
   );
 
   const stripePayerPlansByMemberKey = membersView
-    ? query.includeMemberStripePlans
+    ? query.includeMemberStripePlans !== false ||
+      (query.stripePayer && query.stripePayer !== 'all')
       ? await deps.buildStripePayerPlansByMemberKey(userId, groupIds)
       : new Map<string, { connectionId: string; label: string }[]>()
     : new Map<string, { connectionId: string; label: string }[]>();
@@ -325,7 +368,12 @@ async function mapGroupsToResponse(
   for (const group of groups) {
     const telegramChatId = group.telegramChatId.trim();
     const members = membersView
-      ? filterMembersForMembersView(group, query, memberWhere).map((member) =>
+      ? filterMembersForMembersView(
+          group,
+          query,
+          memberWhere,
+          stripePayerPlansByMemberKey,
+        ).map((member) =>
           deps.withMemberStripePayerPlans(
             group.id,
             deps.mapTrackedMemberToDto(group.id, member),

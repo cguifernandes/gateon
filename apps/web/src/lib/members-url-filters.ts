@@ -3,10 +3,15 @@ import {
   MEMBER_STATUS_FILTER_OPTIONS,
   type MemberStatusFilterValue,
 } from "@/lib/members-filter";
+import {
+  STRIPE_PAYER_FILTER_OPTIONS,
+  type StripePayerFilterValue,
+} from "@/lib/stripe-payer-filter";
 
 /** Filters persisted in the URL (popover only — search stays in client state). */
 export type MembersUrlFiltersState = {
   memberStatus: MemberStatusFilterValue;
+  stripePayer: StripePayerFilterValue;
   joinedRange: DateRangeValue;
   leftRange: DateRangeValue;
   telegramChatIds: string[];
@@ -14,6 +19,10 @@ export type MembersUrlFiltersState = {
 
 const VALID_MEMBER_STATUS = new Set<MemberStatusFilterValue>(
   MEMBER_STATUS_FILTER_OPTIONS.map((option) => option.value),
+);
+
+const VALID_STRIPE_PAYER = new Set<StripePayerFilterValue>(
+  STRIPE_PAYER_FILTER_OPTIONS.map((option) => option.value),
 );
 
 const DATE_PARAM_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -65,6 +74,13 @@ export function parseMembersUrlFiltersFromSearchParams(
     ? (statusParam as MemberStatusFilterValue)
     : "all";
 
+  const stripePayerParam = params.get("stripePayer") ?? "all";
+  const stripePayer: StripePayerFilterValue = VALID_STRIPE_PAYER.has(
+    stripePayerParam as StripePayerFilterValue,
+  )
+    ? (stripePayerParam as StripePayerFilterValue)
+    : "all";
+
   const telegramChatIds = params
     .getAll("chatId")
     .map((id) => id.trim())
@@ -72,6 +88,7 @@ export function parseMembersUrlFiltersFromSearchParams(
 
   return {
     memberStatus,
+    stripePayer,
     joinedRange: parseDateRange("joinedFrom", "joinedTo", params),
     leftRange: parseDateRange("leftFrom", "leftTo", params),
     telegramChatIds,
@@ -88,6 +105,12 @@ export function buildMembersUrlFiltersSearchParams(
     params.set("status", filters.memberStatus);
   } else {
     params.delete("status");
+  }
+
+  if (filters.stripePayer !== "all") {
+    params.set("stripePayer", filters.stripePayer);
+  } else {
+    params.delete("stripePayer");
   }
 
   params.delete("group");

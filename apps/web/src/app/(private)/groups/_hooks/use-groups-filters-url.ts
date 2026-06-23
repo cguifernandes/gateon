@@ -26,6 +26,7 @@ export type GroupsFiltersPopoverControl = {
   draft: GroupsUrlFiltersState;
   setBotStatus: (value: BotStatusFilterValue) => void;
   setConnectedRange: (value: DateRangeValue) => void;
+  setStripeConnectionIds: (value: string[]) => void;
   syncDraftFromUrl: () => void;
   apply: () => void;
   clear: () => void;
@@ -81,6 +82,10 @@ export function useGroupsFiltersUrl() {
     setDraftFilters((current) => ({ ...current, connectedRange }));
   }, []);
 
+  const setStripeConnectionIds = useCallback((stripeConnectionIds: string[]) => {
+    setDraftFilters((current) => ({ ...current, stripeConnectionIds }));
+  }, []);
+
   const apply = useCallback(() => {
     markFiltersPending(draftFilters);
     pushUrlFilters(draftFilters);
@@ -100,6 +105,7 @@ export function useGroupsFiltersUrl() {
     draft: draftFilters,
     setBotStatus,
     setConnectedRange,
+    setStripeConnectionIds,
     syncDraftFromUrl,
     apply,
     clear,

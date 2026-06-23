@@ -8,6 +8,7 @@ import {
 export type GroupsUrlFiltersState = {
   botStatus: BotStatusFilterValue;
   connectedRange: DateRangeValue;
+  stripeConnectionIds: string[];
 };
 
 const VALID_BOT_STATUS = new Set<BotStatusFilterValue>(
@@ -43,7 +44,7 @@ export function formatGroupsFilterDate(date: Date): string {
 }
 
 export function parseGroupsUrlFiltersFromSearchParams(
-  params: Pick<URLSearchParams, "get">,
+  params: Pick<URLSearchParams, "get" | "getAll">,
 ): GroupsUrlFiltersState {
   const statusParam = params.get("status") ?? "all";
   const botStatus: BotStatusFilterValue = VALID_BOT_STATUS.has(
@@ -57,9 +58,15 @@ export function parseGroupsUrlFiltersFromSearchParams(
   const connectedRange: DateRangeValue =
     from !== undefined ? { from, to } : undefined;
 
+  const stripeConnectionIds = params
+    .getAll("connectionId")
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0);
+
   return {
     botStatus,
     connectedRange,
+    stripeConnectionIds,
   };
 }
 
@@ -87,6 +94,14 @@ export function buildGroupsUrlFiltersSearchParams(
   } else {
     params.delete("from");
     params.delete("to");
+  }
+
+  params.delete("connectionId");
+  for (const connectionId of filters.stripeConnectionIds) {
+    const normalized = connectionId.trim();
+    if (normalized.length > 0) {
+      params.append("connectionId", normalized);
+    }
   }
 
   return params;

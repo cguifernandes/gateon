@@ -3,17 +3,30 @@
 import { useMemo } from "react";
 import { type FilterParam, FiltersPopover } from "@/components/filters-popever";
 import {
+  StripePlanFilterOptions,
+  toStripePlanFilterOptions,
+} from "@/components/stripe-plan-filter-options";
+import {
   BOT_STATUS_FILTER_OPTIONS,
   type BotStatusFilterValue,
 } from "@/lib/telegram-bot-status";
+import type { StripeBillingConnectionDto } from "@/lib/zod/stripe-billing-schemas";
 import type { GroupsFiltersPopoverControl } from "../_hooks/use-groups-filters-url";
 
 type GroupsFiltersPopoverProps = {
+  stripeConnections: StripeBillingConnectionDto[];
   control: GroupsFiltersPopoverControl;
 };
 
-export function GroupsFiltersPopover({ control }: GroupsFiltersPopoverProps) {
+export function GroupsFiltersPopover({
+  stripeConnections,
+  control,
+}: GroupsFiltersPopoverProps) {
   const { draft } = control;
+  const stripePlans = useMemo(
+    () => toStripePlanFilterOptions(stripeConnections),
+    [stripeConnections],
+  );
 
   const filters = useMemo<FilterParam[]>(
     () => [
@@ -24,7 +37,23 @@ export function GroupsFiltersPopover({ control }: GroupsFiltersPopoverProps) {
         value: draft.botStatus,
         emptyValue: "all",
         options: BOT_STATUS_FILTER_OPTIONS,
-        onChange: (value) => control.setBotStatus(value as BotStatusFilterValue),
+        onChange: (value) =>
+          control.setBotStatus(value as BotStatusFilterValue),
+      },
+      {
+        type: "custom",
+        field: "stripePlan",
+        label: "Plano Stripe",
+        isActive: draft.stripeConnectionIds.length > 0,
+        render: (
+          <StripePlanFilterOptions
+            plans={stripePlans}
+            value={draft.stripeConnectionIds}
+            onChange={control.setStripeConnectionIds}
+            placeholder="Selecionar planos"
+            emptyMessage="Nenhum plano Stripe conectado."
+          />
+        ),
       },
       {
         type: "date",
@@ -35,7 +64,7 @@ export function GroupsFiltersPopover({ control }: GroupsFiltersPopoverProps) {
         onChange: control.setConnectedRange,
       },
     ],
-    [draft, control],
+    [control, draft, stripePlans],
   );
 
   return (

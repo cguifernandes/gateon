@@ -39,6 +39,7 @@ import {
   GROUPS_TABLE_PAGE_SIZE,
   type PaginationMeta,
 } from "@/lib/zod/pagination-schemas";
+import type { StripeBillingConnectionDto } from "@/lib/zod/stripe-billing-schemas";
 import type {
   TelegramGroupSummaryDto,
   TelegramGroupsListSummaryDto,
@@ -61,12 +62,14 @@ type GroupsTableProps = {
   initialGroups: TelegramGroupSummaryDto[];
   initialPagination: PaginationMeta;
   initialSummary: TelegramGroupsListSummaryDto;
+  stripeConnections: StripeBillingConnectionDto[];
 };
 
 export function GroupsTable({
   initialGroups,
   initialPagination,
   initialSummary,
+  stripeConnections,
 }: GroupsTableProps) {
   const router = useRouter();
   const { search, setSearch, clearSearch, urlFilters, filtersPopover } =
@@ -197,7 +200,10 @@ export function GroupsTable({
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
-              <GroupsFiltersPopover control={filtersPopover} />
+              <GroupsFiltersPopover
+                stripeConnections={stripeConnections}
+                control={filtersPopover}
+              />
               <RefreshAllGroupsButton disabled={summary.totalGroups === 0} />
             </div>
             <AddGroupBotDialog

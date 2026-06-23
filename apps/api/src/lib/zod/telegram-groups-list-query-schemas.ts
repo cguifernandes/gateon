@@ -16,6 +16,8 @@ export const botStatusFilterSchema = z.enum([
 
 export const memberStatusFilterSchema = z.enum(['all', 'active', 'left']);
 
+export const stripePayerFilterSchema = z.enum(['all', 'payer', 'non_payer']);
+
 export const telegramGroupsListQuerySchema = paginationQuerySchema.extend({
   view: z.enum(['members']).optional(),
   includeMembersPreview: z
@@ -35,11 +37,13 @@ export const telegramGroupsListQuerySchema = paginationQuerySchema.extend({
   from: optionalDateParam,
   to: optionalDateParam,
   memberStatus: memberStatusFilterSchema.optional().default('all'),
+  stripePayer: stripePayerFilterSchema.optional().default('all'),
   joinedFrom: optionalDateParam,
   joinedTo: optionalDateParam,
   leftFrom: optionalDateParam,
   leftTo: optionalDateParam,
   telegramChatIds: z.string().trim().optional(),
+  stripeConnectionIds: z.string().trim().optional(),
 });
 
 export type TelegramGroupsListQueryInput = z.infer<

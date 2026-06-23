@@ -72,11 +72,18 @@ export function buildTelegramGroupsListSearchParams(
       params.set("status", filters.botStatus);
     }
     appendDateRange(params, "", filters.connectedRange);
+    if (filters.stripeConnectionIds.length > 0) {
+      params.set("stripeConnectionIds", filters.stripeConnectionIds.join(","));
+    }
     return params;
   }
 
   if (filters.memberStatus !== "all") {
     params.set("memberStatus", filters.memberStatus);
+  }
+
+  if (filters.stripePayer !== "all") {
+    params.set("stripePayer", filters.stripePayer);
   }
 
   appendDateRange(params, "joined", filters.joinedRange);

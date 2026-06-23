@@ -39,7 +39,7 @@ const COPY: Record<
     filters: {
       title: "Nenhum grupo com esses filtros",
       description:
-        "Nenhum grupo corresponde ao status do bot ou ao período de conexão escolhidos. Ajuste os filtros ou limpe para ver todos.",
+        "Nenhum grupo corresponde ao status do bot, plano Stripe ou período de conexão escolhidos. Ajuste os filtros ou limpe para ver todos.",
     },
   },
   members: {
@@ -51,7 +51,7 @@ const COPY: Record<
     filters: {
       title: "Nenhum membro com esses filtros",
       description:
-        "Nenhum membro corresponde ao status, grupo ou período escolhidos. Ajuste os filtros ou limpe para ver todos.",
+        "Nenhum membro corresponde ao status, pagamento Stripe, grupo ou período escolhidos. Ajuste os filtros ou limpe para ver todos.",
     },
   },
   alerts: {

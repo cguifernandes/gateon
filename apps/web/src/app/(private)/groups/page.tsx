@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { LoaderPage } from "@/components/loader-page";
 import { DEFAULT_PLAN_ID, getMaxGroupsForPlan } from "@/lib/plan-limits";
 import { getSessionUser } from "@/lib/server/get-session";
+import { getStripeBillingConnectionOptions } from "@/lib/server/get-stripe-billing-connection-options";
 import { getTelegramGroups } from "@/lib/server/get-telegram-groups";
 import { cn } from "@/lib/utils";
 import { GroupsSummaryStats } from "./_components/groups-summary-stats";
@@ -15,8 +16,12 @@ export const metadata: Metadata = {
 };
 
 export default async function GroupsPage() {
-  const [sessionUser, { groups, pagination, summary, error }] =
-    await Promise.all([getSessionUser(), getTelegramGroups()]);
+  const [sessionUser, { groups, pagination, summary, error }, { connections }] =
+    await Promise.all([
+      getSessionUser(),
+      getTelegramGroups(),
+      getStripeBillingConnectionOptions(),
+    ]);
   const planId = sessionUser?.planId ?? DEFAULT_PLAN_ID;
   const isAtLimit =
     !error && summary.totalGroups >= getMaxGroupsForPlan(planId);
@@ -44,9 +49,10 @@ export default async function GroupsPage() {
       ) : (
         <Suspense fallback={<LoaderPage />}>
           <GroupsTable
-            initialGroups={groups.slice(0, 2)}
+            initialGroups={groups}
             initialPagination={pagination}
             initialSummary={summary}
+            stripeConnections={connections}
           />
         </Suspense>
       )}
