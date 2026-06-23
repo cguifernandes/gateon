@@ -11,7 +11,13 @@ export const metadata: Metadata = {
 };
 
 export default async function MembersPage() {
-  const { groups, error } = await getTelegramGroupsForMembers();
+  const [
+    { groups, pagination, membersSummary, summary, error },
+    { groups: filterGroups },
+  ] = await Promise.all([
+    getTelegramGroupsForMembers(),
+    getTelegramGroupsForMembers({ all: true }),
+  ]);
 
   return (
     <div className="relative flex flex-col gap-6">
@@ -26,11 +32,7 @@ export default async function MembersPage() {
           </p>
         </div>
 
-        {!error ? (
-          <MemberSummaryStats
-            members={groups.flatMap((group) => group.members)}
-          />
-        ) : null}
+        {!error ? <MemberSummaryStats summary={membersSummary} /> : null}
       </div>
 
       {error ? (
@@ -39,7 +41,13 @@ export default async function MembersPage() {
         </div>
       ) : (
         <Suspense fallback={<LoaderPage />}>
-          <MembersTable groups={groups} />
+          <MembersTable
+            initialGroups={groups}
+            initialPagination={pagination}
+            initialMembersSummary={membersSummary}
+            filterGroups={filterGroups}
+            initialSummary={summary}
+          />
         </Suspense>
       )}
     </div>

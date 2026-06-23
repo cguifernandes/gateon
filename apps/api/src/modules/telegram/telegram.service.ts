@@ -27,6 +27,8 @@ import {
   parseTelegramGroupAdministratorRightsPayload,
   type TelegramGroupAdministratorRights,
 } from '../../lib/telegram-admin-rights';
+import type { TelegramGroupsListQueryInput } from '../../lib/zod/telegram-groups-list-query-schemas';
+import { resolveTelegramGroupsList } from './telegram-groups-list.resolver';
 
 const DEFAULT_MEMBER_NOTICE_TEXT = 'Boa tarde';
 
@@ -263,140 +265,26 @@ export class TelegramService {
     };
   }
 
-  async listGroups(userId: string) {
+  async listGroups(userId: string, query: TelegramGroupsListQueryInput) {
     const trackedMemberLimitPerGroup =
       await this.groupLimit.getMaxManagedMembersPerGroup(userId);
 
-    const groups = await this.prisma.telegramGroups.findMany({
-      where: { userId },
-      orderBy: { connectedAt: 'desc' },
-      select: {
-        id: true,
-        telegramChatId: true,
-        title: true,
-        chatPhotoFileId: true,
-        type: true,
-        isForum: true,
-        botStatus: true,
-        connectedAt: true,
-        updatedAt: true,
-        addedByTelegramUserId: true,
-        addedByProfilePhotoFileId: true,
-        members: {
-          where: { leftAt: null },
-          orderBy: { updatedAt: 'desc' },
-          take: MEMBER_PREVIEW_LIMIT,
-          select: {
-            telegramUserId: true,
-            firstName: true,
-            lastName: true,
-            profilePhotoFileId: true,
-            isOwner: true,
-            joinedAt: true,
-            leftAt: true,
-          },
-        },
-        _count: {
-          select: {
-            members: { where: { leftAt: null } },
-          },
-        },
+    return resolveTelegramGroupsList(
+      {
+        prisma: this.prisma,
+        getTelegramChatMemberCount: (telegramChatId) =>
+          this.getTelegramChatMemberCount(telegramChatId),
+        mapTrackedMemberToDto: (groupId, member) =>
+          this.mapTrackedMemberToDto(groupId, member),
+        withMemberStripePayerPlans: (groupId, member, plansByMemberKey) =>
+          this.withMemberStripePayerPlans(groupId, member, plansByMemberKey),
+        buildStripePayerPlansByMemberKey: (ownerId, groupIds) =>
+          this.buildStripePayerPlansByMemberKey(ownerId, groupIds),
+        trackedMemberLimitPerGroup,
       },
-    });
-
-    const accountIds = [...new Set(groups.map((g) => g.addedByTelegramUserId))];
-    const accounts = await this.prisma.telegramAccounts.findMany({
-      where: { userId, telegramUserId: { in: accountIds } },
-      select: {
-        telegramUserId: true,
-        firstName: true,
-        lastName: true,
-      },
-    });
-    const accountsByTelegramId = new Map(
-      accounts.map((account) => [account.telegramUserId, account]),
-    );
-
-    const groupIds = groups.map((group) => group.id);
-    const stripeLinks =
-      groupIds.length > 0
-        ? await this.prisma.stripeBillingConnections.findMany({
-            where: {
-              userId,
-              status: StripeBillingConnectionStatus.CONNECTED,
-              telegramGroupId: { in: groupIds },
-            },
-            select: {
-              id: true,
-              telegramGroupId: true,
-              monitoredPlanLabel: true,
-              monitoredStripePriceId: true,
-            },
-          })
-        : [];
-    const stripePlansByGroupId = new Map<
-      string,
-      { connectionId: string; label: string }[]
-    >();
-    for (const link of stripeLinks) {
-      if (!link.telegramGroupId) continue;
-      const label =
-        link.monitoredPlanLabel?.trim() ||
-        link.monitoredStripePriceId ||
-        'Plano Stripe';
-      const current = stripePlansByGroupId.get(link.telegramGroupId) ?? [];
-      current.push({ connectionId: link.id, label });
-      stripePlansByGroupId.set(link.telegramGroupId, current);
-    }
-
-    const leftMemberCounts =
-      groupIds.length > 0
-        ? await this.prisma.telegramGroupMembers.groupBy({
-            by: ['telegramGroupId'],
-            where: {
-              telegramGroupId: { in: groupIds },
-              leftAt: { not: null },
-            },
-            _count: { _all: true },
-          })
-        : [];
-    const leftMemberCountByGroupId = new Map(
-      leftMemberCounts.map((row) => [row.telegramGroupId, row._count._all]),
-    );
-
-    return Promise.all(
-      groups.map(async (group) => {
-        const telegramChatId = group.telegramChatId.trim();
-
-        return {
-          id: group.id,
-          telegramChatId,
-          title: group.title,
-          chatPhotoUrl: group.chatPhotoFileId
-            ? `/api/telegram/groups/${group.id}/chat-photo`
-            : null,
-          type: group.type,
-          isForum: group.isForum,
-          botStatus: group.botStatus,
-          connectedAt: group.connectedAt,
-          updatedAt: group.updatedAt,
-          memberCount: await this.getTelegramChatMemberCount(telegramChatId),
-          trackedMemberCount: group._count.members,
-          leftMemberCount: leftMemberCountByGroupId.get(group.id) ?? 0,
-          trackedMemberLimitPerGroup,
-          trackedMemberLimitReached:
-            group._count.members >= trackedMemberLimitPerGroup,
-          connectedBy:
-            accountsByTelegramId.get(group.addedByTelegramUserId) ?? null,
-          connectedByProfilePhotoUrl: group.addedByProfilePhotoFileId
-            ? `/api/telegram/groups/${group.id}/connector-profile-photo`
-            : null,
-          members: group.members.map((m) =>
-            this.mapTrackedMemberToDto(group.id, m),
-          ),
-          linkedStripePlans: stripePlansByGroupId.get(group.id) ?? [],
-        };
-      }),
+      userId,
+      query,
+      false,
     );
   }
 
@@ -475,112 +363,29 @@ export class TelegramService {
     };
   }
 
-  async listGroupsForMembersView(userId: string) {
+  async listGroupsForMembersView(
+    userId: string,
+    query: TelegramGroupsListQueryInput,
+  ) {
     const trackedMemberLimitPerGroup =
       await this.groupLimit.getMaxManagedMembersPerGroup(userId);
 
-    const groups = await this.prisma.telegramGroups.findMany({
-      where: { userId },
-      orderBy: { connectedAt: 'desc' },
-      select: {
-        id: true,
-        telegramChatId: true,
-        title: true,
-        chatPhotoFileId: true,
-        type: true,
-        isForum: true,
-        botStatus: true,
-        connectedAt: true,
-        updatedAt: true,
-        addedByTelegramUserId: true,
-        addedByProfilePhotoFileId: true,
-        members: {
-          orderBy: [{ leftAt: 'asc' }, { updatedAt: 'desc' }],
-          select: {
-            telegramUserId: true,
-            firstName: true,
-            lastName: true,
-            profilePhotoFileId: true,
-            isOwner: true,
-            joinedAt: true,
-            leftAt: true,
-          },
-        },
-        _count: {
-          select: {
-            members: { where: { leftAt: null } },
-          },
-        },
+    return resolveTelegramGroupsList(
+      {
+        prisma: this.prisma,
+        getTelegramChatMemberCount: (telegramChatId) =>
+          this.getTelegramChatMemberCount(telegramChatId),
+        mapTrackedMemberToDto: (groupId, member) =>
+          this.mapTrackedMemberToDto(groupId, member),
+        withMemberStripePayerPlans: (groupId, member, plansByMemberKey) =>
+          this.withMemberStripePayerPlans(groupId, member, plansByMemberKey),
+        buildStripePayerPlansByMemberKey: (ownerId, groupIds) =>
+          this.buildStripePayerPlansByMemberKey(ownerId, groupIds),
+        trackedMemberLimitPerGroup,
       },
-    });
-
-    const accountIds = [...new Set(groups.map((g) => g.addedByTelegramUserId))];
-    const accounts = await this.prisma.telegramAccounts.findMany({
-      where: { userId, telegramUserId: { in: accountIds } },
-      select: {
-        telegramUserId: true,
-        firstName: true,
-        lastName: true,
-      },
-    });
-    const accountsByTelegramId = new Map(
-      accounts.map((account) => [account.telegramUserId, account]),
-    );
-
-    const groupIds = groups.map((group) => group.id);
-    const leftMemberCounts =
-      groupIds.length > 0
-        ? await this.prisma.telegramGroupMembers.groupBy({
-            by: ['telegramGroupId'],
-            where: {
-              telegramGroupId: { in: groupIds },
-              leftAt: { not: null },
-            },
-            _count: { _all: true },
-          })
-        : [];
-    const leftMemberCountByGroupId = new Map(
-      leftMemberCounts.map((row) => [row.telegramGroupId, row._count._all]),
-    );
-    const stripePayerPlansByMemberKey =
-      await this.buildStripePayerPlansByMemberKey(userId, groupIds);
-
-    return Promise.all(
-      groups.map(async (group) => {
-        const telegramChatId = group.telegramChatId.trim();
-
-        return {
-          id: group.id,
-          telegramChatId,
-          title: group.title,
-          chatPhotoUrl: group.chatPhotoFileId
-            ? `/api/telegram/groups/${group.id}/chat-photo`
-            : null,
-          type: group.type,
-          isForum: group.isForum,
-          botStatus: group.botStatus,
-          connectedAt: group.connectedAt,
-          updatedAt: group.updatedAt,
-          memberCount: await this.getTelegramChatMemberCount(telegramChatId),
-          trackedMemberCount: group._count.members,
-          leftMemberCount: leftMemberCountByGroupId.get(group.id) ?? 0,
-          trackedMemberLimitPerGroup,
-          trackedMemberLimitReached:
-            group._count.members >= trackedMemberLimitPerGroup,
-          connectedBy:
-            accountsByTelegramId.get(group.addedByTelegramUserId) ?? null,
-          connectedByProfilePhotoUrl: group.addedByProfilePhotoFileId
-            ? `/api/telegram/groups/${group.id}/connector-profile-photo`
-            : null,
-          members: group.members.map((m) =>
-            this.withMemberStripePayerPlans(
-              group.id,
-              this.mapTrackedMemberToDto(group.id, m),
-              stripePayerPlansByMemberKey,
-            ),
-          ),
-        };
-      }),
+      userId,
+      query,
+      true,
     );
   }
 

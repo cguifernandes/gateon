@@ -19,7 +19,7 @@ export default async function AlertsPage() {
     { data: stripeBillingStatus, error: stripeError },
   ] = await Promise.all([
     getAlerts(),
-    getTelegramGroupsForMembers(),
+    getTelegramGroupsForMembers({ all: true }),
     getStripeBillingStatus(),
   ]);
 

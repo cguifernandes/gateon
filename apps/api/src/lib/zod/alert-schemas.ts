@@ -282,11 +282,24 @@ export const alertUpsertSchema = z
     }
   });
 
+const optionalDateParam = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .optional();
+
 export const alertListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(10),
+  all: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((value) => value === 'true'),
   q: z.string().trim().optional(),
   status: alertStatusSchema.optional(),
   destinationType: alertDestinationTypeSchema.optional(),
   groupId: z.string().trim().optional(),
+  createdFrom: optionalDateParam,
+  createdTo: optionalDateParam,
 });
 
 export const alertTemplateCreateSchema = z.object({

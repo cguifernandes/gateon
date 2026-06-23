@@ -15,13 +15,13 @@ export const metadata: Metadata = {
 };
 
 export default async function GroupsPage() {
-  const { groups, error } = await getTelegramGroups();
+  const { groups, pagination, summary, error } = await getTelegramGroups();
   const isAtLimit =
-    !error && groups.length >= getMaxGroupsForPlan(DEFAULT_PLAN_ID);
+    !error && summary.totalGroups >= getMaxGroupsForPlan(DEFAULT_PLAN_ID);
 
   return (
     <div className="relative flex flex-col gap-6">
-      {!error ? <SyncGroupLimit connectedCount={groups.length} /> : null}
+      {!error ? <SyncGroupLimit connectedCount={summary.totalGroups} /> : null}
 
       <LimitGroups />
 
@@ -34,7 +34,7 @@ export default async function GroupsPage() {
             Gerencie todos os grupos conectados ao seu bot.
           </p>
         </div>
-        {!error ? <GroupsSummaryStats groups={groups} /> : null}
+        {!error ? <GroupsSummaryStats summary={summary} /> : null}
       </div>
 
       {error ? (
@@ -43,7 +43,11 @@ export default async function GroupsPage() {
         </div>
       ) : (
         <Suspense fallback={<LoaderPage />}>
-          <GroupsTable groups={groups} />
+          <GroupsTable
+            initialGroups={groups}
+            initialPagination={pagination}
+            initialSummary={summary}
+          />
         </Suspense>
       )}
     </div>

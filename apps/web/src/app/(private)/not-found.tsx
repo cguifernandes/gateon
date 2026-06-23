@@ -4,8 +4,8 @@ import { getTelegramGroups } from "@/lib/server/get-telegram-groups";
 
 export default async function PrivateNotFound() {
   const [{ groups }, { data: alertsData }] = await Promise.all([
-    getTelegramGroups(),
-    getAlerts(),
+    getTelegramGroups({ all: true }),
+    getAlerts({ all: true }),
   ]);
 
   return (

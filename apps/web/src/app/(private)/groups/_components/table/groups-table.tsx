@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { TelegramGroupTypeCell } from "@/app/(private)/groups/_components/table/telegram-group-type-badges";
 import { AddGroupBotDialog } from "@/components/add-group-bot-dialog";
+import { DataTablePagination } from "@/components/data-table-pagination";
 import { SearchIcon, type SearchIconHandle } from "@/components/icons/search";
 import { ImageComponent } from "@/components/image-component";
 import {
@@ -23,14 +24,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { countActiveGroupsUrlFilters } from "@/lib/filter-utils";
-import { matchesConnectedAtRange } from "@/lib/groups-filter";
 import {
-  getBotStatusDisplay,
-  matchesBotStatusFilter,
-} from "@/lib/telegram-bot-status";
+  toClientPaginationState,
+  useServerPaginationFetch,
+} from "@/hooks/use-server-pagination-fetch";
+import { buildTelegramGroupsListSearchParams } from "@/lib/build-telegram-groups-list-search-params";
+import { countActiveGroupsUrlFilters } from "@/lib/filter-utils";
+import { getBotStatusDisplay } from "@/lib/telegram-bot-status";
 import { cn, withCacheBuster } from "@/lib/utils";
-import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
+import type { PaginationMeta } from "@/lib/zod/pagination-schemas";
+import type {
+  TelegramGroupSummaryDto,
+  TelegramGroupsListSummaryDto,
+  TelegramGroupsPaginatedResponseDto,
+} from "@/lib/zod/telegram-group-connection-schemas";
+import { telegramGroupsPaginatedResponseSchema } from "@/lib/zod/telegram-group-connection-schemas";
 import { useGroupsFiltersUrl } from "../../_hooks/use-groups-filters-url";
 import { GroupsFiltersPopover } from "../groups-filters-popover";
 import { RefreshAllGroupsButton } from "../refresh-all-groups-button";
@@ -40,19 +48,25 @@ import { GroupRowActionsMenu } from "./group-row-actions-menu";
 import {
   formatDate,
   getTrackedMembersProgressPercent,
-  memberMatchesSearch,
 } from "./group-table-helpers";
 import { LinkedStripePlansCell } from "./linked-stripe-plans-cell";
 
 type GroupsTableProps = {
-  groups: TelegramGroupSummaryDto[];
+  initialGroups: TelegramGroupSummaryDto[];
+  initialPagination: PaginationMeta;
+  initialSummary: TelegramGroupsListSummaryDto;
 };
 
-export function GroupsTable({ groups }: GroupsTableProps) {
+export function GroupsTable({
+  initialGroups,
+  initialPagination,
+  initialSummary,
+}: GroupsTableProps) {
   const router = useRouter();
   const { search, setSearch, clearSearch, urlFilters, filtersPopover } =
     useGroupsFiltersUrl();
   const searchIconRef = useRef<SearchIconHandle>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [membersDrawerGroup, setMembersDrawerGroup] =
     useState<TelegramGroupSummaryDto | null>(null);
   const [removeGroupTarget, setRemoveGroupTarget] =
@@ -61,44 +75,77 @@ export function GroupsTable({ groups }: GroupsTableProps) {
     useState<QuickNoticePayload | null>(null);
 
   useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  const fetchPage = useCallback(
+    async (page: number) => {
+      const params = buildTelegramGroupsListSearchParams({
+        page,
+        search: debouncedSearch,
+        urlFilters,
+      });
+      const response = await fetch(
+        `/api/telegram/groups?${params.toString()}`,
+        {
+          cache: "no-store",
+        },
+      );
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const parsed = telegramGroupsPaginatedResponseSchema.safeParse(
+        await response.json(),
+      );
+      return parsed.success ? parsed.data : null;
+    },
+    [debouncedSearch, urlFilters],
+  );
+
+  const { data, setPage, isLoading, reload } =
+    useServerPaginationFetch<TelegramGroupsPaginatedResponseDto>({
+      fetchPage,
+      resetKey: `${debouncedSearch}:${JSON.stringify(urlFilters)}`,
+      initialData: {
+        groups: initialGroups,
+        pagination: initialPagination,
+        summary: initialSummary,
+      },
+      initialPage: initialPagination.page,
+    });
+
+  const groups = data?.groups ?? initialGroups;
+  const summary = data?.summary ?? initialSummary;
+  const pagination = toClientPaginationState(
+    data?.pagination ?? initialPagination,
+    setPage,
+  );
+
+  useEffect(() => {
     if (!membersDrawerGroup) {
       return;
     }
-    const fresh = groups.find((g) => g.id === membersDrawerGroup.id);
+
+    const fresh = groups.find((group) => group.id === membersDrawerGroup.id);
     if (fresh) {
       setMembersDrawerGroup(fresh);
     }
   }, [groups, membersDrawerGroup]);
 
   const hasPopoverFilters = countActiveGroupsUrlFilters(urlFilters) > 0;
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return groups.filter((g) => {
-      const matchesSearch =
-        !q ||
-        (g.title ?? "").toLowerCase().includes(q) ||
-        g.telegramChatId.toLowerCase().includes(q) ||
-        memberMatchesSearch(g.members, q);
-      const matchesStatus = matchesBotStatusFilter(
-        g.botStatus,
-        urlFilters.botStatus,
-      );
-      const matchesConnected = matchesConnectedAtRange(
-        g.connectedAt,
-        urlFilters.connectedRange,
-      );
-      return matchesSearch && matchesStatus && matchesConnected;
-    });
-  }, [groups, search, urlFilters]);
-
-  const hasNoGroups = groups.length === 0;
-  const hasActiveSearch = search.trim().length > 0;
+  const hasNoGroups = summary.totalGroups === 0;
+  const hasActiveSearch = debouncedSearch.length > 0;
   const isSearchEmpty =
-    !hasNoGroups && filtered.length === 0 && hasActiveSearch;
+    !hasNoGroups && pagination.totalItems === 0 && hasActiveSearch;
   const isPopoverFilterEmpty =
     !hasNoGroups &&
-    filtered.length === 0 &&
+    pagination.totalItems === 0 &&
     !hasActiveSearch &&
     hasPopoverFilters;
 
@@ -133,11 +180,16 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                 />
               </div>
               <GroupsFiltersPopover control={filtersPopover} />
-              <RefreshAllGroupsButton disabled={groups.length === 0} />
+              <RefreshAllGroupsButton disabled={summary.totalGroups === 0} />
             </div>
             <AddGroupBotDialog />
           </div>
-          <div className="overflow-x-auto rounded-md border border-border bg-background shadow-xs">
+          <div
+            className={cn(
+              "overflow-x-auto rounded-md border border-border bg-background shadow-xs",
+              isLoading && "opacity-60",
+            )}
+          >
             <Table className="w-full min-w-max table-auto">
               <TableHeader>
                 <TableRow className="bg-muted hover:bg-muted!">
@@ -147,7 +199,7 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                     Tipo
                   </TableHead>
                   <TableHead className="hidden w-44 min-w-44 whitespace-nowrap px-2 text-center lg:table-cell">
-                    Gateway
+                    Planos
                   </TableHead>
                   <TableHead className="hidden w-36 min-w-36 whitespace-nowrap px-2 text-center md:table-cell">
                     Conectado em
@@ -162,7 +214,7 @@ export function GroupsTable({ groups }: GroupsTableProps) {
               </TableHeader>
 
               <TableBody>
-                {filtered.map((group) => {
+                {groups.map((group) => {
                   const botDisplay = getBotStatusDisplay(group.botStatus);
 
                   return (
@@ -250,7 +302,7 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                         />
                       </TableCell>
 
-                      <TableCell className="hidden w-44 min-w-44 px-2 text-center align-top lg:table-cell">
+                      <TableCell className="hidden w-44 min-w-44 px-2 text-center align-center lg:table-cell">
                         <LinkedStripePlansCell
                           plans={group.linkedStripePlans}
                         />
@@ -292,7 +344,7 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                   );
                 })}
 
-                {filtered.length === 0 ? (
+                {pagination.totalItems === 0 ? (
                   <TableRow className="hover:bg-background">
                     <TableCell colSpan={8} className="p-0">
                       <GroupsEmptyState
@@ -335,7 +387,10 @@ export function GroupsTable({ groups }: GroupsTableProps) {
                 setQuickNoticePayload(null);
               }
             }}
-            onSent={() => router.refresh()}
+            onSent={() => {
+              reload();
+              router.refresh();
+            }}
           />
 
           <RemoveGroupDialog
@@ -350,26 +405,20 @@ export function GroupsTable({ groups }: GroupsTableProps) {
             onRemoved={() => {
               setRemoveGroupTarget(null);
               setMembersDrawerGroup(null);
+              reload();
               router.refresh();
             }}
           />
         </>
       )}
 
-      {groups.length > 1 &&
-        (filtered.length > 0 || hasActiveSearch || hasPopoverFilters) && (
-          <p className="text-center text-xs text-muted-foreground">
-            Exibindo{" "}
-            <strong className="font-medium text-foreground">
-              {filtered.length}
-            </strong>{" "}
-            de{" "}
-            <strong className="font-medium text-foreground">
-              {groups.length}
-            </strong>{" "}
-            grupo{groups.length !== 1 ? "s" : ""}
-          </p>
-        )}
+      {pagination.totalItems > 0 ? (
+        <DataTablePagination
+          pagination={pagination}
+          itemLabel="grupo"
+          itemLabelPlural="grupos"
+        />
+      ) : null}
     </div>
   );
 }

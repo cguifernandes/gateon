@@ -16,6 +16,7 @@ import {
 import type { Request } from 'express';
 import { telegramGroupChatNoticeRequestSchema } from '../../lib/zod/telegram-group-chat-notice-schemas';
 import { telegramGroupMemberBulkActionSchema } from '../../lib/zod/telegram-member-actions-schemas';
+import { telegramGroupsListQuerySchema } from '../../lib/zod/telegram-groups-list-query-schemas';
 import { telegramBotEventSchema } from '../../lib/zod/telegram-schemas';
 import { AuthGuard } from '../../lib/guards/auth.guard';
 import { TelegramService } from './telegram.service';
@@ -26,17 +27,19 @@ export class TelegramController {
 
   @Get('groups')
   @UseGuards(AuthGuard)
-  listGroups(@Req() req: Request, @Query('view') view?: string) {
+  listGroups(@Req() req: Request, @Query() query: unknown) {
     const userId = req.authSession?.userId;
     if (!userId) {
       throw new UnauthorizedException();
     }
 
-    if (view === 'members') {
-      return this.telegram.listGroupsForMembersView(userId);
+    const parsed = telegramGroupsListQuerySchema.parse(query);
+
+    if (parsed.view === 'members') {
+      return this.telegram.listGroupsForMembersView(userId, parsed);
     }
 
-    return this.telegram.listGroups(userId);
+    return this.telegram.listGroups(userId, parsed);
   }
 
   @Get('groups/:groupId')

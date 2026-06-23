@@ -3,10 +3,10 @@ import { CircleCheckIcon } from "@/components/icons/circle-check";
 import { UserRoundMinusIcon } from "@/components/icons/user-round-minus";
 import { UsersIcon } from "@/components/icons/users";
 import { cn } from "@/lib/utils";
-import type { MemberSummary } from "./members-table-helpers";
+import type { TelegramMembersListSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
 
 type MemberSummaryStatsProps = {
-  members: MemberSummary[];
+  summary: TelegramMembersListSummaryDto;
 };
 
 type SummaryStatTone = "default" | "success" | "warning";
@@ -46,26 +46,22 @@ function SummaryStat({
   );
 }
 
-export function MemberSummaryStats({ members }: MemberSummaryStatsProps) {
-  const totalMembers = members.length;
-  const totalLeftMembers = members.filter(
-    (member) => member.status === "left",
-  ).length;
-  const totalActiveMembers = members.filter(
-    (member) => member.status === "active",
-  ).length;
-
+export function MemberSummaryStats({ summary }: MemberSummaryStatsProps) {
   return (
     <div className="flex flex-wrap items-center gap-x-6 gap-y-3 pt-1">
-      <SummaryStat icon={UsersIcon} value={totalMembers} label="membros" />
+      <SummaryStat
+        icon={UsersIcon}
+        value={summary.totalMembers}
+        label="membros"
+      />
       <SummaryStat
         icon={UserRoundMinusIcon}
-        value={totalLeftMembers}
+        value={summary.leftCount}
         label="saíram"
       />
       <SummaryStat
         icon={CircleCheckIcon}
-        value={totalActiveMembers}
+        value={summary.activeCount}
         label="ativos"
         tone="success"
       />

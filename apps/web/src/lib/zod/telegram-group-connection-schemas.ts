@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { paginationMetaSchema } from "./pagination-schemas";
 import { telegramGroupBotSettingsSchema } from "./telegram-group-bot-settings-schemas";
 
 /** Matches Prisma `TelegramConnectionStatus` from the Nest API */
@@ -113,6 +114,35 @@ export const telegramGroupSummarySchema = z.object({
 });
 
 export const telegramGroupsResponseSchema = z.array(telegramGroupSummarySchema);
+
+export const telegramGroupsListSummarySchema = z.object({
+  totalGroups: z.number().int().nonnegative(),
+  pendingPermissionsCount: z.number().int().nonnegative(),
+  planMemberUsagePercent: z.number().int().min(0).max(100),
+});
+
+export const telegramMembersListSummarySchema = z.object({
+  totalMembers: z.number().int().nonnegative(),
+  activeCount: z.number().int().nonnegative(),
+  leftCount: z.number().int().nonnegative(),
+});
+
+export const telegramGroupsPaginatedResponseSchema = z.object({
+  groups: z.array(telegramGroupSummarySchema),
+  pagination: paginationMetaSchema,
+  summary: telegramGroupsListSummarySchema,
+  membersSummary: telegramMembersListSummarySchema.optional(),
+});
+
+export type TelegramGroupsListSummaryDto = z.infer<
+  typeof telegramGroupsListSummarySchema
+>;
+export type TelegramMembersListSummaryDto = z.infer<
+  typeof telegramMembersListSummarySchema
+>;
+export type TelegramGroupsPaginatedResponseDto = z.infer<
+  typeof telegramGroupsPaginatedResponseSchema
+>;
 
 export type TelegramGroupSummaryDto = z.infer<
   typeof telegramGroupSummarySchema

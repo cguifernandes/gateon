@@ -1,11 +1,17 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { DataTablePagination } from "@/components/data-table-pagination";
 import { SearchIcon, type SearchIconHandle } from "@/components/icons/search";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { matchesConnectedAtRange } from "@/lib/groups-filter";
+import {
+  toClientPaginationState,
+  useServerPaginationFetch,
+} from "@/hooks/use-server-pagination-fetch";
+import { buildAlertsListSearchParams } from "@/lib/build-alerts-list-search-params";
+import { cn } from "@/lib/utils";
 import {
   type AlertSummaryDto,
   type AlertsResponseDto,
@@ -51,8 +57,8 @@ export function AlertsClient({
   groups,
   stripeConnections,
 }: AlertsClientProps) {
-  const [data, setData] = useState(initialData);
   const [query, setQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const { urlFilters, control: filtersControl } = useAlertsFiltersUrl();
   const [selectedAlert, setSelectedAlert] = useState<AlertSummaryDto | null>(
     null,
@@ -61,77 +67,66 @@ export function AlertsClient({
     null,
   );
   const searchIconRef = useRef<SearchIconHandle>(null);
-  const normalizedQuery = query.trim().toLowerCase();
 
-  const filteredAlerts = useMemo(() => {
-    return data.alerts.filter((alert) => {
-      const matchesSearch =
-        !normalizedQuery ||
-        alert.name.toLowerCase().includes(normalizedQuery) ||
-        (alert.internalTitle ?? "").toLowerCase().includes(normalizedQuery);
-      const matchesGroup =
-        urlFilters.groupId === "all" ||
-        alert.telegramGroupId === urlFilters.groupId;
-      const createdAt =
-        typeof alert.createdAt === "string"
-          ? alert.createdAt
-          : alert.createdAt.toISOString();
-      const matchesDate = matchesConnectedAtRange(
-        createdAt,
-        urlFilters.createdRange,
-      );
-      const matchesStatus =
-        urlFilters.status === "all" || alert.status === urlFilters.status;
-      const matchesDestination =
-        urlFilters.destination === "all" ||
-        alert.destinationType === urlFilters.destination;
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(query.trim());
+    }, 300);
 
-      return (
-        matchesSearch &&
-        matchesGroup &&
-        matchesDate &&
-        matchesStatus &&
-        matchesDestination
-      );
-    });
-  }, [data.alerts, normalizedQuery, urlFilters]);
+    return () => window.clearTimeout(timer);
+  }, [query]);
 
-  const refreshAlerts = useCallback(async () => {
-    try {
-      const response = await fetch("/api/alerts", {
+  const fetchPage = useCallback(
+    async (page: number) => {
+      const params = buildAlertsListSearchParams({
+        page,
+        search: debouncedSearch,
+        urlFilters,
+      });
+      const response = await fetch(`/api/alerts?${params.toString()}`, {
         cache: "no-store",
         headers: { "Cache-Control": "no-cache" },
       });
-      const body: unknown = await response.json().catch(() => null);
 
       if (!response.ok) {
-        toast.error("Falha ao atualizar alertas", {
-          description: readRefreshAlertsError(body),
-        });
-        return;
+        return null;
       }
 
-      const parsed = alertsResponseSchema.safeParse(body);
-      if (!parsed.success) {
-        toast.error("Falha ao atualizar alertas", {
-          description: "A resposta da API veio em formato inválido.",
-        });
-        return;
-      }
+      const parsed = alertsResponseSchema.safeParse(await response.json());
+      return parsed.success ? parsed.data : null;
+    },
+    [debouncedSearch, urlFilters],
+  );
 
-      setData(parsed.data);
-      setSelectedAlert((current) => {
-        if (!current) return current;
-        return (
-          parsed.data.alerts.find((alert) => alert.id === current.id) ?? null
-        );
-      });
+  const { data, setPage, isLoading, reload } =
+    useServerPaginationFetch<AlertsResponseDto>({
+      fetchPage,
+      resetKey: `${debouncedSearch}:${JSON.stringify(urlFilters)}`,
+      initialData,
+      initialPage: initialData.pagination.page,
+    });
+
+  const alerts = data?.alerts ?? initialData.alerts;
+  const stats = data?.stats ?? initialData.stats;
+  const pagination = toClientPaginationState(
+    data?.pagination ?? initialData.pagination,
+    setPage,
+  );
+
+  const refreshAlerts = useCallback(async () => {
+    try {
+      await reload();
     } catch {
       toast.error("Falha ao atualizar alertas", {
         description: "Verifique sua conexão e tente novamente.",
       });
     }
-  }, []);
+  }, [reload]);
+
+  const hasNoAlerts =
+    initialData.pagination.totalItems === 0 &&
+    filtersControl.appliedActiveCount === 0 &&
+    debouncedSearch.length === 0;
 
   return (
     <>
@@ -152,28 +147,28 @@ export function AlertsClient({
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          key={`active-${data.stats.activeCount}`}
+          key={`active-${stats.activeCount}`}
           title="Automações ativas"
-          value={data.stats.activeCount.toString()}
+          value={stats.activeCount.toString()}
           description="Automações publicadas e prontas para disparo por eventos do grupo."
         />
         <StatCard
-          key={`sent-${data.stats.sentToday}`}
+          key={`sent-${stats.sentToday}`}
           title="Enviadas hoje"
-          value={data.stats.sentToday.toString()}
+          value={stats.sentToday.toString()}
           description="Mensagens que o bot entregou com sucesso no dia de hoje."
         />
         <StatCard
-          key={`rate-${data.stats.deliveryRate}`}
+          key={`rate-${stats.deliveryRate}`}
           title="Taxa de entrega"
-          value={data.stats.deliveryRate.toString()}
+          value={stats.deliveryRate.toString()}
           suffix="%"
           description="Percentual de sucesso nas execuções de envio registradas hoje."
         />
         <StatCard
-          key={`draft-${data.stats.draftCount}`}
+          key={`draft-${stats.draftCount}`}
           title="Rascunhos"
-          value={data.stats.draftCount.toString()}
+          value={stats.draftCount.toString()}
           description="Alertas guardados como rascunho e que ainda não foram publicados."
         />
       </div>
@@ -206,22 +201,31 @@ export function AlertsClient({
           <AlertsFiltersSidebar groups={groups} control={filtersControl} />
 
           <div className="min-w-0">
-            {filteredAlerts.length > 0 ? (
-              <div className="columns-1 gap-4 space-y-4 xl:columns-2">
-                {filteredAlerts.map((alert) => (
-                  <div key={alert.id} className="break-inside-avoid">
-                    <AlertCard
-                      alert={alert}
-                      groups={groups}
-                      onSelect={setSelectedAlert}
-                      onActionSuccess={() => void refreshAlerts()}
-                    />
-                  </div>
-                ))}
+            {pagination.totalItems > 0 ? (
+              <div
+                className={cn("flex flex-col gap-4", isLoading && "opacity-60")}
+              >
+                <div className="columns-1 gap-4 space-y-4 xl:columns-2">
+                  {alerts.map((alert) => (
+                    <div key={alert.id} className="break-inside-avoid">
+                      <AlertCard
+                        alert={alert}
+                        groups={groups}
+                        onSelect={setSelectedAlert}
+                        onActionSuccess={() => void refreshAlerts()}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <DataTablePagination
+                  pagination={pagination}
+                  itemLabel="alerta"
+                  itemLabelPlural="alertas"
+                />
               </div>
             ) : (
               <AlertsEmptyState
-                hasNoAlerts={data.alerts.length === 0}
+                hasNoAlerts={hasNoAlerts}
                 searchQuery={query}
                 hasActiveUrlFilters={filtersControl.appliedActiveCount > 0}
                 groups={groups}

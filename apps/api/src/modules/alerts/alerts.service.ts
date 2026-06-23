@@ -18,6 +18,8 @@ import {
   getAlertGroupDeliveryBlockReason,
 } from '../../lib/alert-delivery-messages';
 import { filterStripeAutomationAlerts } from '../../lib/stripe-automation-alerts';
+import { buildPaginationMeta, resolvePagination } from '../../lib/pagination';
+import { buildInclusiveDateParamRange } from '../../lib/telegram-groups-list-filter';
 import {
   alertInternalTriggerSchema,
   type AlertContentInput,
@@ -56,6 +58,16 @@ export class AlertsService {
   ) {}
 
   async listAlerts(userId: string, query: AlertListQueryInput) {
+    const createdRange = buildInclusiveDateParamRange(
+      query.createdFrom,
+      query.createdTo,
+    );
+    const { skip, take, page, pageSize } = resolvePagination({
+      page: query.page,
+      pageSize: query.pageSize,
+      all: query.all,
+    });
+
     const where: Prisma.TelegramAlertsWhereInput = {
       userId,
       ...(query.status ? { status: query.status } : {}),
@@ -63,6 +75,7 @@ export class AlertsService {
         ? { destinationType: query.destinationType }
         : {}),
       ...(query.groupId ? { telegramGroupId: query.groupId } : {}),
+      ...(createdRange ? { createdAt: createdRange } : {}),
       ...(query.q
         ? {
             OR: [
@@ -76,11 +89,13 @@ export class AlertsService {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 
-    const [alerts, activeCount, sentToday, runsToday, draftCount] =
+    const [alerts, totalItems, activeCount, sentToday, runsToday, draftCount] =
       await Promise.all([
         this.prisma.telegramAlerts.findMany({
           where,
           orderBy: { createdAt: 'desc' },
+          skip: query.all ? undefined : skip,
+          take: query.all ? undefined : take,
           include: {
             group: { select: { id: true, title: true, botStatus: true } },
             targets: { select: { telegramUserId: true } },
@@ -98,6 +113,7 @@ export class AlertsService {
             },
           },
         }),
+        this.prisma.telegramAlerts.count({ where }),
         this.prisma.telegramAlerts.count({
           where: {
             userId,
@@ -143,6 +159,12 @@ export class AlertsService {
         deliveryRate,
         draftCount,
       },
+      pagination: buildPaginationMeta(
+        page,
+        pageSize,
+        totalItems,
+        query.all,
+      ),
     };
   }
 

@@ -14,8 +14,8 @@ export default async function DashboardPage() {
   const [user, { groups }, { data: alertsData }, { data: stripeBilling }] =
     await Promise.all([
       getSessionUser(),
-      getTelegramGroupsForMembers(),
-      getAlerts(),
+      getTelegramGroupsForMembers({ all: true }),
+      getAlerts({ all: true }),
       getStripeBillingStatus(),
     ]);
 

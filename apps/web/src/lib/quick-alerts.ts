@@ -41,7 +41,9 @@ export async function fetchQuickAlertOptions(signal?: AbortSignal): Promise<{
   error: string | null;
 }> {
   try {
-    const response = await fetch("/api/alerts?destinationType=QUICK_ALERT", {
+    const response = await fetch(
+      "/api/alerts?destinationType=QUICK_ALERT&all=true",
+      {
       cache: "no-store",
       headers: { "Cache-Control": "no-cache" },
       signal,

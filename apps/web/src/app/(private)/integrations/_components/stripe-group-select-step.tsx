@@ -21,7 +21,7 @@ import type { StripePaymentGroupLimit } from "@/lib/zod/stripe-payment-group-sch
 import { getSelectableStripeLinkGroupIds } from "@/lib/zod/stripe-payment-group-schemas";
 import {
   type TelegramGroupSummaryDto,
-  telegramGroupsResponseSchema,
+  telegramGroupsPaginatedResponseSchema,
 } from "@/lib/zod/telegram-group-connection-schemas";
 import { StripePaymentGroupLimitBadge } from "./stripe-payment-group-limit-badge";
 
@@ -66,7 +66,7 @@ export function StripeGroupSelectStep({
       setErrorMessage(null);
 
       try {
-        const response = await fetch("/api/telegram/groups", {
+        const response = await fetch("/api/telegram/groups?all=true", {
           cache: "no-store",
         });
         const body: unknown = await response.json().catch(() => null);
@@ -84,14 +84,14 @@ export function StripeGroupSelectStep({
           return;
         }
 
-        const parsed = telegramGroupsResponseSchema.safeParse(body);
+        const parsed = telegramGroupsPaginatedResponseSchema.safeParse(body);
         if (!parsed.success) {
           setGroups([]);
           setErrorMessage("A resposta da API veio em formato inválido.");
           return;
         }
 
-        setGroups(parsed.data);
+        setGroups(parsed.data.groups);
       } catch {
         if (cancelled) return;
         setGroups([]);

@@ -1,7 +1,15 @@
 "use client";
 
-import { Fragment, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { DataTablePagination } from "@/components/data-table-pagination";
 import { SearchIcon, type SearchIconHandle } from "@/components/icons/search";
 import { ImageComponent } from "@/components/image-component";
 import { MemberActionsToolbar } from "@/components/member-actions-toolbar";
@@ -20,14 +28,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { countActiveMembersUrlFilters } from "@/lib/filter-utils";
 import {
-  matchesTelegramChatIdsFilter,
-  memberPassesPopoverFilters,
-} from "@/lib/members-filter";
+  toClientPaginationState,
+  useServerPaginationFetch,
+} from "@/hooks/use-server-pagination-fetch";
+import { buildTelegramGroupsListSearchParams } from "@/lib/build-telegram-groups-list-search-params";
+import { countActiveMembersUrlFilters } from "@/lib/filter-utils";
 import { getTrackedMemberStatusDisplay } from "@/lib/telegram-bot-status";
 import { cn, withCacheBuster } from "@/lib/utils";
-import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
+import type { PaginationMeta } from "@/lib/zod/pagination-schemas";
+import type {
+  TelegramGroupSummaryDto,
+  TelegramGroupsListSummaryDto,
+  TelegramGroupsPaginatedResponseDto,
+  TelegramMembersListSummaryDto,
+} from "@/lib/zod/telegram-group-connection-schemas";
+import { telegramGroupsPaginatedResponseSchema } from "@/lib/zod/telegram-group-connection-schemas";
 import { useMembersFiltersUrl } from "../../_hooks/use-members-filters-url";
 import {
   formatGroupMemberStatusSummary,
@@ -37,12 +53,9 @@ import {
   getMemberInitials,
   getMemberKey,
   getVisibleSelectionSummary,
-  groupMatchesSearch,
   isMemberLeft,
   isMemberOwner,
   type MemberSummary,
-  memberMatchesSearch,
-  sortMembersActiveFirst,
   type VisibleGroup,
 } from "../members-table-helpers";
 import { MemberSelectionCheckbox } from "./member-selection-checkbox";
@@ -51,122 +64,120 @@ import { MembersEmptyState } from "./members-empty-state";
 import { MembersFiltersPopover } from "./members-filters-popover";
 
 type MembersTableProps = {
-  groups: TelegramGroupSummaryDto[];
+  initialGroups: TelegramGroupSummaryDto[];
+  initialPagination: PaginationMeta;
+  initialMembersSummary: TelegramMembersListSummaryDto;
+  initialSummary: TelegramGroupsListSummaryDto;
+  filterGroups: TelegramGroupSummaryDto[];
 };
 
-export function MembersTable({ groups }: MembersTableProps) {
+export function MembersTable({
+  initialGroups,
+  initialPagination,
+  initialMembersSummary,
+  initialSummary,
+  filterGroups,
+}: MembersTableProps) {
   const router = useRouter();
   const { search, setSearch, clearSearch, urlFilters, filtersPopover } =
     useMembersFiltersUrl();
   const searchIconRef = useRef<SearchIconHandle>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(
     () => new Set(),
   );
   const [selectedMemberKeys, setSelectedMemberKeys] = useState<Set<string>>(
     () => new Set(),
   );
-  const [quickNoticePayload, setQuickNoticePayload] = useState<
-    | {
-        type: "members";
-        title: string;
-        targets: { telegramUserId: string; displayName?: string }[];
-      }
-    | null
-  >(null);
-  const query = search.trim().toLowerCase();
+  const [quickNoticePayload, setQuickNoticePayload] = useState<{
+    type: "members";
+    title: string;
+    targets: { telegramUserId: string; displayName?: string }[];
+  } | null>(null);
   const hasPopoverFilters = countActiveMembersUrlFilters(urlFilters) > 0;
 
-  const popoverFilters = useMemo(
-    () => ({
-      memberStatus: urlFilters.memberStatus,
-      joinedRange: urlFilters.joinedRange,
-      leftRange: urlFilters.leftRange,
-    }),
-    [urlFilters],
-  );
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 300);
 
-  const visibleGroups = useMemo<VisibleGroup[]>(() => {
-    return groups
-      .filter((group) =>
-        matchesTelegramChatIdsFilter(
-          group.telegramChatId,
-          urlFilters.telegramChatIds,
-        ),
-      )
-      .map((group) => {
-        const filteredMembers = group.members.filter((member) =>
-          memberPassesPopoverFilters(member, popoverFilters),
-        );
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
-        const visibleMembers = sortMembersActiveFirst(
-          !query
-            ? filteredMembers
-            : groupMatchesSearch(group, query)
-              ? filteredMembers
-              : filteredMembers.filter((member) =>
-                  memberMatchesSearch(member, query),
-                ),
-        );
-
-        return { ...group, visibleMembers };
-      })
-      .filter((group) => {
-        if (!query && !hasPopoverFilters) {
-          return true;
-        }
-
-        if (
-          urlFilters.telegramChatIds.length > 0 &&
-          urlFilters.telegramChatIds.some(
-            (id) => id.trim() === group.telegramChatId.trim(),
-          )
-        ) {
-          return true;
-        }
-
-        if (query && groupMatchesSearch(group, query)) {
-          return true;
-        }
-
-        return group.visibleMembers.length > 0;
+  const fetchPage = useCallback(
+    async (page: number) => {
+      const params = buildTelegramGroupsListSearchParams({
+        page,
+        view: "members",
+        search: debouncedSearch,
+        urlFilters,
       });
-  }, [
-    groups,
-    query,
-    popoverFilters,
-    urlFilters.telegramChatIds,
-    hasPopoverFilters,
-  ]);
+      const response = await fetch(
+        `/api/telegram/groups?${params.toString()}`,
+        {
+          cache: "no-store",
+        },
+      );
 
-  const visibleMemberCount = visibleGroups.reduce(
-    (total, group) => total + group.visibleMembers.length,
-    0,
+      if (!response.ok) {
+        return null;
+      }
+
+      const parsed = telegramGroupsPaginatedResponseSchema.safeParse(
+        await response.json(),
+      );
+      return parsed.success ? parsed.data : null;
+    },
+    [debouncedSearch, urlFilters],
   );
-  const totalMemberCount = groups.reduce(
-    (total, group) => total + group.members.length,
-    0,
+
+  const { data, setPage, isLoading, reload } =
+    useServerPaginationFetch<TelegramGroupsPaginatedResponseDto>({
+      fetchPage,
+      resetKey: `${debouncedSearch}:${JSON.stringify(urlFilters)}`,
+      initialData: {
+        groups: initialGroups,
+        pagination: initialPagination,
+        summary: initialSummary,
+        membersSummary: initialMembersSummary,
+      },
+      initialPage: initialPagination.page,
+    });
+
+  const groups = data?.groups ?? initialGroups;
+  const membersSummary = data?.membersSummary ?? initialMembersSummary;
+  const pagination = toClientPaginationState(
+    data?.pagination ?? initialPagination,
+    setPage,
   );
-  const hasNoGroups = groups.length === 0;
-  const hasNoMembers = !hasNoGroups && totalMemberCount === 0;
-  const hasActiveSearch = query.length > 0;
+
+  const visibleGroups: VisibleGroup[] = groups.map((group) => ({
+    ...group,
+    visibleMembers: group.members,
+  }));
+  const paginatedGroups = visibleGroups;
+  const hasNoGroups =
+    (data?.summary.totalGroups ?? initialSummary.totalGroups) === 0;
+  const hasNoMembers = membersSummary.totalMembers === 0;
+  const hasActiveSearch = debouncedSearch.length > 0;
   const isSearchEmpty =
     !hasNoGroups &&
     !hasNoMembers &&
-    visibleMemberCount === 0 &&
+    pagination.totalItems === 0 &&
     hasActiveSearch;
   const isPopoverFilterEmpty =
     !hasNoGroups &&
     !hasNoMembers &&
-    visibleMemberCount === 0 &&
+    pagination.totalItems === 0 &&
     !hasActiveSearch &&
     hasPopoverFilters;
   const showFullPageEmpty = hasNoGroups || hasNoMembers;
 
-  const visibleGroupIds = visibleGroups.map((group) => group.id);
+  const visibleGroupIds = paginatedGroups.map((group) => group.id);
   const allVisibleSelected =
-    visibleGroups.length > 0 &&
+    paginatedGroups.length > 0 &&
     visibleGroupIds.every((groupId) => selectedGroupIds.has(groupId));
-  const hasPartialVisibleSelection = visibleGroups.some((group) => {
+  const hasPartialVisibleSelection = paginatedGroups.some((group) => {
     if (selectedGroupIds.has(group.id)) {
       return true;
     }
@@ -240,7 +251,7 @@ export function MembersTable({ groups }: MembersTableProps) {
   function toggleAllVisible(checked: boolean) {
     setSelectedGroupIds((current) => {
       const next = new Set(current);
-      for (const group of visibleGroups) {
+      for (const group of paginatedGroups) {
         if (checked) {
           next.add(group.id);
         } else {
@@ -252,7 +263,7 @@ export function MembersTable({ groups }: MembersTableProps) {
 
     setSelectedMemberKeys((current) => {
       const next = new Set(current);
-      for (const group of visibleGroups) {
+      for (const group of paginatedGroups) {
         for (const key of getGroupMemberKeys(group)) {
           if (checked) {
             next.add(key);
@@ -294,10 +305,18 @@ export function MembersTable({ groups }: MembersTableProps) {
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
-              <MembersFiltersPopover groups={groups} control={filtersPopover} />
+              <MembersFiltersPopover
+                groups={filterGroups}
+                control={filtersPopover}
+              />
             </div>
           </div>
-          <div className="overflow-x-auto rounded-md border border-border bg-background shadow-xs">
+          <div
+            className={cn(
+              "overflow-x-auto rounded-md border border-border bg-background shadow-xs",
+              isLoading && "opacity-60",
+            )}
+          >
             <Table className="w-full min-w-4xl table-fixed">
               <TableHeader>
                 <TableRow className="bg-muted hover:bg-muted!">
@@ -328,7 +347,7 @@ export function MembersTable({ groups }: MembersTableProps) {
               </TableHeader>
 
               <TableBody>
-                {visibleGroups.map((group) => {
+                {paginatedGroups.map((group) => {
                   const groupMemberKeys = getGroupMemberKeys(group);
                   const selectedMembersInGroup = groupMemberKeys.filter((key) =>
                     selectedMemberKeys.has(key),
@@ -628,27 +647,19 @@ export function MembersTable({ groups }: MembersTableProps) {
             setQuickNoticePayload(null);
           }
         }}
-        onSent={() => router.refresh()}
+        onSent={() => {
+          reload();
+          router.refresh();
+        }}
       />
 
-      {!showFullPageEmpty ? (
-        <p
-          className={cn(
-            "text-center text-muted-foreground text-xs",
-            selectionSummary.count > 0 && "pb-16",
-          )}
-        >
-          Exibindo{" "}
-          <strong className="font-medium text-foreground">
-            {visibleMemberCount}
-          </strong>{" "}
-          de{" "}
-          <strong className="font-medium text-foreground">
-            {totalMemberCount}
-          </strong>{" "}
-          membro{totalMemberCount === 1 ? "" : "s"} rastreado
-          {totalMemberCount === 1 ? "" : "s"}
-        </p>
+      {!showFullPageEmpty && pagination.totalItems > 0 ? (
+        <DataTablePagination
+          pagination={pagination}
+          itemLabel="grupo"
+          itemLabelPlural="grupos"
+          summaryClassName={selectionSummary.count > 0 ? "pb-16" : undefined}
+        />
       ) : null}
     </div>
   );

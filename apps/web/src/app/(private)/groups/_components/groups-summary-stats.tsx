@@ -2,15 +2,11 @@ import type { ComponentType } from "react";
 import { ShieldCheckIcon } from "@/components/icons/shield-check";
 import { TrendingUpIcon } from "@/components/icons/trending-up";
 import { UsersIcon } from "@/components/icons/users";
-import {
-  type BotStatusDisplayKind,
-  getBotStatusDisplayKind,
-} from "@/lib/telegram-bot-status";
 import { cn } from "@/lib/utils";
-import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
+import type { TelegramGroupsListSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
 
 type GroupsSummaryStatsProps = {
-  groups: TelegramGroupSummaryDto[];
+  summary: TelegramGroupsListSummaryDto;
 };
 
 type SummaryStatTone = "default" | "success" | "warning";
@@ -50,49 +46,23 @@ function SummaryStat({
   );
 }
 
-function countGroupsByBotStatusKind(
-  groups: TelegramGroupSummaryDto[],
-  kind: BotStatusDisplayKind,
-): number {
-  return groups.filter(
-    (group) => getBotStatusDisplayKind(group.botStatus) === kind,
-  ).length;
-}
-
-function getPlanMemberUsagePercent(groups: TelegramGroupSummaryDto[]): number {
-  const totalTracked = groups.reduce(
-    (sum, group) => sum + group.trackedMemberCount,
-    0,
-  );
-  const totalCapacity = groups.reduce(
-    (sum, group) => sum + group.trackedMemberLimitPerGroup,
-    0,
-  );
-
-  if (totalCapacity <= 0) {
-    return 0;
-  }
-
-  return Math.min(100, Math.round((totalTracked / totalCapacity) * 100));
-}
-
-export function GroupsSummaryStats({ groups }: GroupsSummaryStatsProps) {
-  const totalGroups = groups.length;
-  const pendingPermissionsCount = countGroupsByBotStatusKind(groups, "warning");
-  const planMemberUsagePercent = getPlanMemberUsagePercent(groups);
-
+export function GroupsSummaryStats({ summary }: GroupsSummaryStatsProps) {
   return (
     <div className="flex flex-wrap items-center gap-x-6 gap-y-3 pt-1">
-      <SummaryStat icon={UsersIcon} value={totalGroups} label="grupos" />
+      <SummaryStat
+        icon={UsersIcon}
+        value={summary.totalGroups}
+        label="grupos"
+      />
       <SummaryStat
         icon={ShieldCheckIcon}
-        value={pendingPermissionsCount}
+        value={summary.pendingPermissionsCount}
         label="grupos esperando permissão"
         tone="warning"
       />
       <SummaryStat
         icon={TrendingUpIcon}
-        value={`${planMemberUsagePercent}%`}
+        value={`${summary.planMemberUsagePercent}%`}
         label="membros do plano em uso"
       />
     </div>

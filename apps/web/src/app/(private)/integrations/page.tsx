@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default async function IntegrationsPage() {
   const [{ data, error }, { groups, error: groupsError }] = await Promise.all([
     getStripeBillingStatus(),
-    getTelegramGroups(),
+    getTelegramGroups({ all: true }),
   ]);
 
   return (

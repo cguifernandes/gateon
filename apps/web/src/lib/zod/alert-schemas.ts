@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { paginationMetaSchema } from "./pagination-schemas";
 
 const alertMessages = {
   required: "Este campo é obrigatório.",
@@ -411,6 +412,7 @@ export const alertsResponseSchema = z.object({
     deliveryRate: z.number(),
     draftCount: z.number(),
   }),
+  pagination: paginationMetaSchema,
 });
 
 const alertQuickDispatchMemberTargetSchema = z.object({
