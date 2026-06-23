@@ -13,9 +13,14 @@ export const GROUP_LIMIT_REACHED_CODE = 'GROUP_LIMIT_REACHED';
 export class GroupLimitService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Resolve billing plan for user — wire to `Users.planId` when billing ships. */
-  async resolvePlanId(_userId: string): Promise<PlanId> {
-    return DEFAULT_PLAN_ID;
+  /** Resolve billing plan for the Gateon user account. */
+  async resolvePlanId(userId: string): Promise<PlanId> {
+    const user = await this.prisma.users.findUnique({
+      where: { id: userId },
+      select: { planId: true },
+    });
+
+    return (user?.planId ?? DEFAULT_PLAN_ID) as PlanId;
   }
 
   async getConnectedGroupCount(userId: string): Promise<number> {

@@ -25,7 +25,7 @@ export default async function DashboardLayout({
   return (
     <div className="flex h-svh min-h-0">
       <SessionValidator />
-      <DashboardProviders>
+      <DashboardProviders planId={user.planId}>
         <DashboardShell user={user} sidebarDefaultOpen={sidebarDefaultOpen}>
           {children}
         </DashboardShell>

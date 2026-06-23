@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { planIdSchema } from "./plan-schemas";
 
 export const publicUserDtoSchema = z.object({
   id: z.string(),
@@ -6,6 +7,7 @@ export const publicUserDtoSchema = z.object({
   name: z.string().nullable(),
   image: z.string().nullable(),
   emailVerified: z.boolean(),
+  planId: planIdSchema.default("free"),
 });
 
 export type PublicUserDto = z.infer<typeof publicUserDtoSchema>;

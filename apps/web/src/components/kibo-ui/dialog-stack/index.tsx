@@ -259,7 +259,7 @@ export const DialogStackBody = ({
       <Portal.Root>
         <div
           className={cn(
-            "pointer-events-none fixed inset-0 z-100 mx-auto flex w-full max-w-lg flex-col items-center justify-center",
+            "pointer-events-none fixed inset-0 z-100 mx-auto flex w-full max-w-lg flex-col items-center justify-center p-4",
             className,
           )}
           {...props}
@@ -293,7 +293,7 @@ export const DialogStackContent = ({
   children,
   className,
   index = 0,
-  offset = 10,
+  offset = 2,
   ...props
 }: DialogStackContentProps) => {
   const context = useContext(DialogStackContext);
@@ -313,10 +313,6 @@ export const DialogStackContent = ({
   };
 
   const distanceFromActive = index - context.activeIndex;
-  const translateY =
-    distanceFromActive < 0
-      ? `-${Math.abs(distanceFromActive) * offset}px`
-      : `${Math.abs(distanceFromActive) * offset}px`;
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: "This is a clickable dialog"
@@ -329,7 +325,7 @@ export const DialogStackContent = ({
       onClick={handleClick}
       style={{
         top: 0,
-        transform: `translateY(${translateY})`,
+        transform: `translateY(5px)`,
         width: `calc(100% - ${Math.abs(distanceFromActive) * 10}px)`,
         zIndex: 50 - Math.abs(context.activeIndex - (index ?? 0)),
         position: distanceFromActive ? "absolute" : "relative",

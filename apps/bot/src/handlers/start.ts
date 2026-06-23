@@ -169,10 +169,16 @@ export function registerStartCommand(
           )}`;
 
         await ctx.reply(
-          "Identidade confirmada. Agora selecione o grupo que deseja conectar ao Gateon.",
+          [
+            "Conta confirmada.",
+            "",
+            "Toque no botão abaixo e escolha o grupo que deseja conectar ao Gateon.",
+            "",
+            "Você precisa ser administrador do grupo. Depois de adicionar o bot, promova-o em Administradores com as permissões indicadas no painel.",
+          ].join("\n"),
           {
             reply_markup: new InlineKeyboard().url(
-              "Selecionar grupo",
+              "Escolher grupo",
               startGroupUrl,
             ),
           },

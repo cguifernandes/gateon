@@ -5,37 +5,44 @@ import {
   PLAN_LABELS,
 } from "@/lib/plan-limits";
 import { getServerApiBaseUrl, SESSION_COOKIE_NAME } from "@/lib/utils";
+import type { PlanId } from "@/lib/zod/plan-schemas";
 import {
   type StripeBillingStatusDto,
   stripeBillingStatusSchema,
 } from "@/lib/zod/stripe-billing-schemas";
 import { getSessionUser } from "./get-session";
 
-const emptyStripeBillingStatus: StripeBillingStatusDto = {
-  connected: false,
-  canConnect: true,
-  connections: [],
-  totals: {
-    activeSubscriptionCount: 0,
-    expiringSubscriptionCount: 0,
-    expiredSubscriptionCount: 0,
-    customerCount: 0,
-    monthlyRevenueCents: 0,
-    receivedPaymentCount: 0,
-    failedPaymentCount: 0,
-  },
-  stripePaymentGroupLimit: {
-    planId: DEFAULT_PLAN_ID,
-    planLabel: PLAN_LABELS[DEFAULT_PLAN_ID],
-    maxDistinctGroups: getMaxStripePaymentGroupsForPlan(DEFAULT_PLAN_ID),
-    usedDistinctGroups: 0,
-  },
-};
+function buildEmptyStripeBillingStatus(planId: PlanId): StripeBillingStatusDto {
+  return {
+    connected: false,
+    canConnect: true,
+    connections: [],
+    totals: {
+      activeSubscriptionCount: 0,
+      expiringSubscriptionCount: 0,
+      expiredSubscriptionCount: 0,
+      customerCount: 0,
+      monthlyRevenueCents: 0,
+      receivedPaymentCount: 0,
+      failedPaymentCount: 0,
+    },
+    stripePaymentGroupLimit: {
+      planId,
+      planLabel: PLAN_LABELS[planId],
+      maxDistinctGroups: getMaxStripePaymentGroupsForPlan(planId),
+      usedDistinctGroups: 0,
+    },
+  };
+}
 
 export async function getStripeBillingStatus(): Promise<{
   data: StripeBillingStatusDto;
   error: string | null;
 }> {
+  const user = await getSessionUser();
+  const planId = user?.planId ?? DEFAULT_PLAN_ID;
+  const emptyStripeBillingStatus = buildEmptyStripeBillingStatus(planId);
+
   const base = getServerApiBaseUrl();
   if (!base) {
     return {
@@ -44,7 +51,6 @@ export async function getStripeBillingStatus(): Promise<{
     };
   }
 
-  const user = await getSessionUser();
   if (!user) {
     return { data: emptyStripeBillingStatus, error: "Sessão não encontrada." };
   }

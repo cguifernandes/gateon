@@ -127,6 +127,11 @@ export function GroupsTable({
     setPage,
   );
 
+  const handleGroupConnectionCompleted = useCallback(() => {
+    setPage(1);
+    router.refresh();
+  }, [router, setPage]);
+
   useEffect(() => {
     if (!membersDrawerGroup) {
       return;
@@ -158,6 +163,7 @@ export function GroupsTable({
           isSearchEmpty={false}
           onClearPopoverFilters={filtersPopover.clear}
           onClearSearch={clearSearch}
+          onConnectionCompleted={handleGroupConnectionCompleted}
         />
       ) : (
         <>
@@ -182,7 +188,9 @@ export function GroupsTable({
               <GroupsFiltersPopover control={filtersPopover} />
               <RefreshAllGroupsButton disabled={summary.totalGroups === 0} />
             </div>
-            <AddGroupBotDialog />
+            <AddGroupBotDialog
+              onConnectionCompleted={handleGroupConnectionCompleted}
+            />
           </div>
           <div
             className={cn(

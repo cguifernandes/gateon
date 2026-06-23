@@ -1,15 +1,18 @@
 "use client";
 
 import { AnimatePresence, motion } from "motion/react";
+import { usePathname } from "next/navigation";
 import { BadgeAlertIcon } from "@/components/icons/badge-alert";
 import { useGroupLimit } from "@/contexts/group-limit-context";
 
 export function LimitGroups() {
   const { isAtLimit, maxGroups } = useGroupLimit();
+  const pathname = usePathname();
+  const isGroupsPage = pathname === "/groups";
 
   return (
     <AnimatePresence initial={false}>
-      {isAtLimit && (
+      {isAtLimit && isGroupsPage && (
         <motion.div
           key="limit-groups-banner"
           initial={{ opacity: 0 }}

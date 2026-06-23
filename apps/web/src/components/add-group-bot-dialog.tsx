@@ -74,6 +74,7 @@ type AddGroupBotDialogProps = {
   presentation?: "default" | "icon";
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  onConnectionCompleted?: () => void | Promise<void>;
   showTrigger?: boolean;
 };
 
@@ -546,6 +547,7 @@ export function AddGroupBotDialog({
   presentation = "default",
   open: openProp,
   onOpenChange: onOpenChangeProp,
+  onConnectionCompleted: onConnectionCompletedProp,
   showTrigger = true,
 }: AddGroupBotDialogProps) {
   const { canAddGroup, isAtLimit, maxGroups } = useGroupLimit();
@@ -591,7 +593,8 @@ export function AddGroupBotDialog({
     handleOpenChange(false);
     setIntentId(null);
     await revalidateTelegramGroupsAction();
-  }, [handleOpenChange]);
+    await onConnectionCompletedProp?.();
+  }, [handleOpenChange, onConnectionCompletedProp]);
 
   const steps: AddGroupBotWizardStep[] = useMemo(
     () => [

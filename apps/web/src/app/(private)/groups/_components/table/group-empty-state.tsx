@@ -18,6 +18,7 @@ type GroupsEmptyStateProps = {
   embedded?: boolean;
   onClearSearch: () => void;
   onClearPopoverFilters: () => void;
+  onConnectionCompleted?: () => void | Promise<void>;
 };
 
 export function GroupsEmptyState({
@@ -27,6 +28,7 @@ export function GroupsEmptyState({
   embedded = false,
   onClearSearch,
   onClearPopoverFilters,
+  onConnectionCompleted,
 }: GroupsEmptyStateProps) {
   const isNoGroupsFullPage = hasNoGroups && !embedded;
 
@@ -93,7 +95,9 @@ export function GroupsEmptyState({
             Limpar filtros
           </Button>
         ) : null}
-        {hasNoGroups ? <AddGroupBotDialog /> : null}
+        {hasNoGroups ? (
+          <AddGroupBotDialog onConnectionCompleted={onConnectionCompleted} />
+        ) : null}
       </EmptyContent>
     </Empty>
   );

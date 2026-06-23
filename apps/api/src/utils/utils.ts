@@ -5,6 +5,7 @@ import {
   randomBytes,
 } from 'node:crypto';
 import type { Users } from '@prisma/client';
+import type { PlanId } from '../lib/zod/plan-schemas';
 
 /** Cookie storing opaque session token (DB-backed session). */
 export const SESSION_COOKIE_NAME = 'gateon.session';
@@ -30,6 +31,7 @@ export type PublicUser = {
   name: string | null;
   image: string | null;
   emailVerified: boolean;
+  planId: PlanId;
 };
 
 export function toPublicUser(user: Users): PublicUser {
@@ -39,6 +41,7 @@ export function toPublicUser(user: Users): PublicUser {
     name: user.name,
     image: user.image,
     emailVerified: user.emailVerified,
+    planId: user.planId as PlanId,
   };
 }
 

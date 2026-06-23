@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { LoaderPage } from "@/components/loader-page";
 import { DEFAULT_PLAN_ID, getMaxGroupsForPlan } from "@/lib/plan-limits";
+import { getSessionUser } from "@/lib/server/get-session";
 import { getTelegramGroups } from "@/lib/server/get-telegram-groups";
 import { cn } from "@/lib/utils";
 import { GroupsSummaryStats } from "./_components/groups-summary-stats";
-import { LimitGroups } from "./_components/limit-groups";
 import { SyncGroupLimit } from "./_components/sync-group-limit";
 import { GroupsTable } from "./_components/table/groups-table";
 
@@ -15,15 +15,15 @@ export const metadata: Metadata = {
 };
 
 export default async function GroupsPage() {
-  const { groups, pagination, summary, error } = await getTelegramGroups();
+  const [sessionUser, { groups, pagination, summary, error }] =
+    await Promise.all([getSessionUser(), getTelegramGroups()]);
+  const planId = sessionUser?.planId ?? DEFAULT_PLAN_ID;
   const isAtLimit =
-    !error && summary.totalGroups >= getMaxGroupsForPlan(DEFAULT_PLAN_ID);
+    !error && summary.totalGroups >= getMaxGroupsForPlan(planId);
 
   return (
     <div className="relative flex flex-col gap-6">
       {!error ? <SyncGroupLimit connectedCount={summary.totalGroups} /> : null}
-
-      <LimitGroups />
 
       <div className={cn("flex flex-col gap-3", isAtLimit && "mt-[46px]")}>
         <div className="flex flex-col gap-1">
