@@ -45,27 +45,17 @@ export function CancelCommandSettingsCard() {
           </ol>
         </div>
 
-        <div className="space-y-2">
-          <p className="font-medium text-foreground">
-            O que você precisa na Stripe
-          </p>
-          <p className="text-muted-foreground leading-relaxed">
-            Em{" "}
-            <span className="font-medium text-foreground">
-              Settings → Billing → Customer portal
-            </span>
-            , ative o portal e permita cancelamento de assinaturas. Sem isso, o
-            comando /cancelar retorna erro para o assinante.
-          </p>
-          <Link
-            href="https://dashboard.stripe.com/settings/billing/portal"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex font-medium text-primary underline-offset-4 hover:underline"
-          >
-            Abrir Customer Portal na Stripe
-          </Link>
-        </div>
+        <p className="font-medium text-foreground">
+          O que você precisa na Stripe
+        </p>
+        <p className="text-muted-foreground leading-relaxed">
+          Em{" "}
+          <span className="font-medium text-foreground">
+            Settings → Billing → Customer portal
+          </span>
+          , ative o portal e permita cancelamento de assinaturas. Sem isso, o
+          comando /cancelar retorna erro para o assinante.
+        </p>
 
         <p className="text-muted-foreground text-xs leading-relaxed">
           O /help do bot já menciona este comando. Não é necessário ativar nada

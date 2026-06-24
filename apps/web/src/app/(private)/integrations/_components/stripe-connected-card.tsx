@@ -31,6 +31,7 @@ type StripeConnectedCardProps = {
   connections: StripeBillingConnectionDto[];
   onStatusChange: (status: StripeBillingStatusDto) => void;
   groups: TelegramGroupSummaryDto[];
+  isSyncingAll?: boolean;
 };
 
 function formatDate(value: string | Date | null | undefined) {
@@ -287,6 +288,7 @@ export function StripeConnectedCard({
   connections,
   onStatusChange,
   groups,
+  isSyncingAll = false,
 }: StripeConnectedCardProps) {
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [syncingProducts, setSyncingProducts] = useState(false);
@@ -312,6 +314,8 @@ export function StripeConnectedCard({
   }
 
   async function syncConnection(connectionId: string) {
+    if (isSyncingAll) return;
+
     setSyncingId(connectionId);
     try {
       const response = await fetch(`/api/stripe-billing/${connectionId}/sync`, {
@@ -399,31 +403,6 @@ export function StripeConnectedCard({
     }
   }
 
-  async function syncAll() {
-    setSyncingId("all");
-    try {
-      for (const connection of connections) {
-        const response = await fetch(
-          `/api/stripe-billing/${connection.id}/sync`,
-          { method: "POST" },
-        );
-        await refreshFromResponse(response);
-      }
-      toast.success("Sincronização concluída", {
-        description: "Todos os planos foram atualizados.",
-      });
-    } catch (error) {
-      toast.error("Falha ao sincronizar", {
-        description:
-          error instanceof Error
-            ? error.message
-            : "Tente novamente em instantes.",
-      });
-    } finally {
-      setSyncingId(null);
-    }
-  }
-
   if (connections.length === 0) {
     return null;
   }
@@ -467,7 +446,7 @@ export function StripeConnectedCard({
               planCount={planCount}
               isLast={index === connections.length - 1}
               connection={connection}
-              isSyncing={syncingId === connection.id || syncingId === "all"}
+              isSyncing={syncingId === connection.id || isSyncingAll}
               isDisconnecting={disconnectingId === connection.id}
               onSync={() => syncConnection(connection.id)}
               onDisconnect={() => disconnectConnection(connection.id)}
@@ -480,29 +459,17 @@ export function StripeConnectedCard({
 
       {planCount >= 1 ? (
         <CardFooter className="border-border border-t">
-          <div className="flex w-full flex-wrap justify-end gap-2">
+          <div className="flex w-full justify-end">
             <Button
               type="button"
               variant="outline"
               className="w-full sm:w-auto"
               loading={syncingProducts}
-              disabled={syncingId !== null}
+              disabled={syncingId !== null || isSyncingAll}
               onClick={syncAllProducts}
             >
               Sincronizar produtos
             </Button>
-            {planCount > 1 ? (
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full sm:w-40"
-                loading={syncingId === "all"}
-                disabled={syncingProducts}
-                onClick={syncAll}
-              >
-                Sincronizar todos
-              </Button>
-            ) : null}
           </div>
         </CardFooter>
       ) : null}

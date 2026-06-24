@@ -1129,7 +1129,9 @@ function StripePlanSelectField({
         <FieldDescription className="rounded-lg text-center gap-y-1 h-28 flex flex-col items-center justify-center border border-border p-3 text-sm">
           {hasAnyStripeConnection ? (
             <>
-              <span>Nenhum plano Stripe vinculado aos grupos selecionados.</span>
+              <span>
+                Nenhum plano Stripe vinculado aos grupos selecionados.
+              </span>
               <Link
                 href="/integrations"
                 className="font-medium text-primary underline-offset-4 hover:underline"
@@ -2235,7 +2237,7 @@ export function CreateAlertDialog({
   groups,
   stripeConnections,
   onCreated,
-  buttonText = "Criar Alerta",
+  buttonText = "Criar Novo Alerta",
   open: openProp,
   onOpenChange: onOpenChangeProp,
   showTrigger = true,

@@ -127,6 +127,7 @@ export async function processSubscriptionStripeEvent(
     existing: SubscriptionSnapshot | null;
     status: string;
     currentPeriodEnd: Date | null;
+    cancelAtPeriodEnd?: boolean;
     stripeSubscriptionId: string;
     stripeCustomerId?: string | null;
     nowMs?: number;
@@ -136,6 +137,7 @@ export async function processSubscriptionStripeEvent(
     params.existing,
     params.status,
     params.currentPeriodEnd,
+    params.cancelAtPeriodEnd ?? false,
     params.nowMs,
   );
   if (!triggerType) {

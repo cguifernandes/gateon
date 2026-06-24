@@ -75,7 +75,7 @@ describe('isSubscriptionExpiringSoon', () => {
 describe('resolveSubscriptionStripeTrigger', () => {
   it('detects new canceled subscription', () => {
     expect(
-      resolveSubscriptionStripeTrigger(null, 'canceled', null, NOW),
+      resolveSubscriptionStripeTrigger(null, 'canceled', null, false, NOW),
     ).toBe(AlertTriggerType.STRIPE_SUBSCRIPTION_CANCELED);
   });
 
@@ -85,9 +85,26 @@ describe('resolveSubscriptionStripeTrigger', () => {
         { status: 'active', currentPeriodEnd: daysFromNow(10) },
         'canceled',
         daysFromNow(10),
+        false,
         NOW,
       ),
     ).toBe(AlertTriggerType.STRIPE_SUBSCRIPTION_CANCELED);
+  });
+
+  it('maps scheduled cancel ending to expired', () => {
+    expect(
+      resolveSubscriptionStripeTrigger(
+        {
+          status: 'active',
+          currentPeriodEnd: daysFromNow(1),
+          cancelAtPeriodEnd: true,
+        },
+        'canceled',
+        daysFromNow(1),
+        false,
+        NOW,
+      ),
+    ).toBe(AlertTriggerType.STRIPE_SUBSCRIPTION_EXPIRED);
   });
 
   it('detects transition to unpaid as expired', () => {
@@ -96,6 +113,7 @@ describe('resolveSubscriptionStripeTrigger', () => {
         { status: 'active', currentPeriodEnd: daysFromNow(1) },
         'unpaid',
         daysFromNow(1),
+        false,
         NOW,
       ),
     ).toBe(AlertTriggerType.STRIPE_SUBSCRIPTION_EXPIRED);
@@ -107,6 +125,7 @@ describe('resolveSubscriptionStripeTrigger', () => {
         { status: 'past_due', currentPeriodEnd: daysFromNow(1) },
         'incomplete_expired',
         daysFromNow(1),
+        false,
         NOW,
       ),
     ).toBe(AlertTriggerType.STRIPE_SUBSCRIPTION_EXPIRED);
@@ -118,6 +137,7 @@ describe('resolveSubscriptionStripeTrigger', () => {
         { status: 'active', currentPeriodEnd: daysFromNow(5) },
         'active',
         daysFromNow(35),
+        false,
         NOW,
       ),
     ).toBe(AlertTriggerType.STRIPE_SUBSCRIPTION_RENEWED);
@@ -129,9 +149,66 @@ describe('resolveSubscriptionStripeTrigger', () => {
         { status: 'active', currentPeriodEnd: daysFromNow(3) },
         'active',
         daysFromNow(3),
+        false,
         NOW,
       ),
     ).toBe(AlertTriggerType.STRIPE_SUBSCRIPTION_EXPIRING);
+  });
+
+  it('does not repeat expiring alerts for the same billing period', () => {
+    expect(
+      resolveSubscriptionStripeTrigger(
+        {
+          status: 'active',
+          currentPeriodEnd: daysFromNow(3),
+          lastEventType: AlertTriggerType.STRIPE_SUBSCRIPTION_EXPIRING,
+        },
+        'active',
+        daysFromNow(3),
+        false,
+        NOW,
+      ),
+    ).toBeNull();
+  });
+
+  it('detects scheduled cancellation at period end', () => {
+    expect(
+      resolveSubscriptionStripeTrigger(
+        { status: 'active', currentPeriodEnd: daysFromNow(10) },
+        'active',
+        daysFromNow(10),
+        true,
+        NOW,
+      ),
+    ).toBe(AlertTriggerType.STRIPE_SUBSCRIPTION_CANCELED);
+  });
+
+  it('suppresses duplicate alerts while cancellation is scheduled', () => {
+    expect(
+      resolveSubscriptionStripeTrigger(
+        {
+          status: 'active',
+          currentPeriodEnd: daysFromNow(2),
+          cancelAtPeriodEnd: true,
+        },
+        'active',
+        daysFromNow(2),
+        true,
+        NOW,
+      ),
+    ).toBeNull();
+  });
+
+  it('does not treat scheduled cancellation as expiring soon', () => {
+    expect(
+      resolveSubscriptionStripeTrigger(
+        { status: 'active', currentPeriodEnd: daysFromNow(2) },
+        'active',
+        daysFromNow(2),
+        true,
+        NOW,
+      ),
+    ).toBe(AlertTriggerType.STRIPE_SUBSCRIPTION_CANCELED);
   });
 
   it('returns null when subscription is stable and not expiring soon', () => {
@@ -140,6 +217,7 @@ describe('resolveSubscriptionStripeTrigger', () => {
         { status: 'active', currentPeriodEnd: daysFromNow(30) },
         'active',
         daysFromNow(30),
+        false,
         NOW,
       ),
     ).toBeNull();
@@ -151,6 +229,7 @@ describe('resolveSubscriptionStripeTrigger', () => {
         { status: 'active', currentPeriodEnd: daysFromNow(2) },
         'canceled',
         daysFromNow(2),
+        false,
         NOW,
       ),
     ).toBe(AlertTriggerType.STRIPE_SUBSCRIPTION_CANCELED);

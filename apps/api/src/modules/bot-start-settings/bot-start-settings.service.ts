@@ -92,18 +92,6 @@ export class BotStartSettingsService {
     userId: string,
     input: TelegramBotStartSettingsPatchInput,
   ): Promise<TelegramBotStartSettingsResponseDto> {
-    if (input.autoRemoveExpiredSubscribers === true) {
-      const planId = await this.groupLimit.resolvePlanId(userId);
-      if (!isPaidPlan(planId)) {
-        throw new ForbiddenException({
-          error: PAID_PLAN_REQUIRED_CODE,
-          message:
-            'A remoção automática de assinantes expirados está disponível apenas em planos pagos.',
-          planId,
-        });
-      }
-    }
-
     if (input.stripeConnectionIds) {
       await this.assertOwnedStripeConnections(
         userId,
@@ -177,8 +165,24 @@ export class BotStartSettingsService {
     }
 
     const settings = await this.ensureForUser(input.userId);
-    const planId = await this.groupLimit.resolvePlanId(input.userId);
-    if (!isPaidPlan(planId) || !settings.autoRemoveExpiredSubscribers) {
+    if (!settings.autoRemoveExpiredSubscribers) {
+      return;
+    }
+
+    const subscription =
+      await this.prisma.stripeBillingSubscriptions.findFirst({
+        where: {
+          connectionId: input.connectionId,
+          stripeSubscriptionId: input.stripeSubscriptionId,
+        },
+        select: { status: true, cancelAtPeriodEnd: true },
+      });
+
+    if (
+      input.triggerType === AlertTriggerType.STRIPE_SUBSCRIPTION_CANCELED &&
+      subscription &&
+      (subscription.status === 'active' || subscription.status === 'trialing')
+    ) {
       return;
     }
 
@@ -424,9 +428,7 @@ export class BotStartSettingsService {
       showSupportHint: settings.showSupportHint,
       supportHintText: settings.supportHintText ?? '',
       showSubscribeSteps: settings.showSubscribeSteps,
-      autoRemoveExpiredSubscribers: canUsePaidAutomation
-        ? settings.autoRemoveExpiredSubscribers
-        : false,
+      autoRemoveExpiredSubscribers: settings.autoRemoveExpiredSubscribers,
       canUsePaidAutomation,
       planId,
       planLabel: PLAN_LABELS[planId],

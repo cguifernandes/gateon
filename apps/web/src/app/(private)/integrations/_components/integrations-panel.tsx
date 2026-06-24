@@ -8,6 +8,7 @@ import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connectio
 import { ConnectIntegrationDialog } from "./connect-integration-dialog";
 import { IntegrationsEmptyState } from "./integrations-empty-state";
 import { StripeConnectedCard } from "./stripe-connected-card";
+import { SyncAllStripeButton } from "./sync-all-stripe-button";
 
 type IntegrationsPanelProps = {
   stripeStatus: StripeBillingStatusDto;
@@ -21,6 +22,7 @@ export function IntegrationsPanel({
   groups,
 }: IntegrationsPanelProps) {
   const [connectDialogOpen, setConnectDialogOpen] = useState(false);
+  const [isSyncingAll, setIsSyncingAll] = useState(false);
   const plusIconRef = useRef<PlusIconHandle | null>(null);
   const connectedPriceIds = stripeStatus.connections
     .map((connection) => connection.monitoredStripePriceId)
@@ -51,17 +53,26 @@ export function IntegrationsPanel({
 
   return (
     <div className="space-y-4">
-      {stripeStatus.canConnect ? (
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            onClick={() => setConnectDialogOpen(true)}
-            onMouseEnter={() => plusIconRef.current?.startAnimation()}
-            onMouseLeave={() => plusIconRef.current?.stopAnimation()}
-          >
-            <PlusIcon ref={plusIconRef} size={14} isAnimateOnView={false} />
-            Adicionar integração
-          </Button>
+      {stripeStatus.canConnect || stripeStatus.connections.length > 0 ? (
+        <div className="flex justify-end gap-2">
+          {stripeStatus.connections.length > 0 ? (
+            <SyncAllStripeButton
+              connections={stripeStatus.connections}
+              onStatusChange={onStripeStatusChange}
+              onSyncingChange={setIsSyncingAll}
+            />
+          ) : null}
+          {stripeStatus.canConnect ? (
+            <Button
+              type="button"
+              onClick={() => setConnectDialogOpen(true)}
+              onMouseEnter={() => plusIconRef.current?.startAnimation()}
+              onMouseLeave={() => plusIconRef.current?.stopAnimation()}
+            >
+              <PlusIcon ref={plusIconRef} size={14} isAnimateOnView={false} />
+              Criar Nova Integração
+            </Button>
+          ) : null}
         </div>
       ) : null}
 
@@ -69,6 +80,7 @@ export function IntegrationsPanel({
         connections={stripeStatus.connections}
         onStatusChange={onStripeStatusChange}
         groups={groups}
+        isSyncingAll={isSyncingAll}
       />
 
       <ConnectIntegrationDialog

@@ -5,6 +5,8 @@ export const STRIPE_EXPIRING_WINDOW_DAYS = 7;
 export type SubscriptionSnapshot = {
   status: string;
   currentPeriodEnd: Date | null;
+  cancelAtPeriodEnd?: boolean;
+  lastEventType?: string | null;
 };
 
 export function isSubscriptionExpiringSoon(
@@ -21,10 +23,21 @@ export function isSubscriptionExpiringSoon(
   return end >= nowMs && end <= nowMs + windowMs;
 }
 
+function isSamePeriodEnd(
+  left: Date | null | undefined,
+  right: Date | null,
+): boolean {
+  if (!left || !right) {
+    return false;
+  }
+  return left.getTime() === right.getTime();
+}
+
 export function resolveSubscriptionStripeTrigger(
   existing: SubscriptionSnapshot | null,
   status: string,
   currentPeriodEnd: Date | null,
+  cancelAtPeriodEnd = false,
   nowMs: number = Date.now(),
 ): AlertTriggerType | null {
   if (!existing && status === 'canceled') {
@@ -33,11 +46,26 @@ export function resolveSubscriptionStripeTrigger(
 
   if (existing?.status !== status) {
     if (status === 'canceled') {
+      if (existing?.cancelAtPeriodEnd) {
+        return AlertTriggerType.STRIPE_SUBSCRIPTION_EXPIRED;
+      }
       return AlertTriggerType.STRIPE_SUBSCRIPTION_CANCELED;
     }
     if (status === 'unpaid' || status === 'incomplete_expired') {
       return AlertTriggerType.STRIPE_SUBSCRIPTION_EXPIRED;
     }
+  }
+
+  if (
+    cancelAtPeriodEnd &&
+    !existing?.cancelAtPeriodEnd &&
+    (status === 'active' || status === 'trialing')
+  ) {
+    return AlertTriggerType.STRIPE_SUBSCRIPTION_CANCELED;
+  }
+
+  if (cancelAtPeriodEnd && (status === 'active' || status === 'trialing')) {
+    return null;
   }
 
   if (
@@ -49,9 +77,18 @@ export function resolveSubscriptionStripeTrigger(
     return AlertTriggerType.STRIPE_SUBSCRIPTION_RENEWED;
   }
 
-  return isSubscriptionExpiringSoon(status, currentPeriodEnd, nowMs)
-    ? AlertTriggerType.STRIPE_SUBSCRIPTION_EXPIRING
-    : null;
+  if (!isSubscriptionExpiringSoon(status, currentPeriodEnd, nowMs)) {
+    return null;
+  }
+
+  if (
+    existing?.lastEventType === AlertTriggerType.STRIPE_SUBSCRIPTION_EXPIRING &&
+    isSamePeriodEnd(existing.currentPeriodEnd, currentPeriodEnd)
+  ) {
+    return null;
+  }
+
+  return AlertTriggerType.STRIPE_SUBSCRIPTION_EXPIRING;
 }
 
 export function resolveInvoicePaymentTrigger(

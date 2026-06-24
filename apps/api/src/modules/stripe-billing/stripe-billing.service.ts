@@ -571,7 +571,12 @@ export class StripeBillingSyncService {
             stripeSubscriptionId: subscription.id,
           },
         },
-        select: { status: true, currentPeriodEnd: true },
+        select: {
+          status: true,
+          currentPeriodEnd: true,
+          cancelAtPeriodEnd: true,
+          lastEventType: true,
+        },
       });
       const status = subscription.status ?? 'unknown';
       const currentPeriodEnd = this.fromUnix(subscription.current_period_end);
@@ -579,6 +584,7 @@ export class StripeBillingSyncService {
         existing,
         status,
         currentPeriodEnd,
+        subscription.cancel_at_period_end === true,
       );
 
       await this.prisma.stripeBillingSubscriptions.upsert({

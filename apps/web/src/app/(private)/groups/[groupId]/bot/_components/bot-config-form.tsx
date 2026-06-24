@@ -176,7 +176,6 @@ export function BotConfigForm({
                 enabled: enabled.field,
                 notifyPermissionLoss: notifyPermissionLoss.field,
               }}
-              automationSettings={automationSettings}
               automationValue={automationValue}
               onAutomationChange={setAutomationValue}
             />

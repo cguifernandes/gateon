@@ -15,7 +15,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import type { TelegramBotStartSettingsResponseDto } from "@/lib/zod/bot-start-settings-schemas";
 import type { TelegramGroupBotSettingsDto } from "@/lib/zod/telegram-group-bot-settings-schemas";
 import type { TelegramGroupDetailDto } from "@/lib/zod/telegram-group-connection-schemas";
 import { BotAccessAutomationSwitch } from "./bot-access-automation-switch";
@@ -76,12 +75,10 @@ type GeneralFields = {
 
 export function BotConfigGeneralSection({
   fields,
-  automationSettings,
   automationValue,
   onAutomationChange,
 }: {
   fields: GeneralFields;
-  automationSettings: TelegramBotStartSettingsResponseDto;
   automationValue: boolean;
   onAutomationChange: (checked: boolean) => void;
 }) {
@@ -110,7 +107,6 @@ export function BotConfigGeneralSection({
           tooltip="Ajuda o administrador a corrigir permissões antes da automação parar."
         />
         <BotAccessAutomationSwitch
-          settings={automationSettings}
           value={automationValue}
           onChange={onAutomationChange}
         />
