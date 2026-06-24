@@ -3,7 +3,10 @@ import {
   isEntitledStripeSubscription,
   isManageableStripeSubscriptionForCancel,
   pickStripeSubscriptionForCancel,
+  resolveStripePayerSubscriptionForLink,
   shouldRevokeStripeTelegramMemberLink,
+  shouldRevokeStripeTelegramMemberLinkForSubscription,
+  showsStripePayerBadge,
 } from './stripe-telegram-member-links';
 
 describe('stripe telegram member links', () => {
@@ -36,6 +39,105 @@ describe('stripe telegram member links', () => {
 
     it('keeps trialing subscriptions', () => {
       expect(shouldRevokeStripeTelegramMemberLink('trialing')).toBe(false);
+    });
+  });
+
+  describe('showsStripePayerBadge', () => {
+    it('shows badge for active subscriptions without scheduled cancel', () => {
+      expect(
+        showsStripePayerBadge({ status: 'active', cancelAtPeriodEnd: false }),
+      ).toBe(true);
+    });
+
+    it('hides badge when cancel is scheduled at period end', () => {
+      expect(
+        showsStripePayerBadge({ status: 'active', cancelAtPeriodEnd: true }),
+      ).toBe(false);
+    });
+
+    it('hides badge for canceled subscriptions', () => {
+      expect(showsStripePayerBadge({ status: 'canceled' })).toBe(false);
+    });
+  });
+
+  describe('shouldRevokeStripeTelegramMemberLinkForSubscription', () => {
+    it('revokes canceled subscriptions', () => {
+      expect(
+        shouldRevokeStripeTelegramMemberLinkForSubscription({
+          status: 'canceled',
+        }),
+      ).toBe(true);
+    });
+
+    it('revokes active subscriptions scheduled to cancel', () => {
+      expect(
+        shouldRevokeStripeTelegramMemberLinkForSubscription({
+          status: 'active',
+          cancelAtPeriodEnd: true,
+        }),
+      ).toBe(true);
+    });
+
+    it('keeps active subscriptions without scheduled cancel', () => {
+      expect(
+        shouldRevokeStripeTelegramMemberLinkForSubscription({
+          status: 'active',
+          cancelAtPeriodEnd: false,
+        }),
+      ).toBe(false);
+    });
+  });
+
+  describe('resolveStripePayerSubscriptionForLink', () => {
+    it('hides canceled subscription linked to the member', () => {
+      expect(
+        resolveStripePayerSubscriptionForLink(
+          {
+            connectionId: 'conn_1',
+            stripeCustomerId: 'cus_1',
+            stripeSubscriptionId: 'sub_old',
+          },
+          [
+            {
+              connectionId: 'conn_1',
+              stripeCustomerId: 'cus_1',
+              stripeSubscriptionId: 'sub_old',
+              status: 'canceled',
+            },
+          ],
+        ),
+      ).toBeNull();
+    });
+
+    it('shows a newer active subscription after re-subscribe', () => {
+      expect(
+        resolveStripePayerSubscriptionForLink(
+          {
+            connectionId: 'conn_1',
+            stripeCustomerId: 'cus_1',
+            stripeSubscriptionId: 'sub_old',
+          },
+          [
+            {
+              connectionId: 'conn_1',
+              stripeCustomerId: 'cus_1',
+              stripeSubscriptionId: 'sub_old',
+              status: 'canceled',
+            },
+            {
+              connectionId: 'conn_1',
+              stripeCustomerId: 'cus_1',
+              stripeSubscriptionId: 'sub_new',
+              status: 'active',
+            },
+          ],
+        ),
+      ).toEqual({
+        connectionId: 'conn_1',
+        stripeCustomerId: 'cus_1',
+        stripeSubscriptionId: 'sub_new',
+        status: 'active',
+      });
     });
   });
 
@@ -85,6 +187,23 @@ describe('stripe telegram member links', () => {
       expect(
         canOpenStripeSubscriptionCancelPortal([{ status: 'canceled' }]),
       ).toBe(false);
+    });
+
+    it('allows portal when active link points to a subscription not synced yet', () => {
+      expect(
+        canOpenStripeSubscriptionCancelPortal(
+          [
+            {
+              stripeSubscriptionId: 'sub_old',
+              status: 'canceled',
+            },
+          ],
+          {
+            status: 'ACTIVE',
+            stripeSubscriptionId: 'sub_new',
+          },
+        ),
+      ).toBe(true);
     });
   });
 

@@ -30,6 +30,67 @@ export function shouldRevokeStripeTelegramMemberLink(
   return !ENTITLED_STRIPE_SUBSCRIPTION_STATUSES.has(subscriptionStatus);
 }
 
+export function showsStripePayerBadge(
+  subscription: StripeSubscriptionEntitlementSnapshot | null | undefined,
+): boolean {
+  return (
+    isEntitledStripeSubscription(subscription) &&
+    subscription?.cancelAtPeriodEnd !== true
+  );
+}
+
+export function shouldRevokeStripeTelegramMemberLinkForSubscription(
+  subscription: StripeSubscriptionEntitlementSnapshot,
+): boolean {
+  if (shouldRevokeStripeTelegramMemberLink(subscription.status)) {
+    return true;
+  }
+
+  return (
+    subscription.cancelAtPeriodEnd === true &&
+    isEntitledStripeSubscription(subscription)
+  );
+}
+
+export type StripePayerSubscriptionSnapshot =
+  StripeSubscriptionEntitlementSnapshot & {
+    connectionId: string;
+    stripeCustomerId: string | null;
+    stripeSubscriptionId: string;
+  };
+
+export function resolveStripePayerSubscriptionForLink(
+  link: {
+    connectionId: string;
+    stripeCustomerId: string;
+    stripeSubscriptionId?: string | null;
+  },
+  subscriptions: StripePayerSubscriptionSnapshot[],
+): StripePayerSubscriptionSnapshot | null {
+  const customerSubscriptions = subscriptions.filter(
+    (subscription) =>
+      subscription.connectionId === link.connectionId &&
+      subscription.stripeCustomerId === link.stripeCustomerId,
+  );
+
+  if (link.stripeSubscriptionId) {
+    const linkedSubscription = customerSubscriptions.find(
+      (subscription) =>
+        subscription.stripeSubscriptionId === link.stripeSubscriptionId,
+    );
+
+    if (showsStripePayerBadge(linkedSubscription)) {
+      return linkedSubscription ?? null;
+    }
+  }
+
+  return (
+    customerSubscriptions.find((subscription) =>
+      showsStripePayerBadge(subscription),
+    ) ?? null
+  );
+}
+
 const MANAGEABLE_STRIPE_SUBSCRIPTION_STATUSES = new Set([
   ...ENTITLED_STRIPE_SUBSCRIPTION_STATUSES,
   'past_due',
@@ -51,9 +112,26 @@ export type StripeSubscriptionCancelSnapshot =
     planName?: string | null;
   };
 
+export type StripeSubscriptionCancelLinkHint = {
+  status?: string;
+  stripeSubscriptionId?: string | null;
+};
+
 export function canOpenStripeSubscriptionCancelPortal(
-  subscriptions: StripeSubscriptionEntitlementSnapshot[],
+  subscriptions: StripeSubscriptionCancelSnapshot[],
+  link?: StripeSubscriptionCancelLinkHint,
 ): boolean {
+  if (
+    link?.status === 'ACTIVE' &&
+    link.stripeSubscriptionId &&
+    !subscriptions.some(
+      (subscription) =>
+        subscription.stripeSubscriptionId === link.stripeSubscriptionId,
+    )
+  ) {
+    return true;
+  }
+
   if (subscriptions.length === 0) {
     return true;
   }

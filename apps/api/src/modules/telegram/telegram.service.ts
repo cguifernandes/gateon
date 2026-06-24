@@ -13,7 +13,9 @@ import {
   StripeTelegramMemberLinkStatus,
 } from '@prisma/client';
 import { GroupLimitService } from '../../lib/group-limit.service';
-import { isEntitledStripeSubscription } from '../../lib/stripe-telegram-member-links';
+import {
+  resolveStripePayerSubscriptionForLink,
+} from '../../lib/stripe-telegram-member-links';
 import { PrismaService } from '../prisma/prisma.service';
 import { hashSensitiveValue } from '../../utils/utils';
 import type { TelegramGroupChatNoticeRequestInput } from '../../lib/zod/telegram-group-chat-notice-schemas';
@@ -222,6 +224,7 @@ export class TelegramService {
         telegramGroupId: true,
         telegramUserId: true,
         connectionId: true,
+        stripeCustomerId: true,
         stripeSubscriptionId: true,
         connection: {
           select: {
@@ -232,40 +235,38 @@ export class TelegramService {
       },
     });
 
-    const subscriptionIds = [
-      ...new Set(
-        memberLinks
-          .map((link) => link.stripeSubscriptionId)
-          .filter((subscriptionId): subscriptionId is string =>
-            Boolean(subscriptionId),
-          ),
-      ),
-    ];
+    const uniqueCustomerPairs = new Map<
+      string,
+      { connectionId: string; stripeCustomerId: string }
+    >();
+    for (const link of memberLinks) {
+      const key = `${link.connectionId}:${link.stripeCustomerId}`;
+      if (!uniqueCustomerPairs.has(key)) {
+        uniqueCustomerPairs.set(key, {
+          connectionId: link.connectionId,
+          stripeCustomerId: link.stripeCustomerId,
+        });
+      }
+    }
 
     const subscriptions =
-      subscriptionIds.length === 0
+      uniqueCustomerPairs.size === 0
         ? []
         : await this.prisma.stripeBillingSubscriptions.findMany({
             where: {
-              connectionId: {
-                in: [...new Set(memberLinks.map((link) => link.connectionId))],
-              },
-              stripeSubscriptionId: { in: subscriptionIds },
+              OR: Array.from(uniqueCustomerPairs.values()).map((pair) => ({
+                connectionId: pair.connectionId,
+                stripeCustomerId: pair.stripeCustomerId,
+              })),
             },
             select: {
               connectionId: true,
+              stripeCustomerId: true,
               stripeSubscriptionId: true,
               status: true,
               cancelAtPeriodEnd: true,
             },
           });
-
-    const subscriptionByKey = new Map(
-      subscriptions.map((subscription) => [
-        `${subscription.connectionId}:${subscription.stripeSubscriptionId}`,
-        subscription,
-      ]),
-    );
 
     const plansByMemberKey = new Map<
       string,
@@ -273,13 +274,12 @@ export class TelegramService {
     >();
 
     for (const link of memberLinks) {
-      const subscription = link.stripeSubscriptionId
-        ? subscriptionByKey.get(
-            `${link.connectionId}:${link.stripeSubscriptionId}`,
-          )
-        : null;
+      const subscription = resolveStripePayerSubscriptionForLink(
+        link,
+        subscriptions,
+      );
 
-      if (!isEntitledStripeSubscription(subscription)) {
+      if (!subscription) {
         continue;
       }
 

@@ -9,6 +9,7 @@ import {
 import type { IncomingHttpHeaders } from 'node:http';
 import { ConfigService } from '@nestjs/config';
 import {
+  AlertTriggerType,
   Prisma,
   StripeBillingAuditAction,
   StripeBillingConnectionStatus,
@@ -32,7 +33,7 @@ import {
   pickStripeSubscriptionForCancel,
   reactivateStripeTelegramMemberLinks,
   revokeStripeTelegramMemberLinks,
-  shouldRevokeStripeTelegramMemberLink,
+  shouldRevokeStripeTelegramMemberLinkForSubscription,
 } from '../../lib/stripe-telegram-member-links';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
@@ -57,12 +58,14 @@ import {
 import { AlertsService } from '../alerts/alerts.service';
 import { BotStartSettingsService } from '../bot-start-settings/bot-start-settings.service';
 import {
+  dispatchStripeAutomationTrigger,
   dispatchSubscriptionStripeTrigger,
   processInvoiceStripeEvent,
 } from '../../lib/stripe-billing-alert-dispatch';
 import {
   resolveInvoicePaymentTrigger,
   resolveSubscriptionStripeTrigger,
+  shouldDispatchInvoicePaymentTrigger,
   STRIPE_EXPIRING_WINDOW_DAYS,
 } from '../../lib/stripe-billing-sync-events';
 import { verifyStripeWebhookSignature } from '../../lib/stripe-webhook-signature';
@@ -652,13 +655,21 @@ export class StripeBillingSyncService {
         });
       }
 
-      if (shouldRevokeStripeTelegramMemberLink(status)) {
+      if (
+        shouldRevokeStripeTelegramMemberLinkForSubscription({
+          status,
+          cancelAtPeriodEnd: subscription.cancel_at_period_end === true,
+        })
+      ) {
         await revokeStripeTelegramMemberLinks(this.prisma, {
           connectionId,
           stripeSubscriptionId: subscription.id,
           stripeCustomerId,
         });
-      } else if (isEntitledStripeSubscription({ status })) {
+      } else if (
+        isEntitledStripeSubscription({ status }) &&
+        subscription.cancel_at_period_end !== true
+      ) {
         await reactivateStripeTelegramMemberLinks(this.prisma, {
           connectionId,
           stripeSubscriptionId: subscription.id,
@@ -752,15 +763,12 @@ export class StripeBillingSyncService {
         status,
         options?.stripeWebhookEventType,
       );
-      const statusChanged = previousStatus !== status;
-      const forcedFailedWebhook =
-        options?.stripeWebhookEventType === 'invoice.payment_failed';
-      const isWebhookDispatch = Boolean(options?.stripeWebhookEventType);
-      const shouldDispatch =
-        paymentTrigger &&
-        (isWebhookDispatch
-          ? statusChanged || forcedFailedWebhook || previousStatus === undefined
-          : previousStatus !== undefined && statusChanged);
+      const shouldDispatch = shouldDispatchInvoicePaymentTrigger(
+        paymentTrigger,
+        previousStatus,
+        status,
+        options,
+      );
       if (shouldDispatch) {
         const stripeCustomerId = getStripeCustomerId(invoice.customer);
         await processInvoiceStripeEvent(
@@ -775,6 +783,21 @@ export class StripeBillingSyncService {
     }
 
     return syncedInvoiceIds;
+  }
+
+  async dispatchPaymentSucceededForCheckout(
+    userId: string,
+    connectionId: string,
+    stripeCustomerId: string,
+    stripeSubscriptionId?: string | null,
+  ) {
+    await dispatchStripeAutomationTrigger(
+      this.dispatchDeps(),
+      userId,
+      connectionId,
+      AlertTriggerType.STRIPE_PAYMENT_SUCCEEDED,
+      { stripeCustomerId, stripeSubscriptionId },
+    );
   }
 
   private buildPaymentData(
@@ -1419,7 +1442,12 @@ export class StripeBillingService {
 
     for (const [dedupeKey, link] of uniqueLinks) {
       const subscriptions = subscriptionsByCustomerKey.get(dedupeKey) ?? [];
-      if (!canOpenStripeSubscriptionCancelPortal(subscriptions)) {
+      if (
+        !canOpenStripeSubscriptionCancelPortal(subscriptions, {
+          status: link.status,
+          stripeSubscriptionId: link.stripeSubscriptionId,
+        })
+      ) {
         continue;
       }
 
@@ -1458,8 +1486,15 @@ export class StripeBillingService {
       const hasEndedSubscriptions =
         uniqueLinks.size > 0 &&
         Array.from(uniqueLinks.keys()).every((dedupeKey) => {
+          const link = uniqueLinks.get(dedupeKey);
           const subscriptions = subscriptionsByCustomerKey.get(dedupeKey) ?? [];
-          return !canOpenStripeSubscriptionCancelPortal(subscriptions);
+          return (
+            !link ||
+            !canOpenStripeSubscriptionCancelPortal(subscriptions, {
+              status: link.status,
+              stripeSubscriptionId: link.stripeSubscriptionId,
+            })
+          );
         });
 
       if (hasEndedSubscriptions) {
@@ -1639,6 +1674,11 @@ export class StripeBillingService {
       return;
     }
 
+    const connection = await this.prisma.stripeBillingConnections.findUnique({
+      where: { id: pending.connectionId },
+      select: { monitoredPlanLabel: true },
+    });
+
     await this.prisma.$transaction(async (tx) => {
       await tx.stripeTelegramCheckoutSessions.update({
         where: { id: pending.id },
@@ -1674,6 +1714,45 @@ export class StripeBillingService {
         },
       });
 
+      if (stripeSubscriptionId) {
+        const customer = await tx.stripeBillingCustomers.findUnique({
+          where: {
+            connectionId_stripeCustomerId: {
+              connectionId: pending.connectionId,
+              stripeCustomerId,
+            },
+          },
+          select: { id: true },
+        });
+
+        await tx.stripeBillingSubscriptions.upsert({
+          where: {
+            connectionId_stripeSubscriptionId: {
+              connectionId: pending.connectionId,
+              stripeSubscriptionId,
+            },
+          },
+          create: {
+            userId: pending.userId,
+            connectionId: pending.connectionId,
+            customerId: customer?.id,
+            stripeSubscriptionId,
+            stripeCustomerId,
+            status: 'active',
+            planName: connection?.monitoredPlanLabel ?? null,
+            cancelAtPeriodEnd: false,
+          },
+          update: {
+            customerId: customer?.id,
+            stripeCustomerId,
+            status: 'active',
+            planName: connection?.monitoredPlanLabel ?? null,
+            cancelAtPeriodEnd: false,
+            canceledAt: null,
+          },
+        });
+      }
+
       await tx.stripeBillingAuditLogs.create({
         data: {
           userId: pending.userId,
@@ -1689,6 +1768,13 @@ export class StripeBillingService {
         },
       });
     });
+
+    await this.sync.dispatchPaymentSucceededForCheckout(
+      pending.userId,
+      pending.connectionId,
+      stripeCustomerId,
+      stripeSubscriptionId,
+    );
 
     await this.notifySubscriberAccessGranted({
       telegramUserId: pending.telegramUserId,

@@ -107,6 +107,34 @@ export function resolveInvoicePaymentTrigger(
   return null;
 }
 
+export function shouldDispatchInvoicePaymentTrigger(
+  paymentTrigger: AlertTriggerType | null,
+  previousStatus: string | undefined,
+  status: string,
+  options?: { stripeWebhookEventType?: string },
+): boolean {
+  if (!paymentTrigger) {
+    return false;
+  }
+
+  const statusChanged = previousStatus !== status;
+  const isWebhookDispatch = Boolean(options?.stripeWebhookEventType);
+  const forcedFailedWebhook =
+    options?.stripeWebhookEventType === 'invoice.payment_failed';
+
+  if (isWebhookDispatch) {
+    return (
+      statusChanged || forcedFailedWebhook || previousStatus === undefined
+    );
+  }
+
+  if (previousStatus === undefined) {
+    return status === 'paid';
+  }
+
+  return statusChanged;
+}
+
 export const STRIPE_SUBSCRIPTION_AUDIT_ACTION_BY_TRIGGER: Partial<
   Record<AlertTriggerType, string>
 > = {

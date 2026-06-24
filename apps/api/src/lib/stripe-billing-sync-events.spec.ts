@@ -3,6 +3,7 @@ import {
   isSubscriptionExpiringSoon,
   resolveInvoicePaymentTrigger,
   resolveSubscriptionStripeTrigger,
+  shouldDispatchInvoicePaymentTrigger,
   STRIPE_EXPIRING_WINDOW_DAYS,
 } from './stripe-billing-sync-events';
 
@@ -41,6 +42,49 @@ describe('resolveInvoicePaymentTrigger', () => {
     expect(
       resolveInvoicePaymentTrigger('open', 'invoice.payment_failed'),
     ).toBe(AlertTriggerType.STRIPE_PAYMENT_FAILED);
+  });
+});
+
+describe('shouldDispatchInvoicePaymentTrigger', () => {
+  it('dispatches new paid invoices during manual sync', () => {
+    expect(
+      shouldDispatchInvoicePaymentTrigger(
+        AlertTriggerType.STRIPE_PAYMENT_SUCCEEDED,
+        undefined,
+        'paid',
+      ),
+    ).toBe(true);
+  });
+
+  it('does not dispatch unseen draft invoices during manual sync', () => {
+    expect(
+      shouldDispatchInvoicePaymentTrigger(
+        AlertTriggerType.STRIPE_PAYMENT_SUCCEEDED,
+        undefined,
+        'draft',
+      ),
+    ).toBe(false);
+  });
+
+  it('does not repeat paid alerts when invoice status is unchanged', () => {
+    expect(
+      shouldDispatchInvoicePaymentTrigger(
+        AlertTriggerType.STRIPE_PAYMENT_SUCCEEDED,
+        'paid',
+        'paid',
+      ),
+    ).toBe(false);
+  });
+
+  it('dispatches first webhook observation even when status is unchanged', () => {
+    expect(
+      shouldDispatchInvoicePaymentTrigger(
+        AlertTriggerType.STRIPE_PAYMENT_SUCCEEDED,
+        undefined,
+        'paid',
+        { stripeWebhookEventType: 'invoice.paid' },
+      ),
+    ).toBe(true);
   });
 });
 

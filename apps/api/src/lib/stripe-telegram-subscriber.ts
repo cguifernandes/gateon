@@ -58,13 +58,26 @@ export async function resolveStripeLinkedTelegramSubscriber(
   }
 
   if (!link && stripeCustomerId) {
-    link = await prisma.stripeTelegramMemberLinks.findFirst({
-      where: {
-        ...baseWhere,
-        stripeCustomerId,
-      },
-      select: { telegramUserId: true, telegramGroupId: true },
-    });
+    if (linkStatuses.includes(StripeTelegramMemberLinkStatus.ACTIVE)) {
+      link = await prisma.stripeTelegramMemberLinks.findFirst({
+        where: {
+          ...baseWhere,
+          status: StripeTelegramMemberLinkStatus.ACTIVE,
+          stripeCustomerId,
+        },
+        select: { telegramUserId: true, telegramGroupId: true },
+      });
+    }
+
+    if (!link) {
+      link = await prisma.stripeTelegramMemberLinks.findFirst({
+        where: {
+          ...baseWhere,
+          stripeCustomerId,
+        },
+        select: { telegramUserId: true, telegramGroupId: true },
+      });
+    }
   }
 
   if (!link) {

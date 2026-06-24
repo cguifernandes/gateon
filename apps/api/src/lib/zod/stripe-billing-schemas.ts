@@ -35,7 +35,10 @@ export const stripeBillingPreviewCatalogSchema = z.object({
 export const stripeBillingConnectSchema = z.object({
   apiKey: stripeApiKeySchema,
   stripePriceId: stripePriceIdSchema,
-  telegramGroupId: z.string().trim().min(1, 'Selecione o grupo vinculado ao plano.'),
+  telegramGroupId: z
+    .string()
+    .trim()
+    .min(1, 'Selecione o grupo vinculado ao plano.'),
   webhookSigningSecret: stripeWebhookSigningSecretSchema.optional(),
   consentAccepted: z.literal(true, {
     errorMap: () => ({ message: stripeMessages.consentRequired }),
@@ -47,7 +50,10 @@ export const stripeBillingUpdateWebhookSecretSchema = z.object({
 });
 
 export const stripeBillingUpdateLinkedGroupSchema = z.object({
-  telegramGroupId: z.string().trim().min(1, 'Selecione o grupo vinculado ao plano.'),
+  telegramGroupId: z
+    .string()
+    .trim()
+    .min(1, 'Selecione o grupo vinculado ao plano.'),
 });
 
 export const stripeBillingCatalogPriceSchema = z.object({
