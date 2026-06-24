@@ -33,10 +33,7 @@ describe('resolveStripeWebhookPublicBaseUrl', () => {
 
     expect(
       resolveStripeWebhookPublicBaseUrl(config, {
-        get: (name) =>
-          name === 'x-gateon-api-public-base-url'
-            ? 'https://gateon-api.onrender.com'
-            : null,
+        'x-gateon-api-public-base-url': 'https://gateon-api.onrender.com',
       }),
     ).toBe('https://gateon-api.onrender.com');
   });

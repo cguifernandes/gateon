@@ -55,12 +55,12 @@ function PaginationLink({
   return (
     <Button
       type="button"
-      variant="outline"
+      variant={isActive ? "default" : "outline"}
       size={size}
       aria-current={isActive ? "page" : undefined}
       data-slot="pagination-link"
       data-active={isActive}
-      className={cn(className)}
+      className={className}
       {...props}
     />
   );

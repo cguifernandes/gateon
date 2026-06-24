@@ -6,6 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import type { IncomingHttpHeaders } from 'node:http';
 import { ConfigService } from '@nestjs/config';
 import {
   Prisma,
@@ -809,10 +810,6 @@ type ConnectionRow = Prisma.StripeBillingConnectionsGetPayload<{
   select: typeof connectionSelect;
 }>;
 
-type StripeBillingRequestHeaders = {
-  get(name: string): string | null | undefined;
-};
-
 type CheckoutButtonResult = {
   connectionId: string;
   label: string;
@@ -835,13 +832,13 @@ export class StripeBillingService {
     private readonly groupLimit: GroupLimitService,
   ) {}
 
-  async getStatus(userId: string, requestHeaders?: StripeBillingRequestHeaders) {
+  async getStatus(userId: string, requestHeaders?: IncomingHttpHeaders) {
     return this.buildStatusPayload(userId, requestHeaders);
   }
 
   async listConnectionOptions(
     userId: string,
-    requestHeaders?: StripeBillingRequestHeaders,
+    requestHeaders?: IncomingHttpHeaders,
   ) {
     const connections = await this.prisma.stripeBillingConnections.findMany({
       where: {
@@ -892,7 +889,7 @@ export class StripeBillingService {
   async connect(
     userId: string,
     input: StripeBillingConnectInput,
-    requestHeaders?: StripeBillingRequestHeaders,
+    requestHeaders?: IncomingHttpHeaders,
   ) {
     const apiKey = input.apiKey.trim();
     const client = new StripeBillingStripeClient(apiKey);
@@ -980,7 +977,7 @@ export class StripeBillingService {
     userId: string,
     connectionId: string,
     input: StripeBillingUpdateLinkedGroupInput,
-    requestHeaders?: StripeBillingRequestHeaders,
+    requestHeaders?: IncomingHttpHeaders,
   ) {
     await this.getOwnedConnection(userId, connectionId);
     await this.assertOwnedGroup(userId, input.telegramGroupId);
@@ -998,7 +995,7 @@ export class StripeBillingService {
     userId: string,
     connectionId: string,
     input: StripeBillingUpdateWebhookSecretInput,
-    requestHeaders?: StripeBillingRequestHeaders,
+    requestHeaders?: IncomingHttpHeaders,
   ) {
     await this.getOwnedConnection(userId, connectionId);
 
@@ -1017,7 +1014,7 @@ export class StripeBillingService {
   async syncNow(
     userId: string,
     connectionId: string,
-    requestHeaders?: StripeBillingRequestHeaders,
+    requestHeaders?: IncomingHttpHeaders,
   ) {
     await this.getOwnedConnection(userId, connectionId);
     await this.sync.syncConnection(userId, connectionId);
@@ -1028,7 +1025,7 @@ export class StripeBillingService {
   async disconnect(
     userId: string,
     connectionId: string,
-    requestHeaders?: StripeBillingRequestHeaders,
+    requestHeaders?: IncomingHttpHeaders,
   ) {
     const connection = await this.getOwnedConnection(userId, connectionId);
 
@@ -1670,7 +1667,7 @@ export class StripeBillingService {
 
   private async buildStatusPayload(
     userId: string,
-    requestHeaders?: StripeBillingRequestHeaders,
+    requestHeaders?: IncomingHttpHeaders,
   ) {
     const planId = await this.groupLimit.resolvePlanId(userId);
     const connections = await this.prisma.stripeBillingConnections.findMany({
@@ -1711,7 +1708,7 @@ export class StripeBillingService {
       receivedPaymentCount: number;
       failedPaymentCount: number;
     },
-    requestHeaders?: StripeBillingRequestHeaders,
+    requestHeaders?: IncomingHttpHeaders,
   ) {
     const { group, encryptedWebhookSigningSecret, ...rest } = connection;
     const webhookConfigured =

@@ -1,10 +1,7 @@
+import type { IncomingHttpHeaders } from 'node:http';
 import type { ConfigService } from '@nestjs/config';
 import { resolveRequestPublicBaseUrl } from './request-public-base-url';
 import { isLocalOnlyWebBaseUrl } from './stripe-checkout-redirect';
-
-type HeaderReader = {
-  get(name: string): string | null | undefined;
-};
 
 function normalizeBaseUrl(baseUrl: string): string {
   return baseUrl.trim().replace(/\/$/, '');
@@ -12,7 +9,7 @@ function normalizeBaseUrl(baseUrl: string): string {
 
 export function resolveStripeWebhookPublicBaseUrl(
   config: Pick<ConfigService, 'get'>,
-  requestHeaders?: HeaderReader,
+  requestHeaders?: IncomingHttpHeaders,
 ): string {
   const explicit =
     config.get<string>('API_PUBLIC_BASE_URL')?.trim() ||
@@ -47,7 +44,7 @@ export function resolveStripeWebhookPublicBaseUrl(
 export function buildStripeWebhookEndpointUrl(
   config: Pick<ConfigService, 'get'>,
   connectionId: string,
-  requestHeaders?: HeaderReader,
+  requestHeaders?: IncomingHttpHeaders,
 ): string {
   return `${resolveStripeWebhookPublicBaseUrl(config, requestHeaders)}/stripe-billing/webhooks/${connectionId}`;
 }
