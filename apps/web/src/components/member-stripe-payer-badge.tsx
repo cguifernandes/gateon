@@ -31,8 +31,9 @@ export function MemberStripePayerBadge({
             {...triggerProps}
             variant="outline"
             className={cn(
-              "h-4 w-max shrink-0 px-1.5 text-[10px] font-medium whitespace-nowrap",
+              "inline-flex h-4 min-h-4 shrink-0 items-center justify-center px-1.5 py-0 text-[10px] leading-none font-medium whitespace-nowrap",
               "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-300",
+              triggerProps.className,
               className,
             )}
           >

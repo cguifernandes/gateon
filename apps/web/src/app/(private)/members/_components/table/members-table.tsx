@@ -11,6 +11,7 @@ import {
 } from "react";
 import { DataRefreshIndicator } from "@/components/data-refresh-indicator";
 import { DataTablePagination } from "@/components/data-table-pagination";
+import { DataTableToolbar } from "@/components/data-table-toolbar";
 import { SearchIcon, type SearchIconHandle } from "@/components/icons/search";
 import { ImageComponent } from "@/components/image-component";
 import { MemberActionsToolbar } from "@/components/member-actions-toolbar";
@@ -295,9 +296,9 @@ export function MembersTable({
         />
       ) : (
         <>
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex w-full items-center gap-3">
-              <div className="relative max-w-sm flex-1">
+          <DataTableToolbar
+            search={
+              <>
                 <SearchIcon
                   ref={searchIconRef}
                   className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
@@ -312,13 +313,15 @@ export function MembersTable({
                   onBlur={() => searchIconRef.current?.stopAnimation()}
                   onChange={(e) => setSearch(e.target.value)}
                 />
-              </div>
+              </>
+            }
+            controls={
               <MembersFiltersPopover
                 groups={filterGroups}
                 control={filtersPopover}
               />
-            </div>
-          </div>
+            }
+          />
           <div className="relative overflow-x-auto rounded-md border border-border bg-background shadow-xs">
             <DataRefreshIndicator visible={showDataRefresh} />
             <div
@@ -327,10 +330,10 @@ export function MembersTable({
                 showDataRefresh && "opacity-50 blur-xs",
               )}
             >
-              <Table className="w-full min-w-4xl table-fixed">
+              <Table className="w-full min-w-0 table-auto sm:min-w-4xl sm:table-fixed">
                 <TableHeader>
                   <TableRow className="bg-muted hover:bg-muted!">
-                    <TableHead className="w-8 min-w-8 px-3 text-center">
+                    <TableHead className="w-8 min-w-8 px-2 text-center sm:px-3">
                       <MemberSelectionCheckbox
                         checked={allVisibleSelected}
                         indeterminate={
@@ -340,17 +343,17 @@ export function MembersTable({
                         onCheckedChange={toggleAllVisible}
                       />
                     </TableHead>
-                    <TableHead className="min-w-60">Membro</TableHead>
+                    <TableHead className="min-w-0 sm:min-w-60">Membro</TableHead>
                     <TableHead className="hidden w-36 min-w-36 whitespace-nowrap px-2 text-center md:table-cell">
                       Entrada
                     </TableHead>
                     <TableHead className="hidden w-36 min-w-36 whitespace-nowrap px-2 text-center md:table-cell">
                       Saída
                     </TableHead>
-                    <TableHead className="w-40 min-w-40 whitespace-nowrap px-2 text-center">
+                    <TableHead className="hidden w-40 min-w-40 whitespace-nowrap px-2 text-center sm:table-cell">
                       Status
                     </TableHead>
-                    <TableHead className="w-36 min-w-36 px-2 text-center">
+                    <TableHead className="w-28 min-w-28 px-2 text-center sm:w-36 sm:min-w-36">
                       <span className="sr-only">Ações</span>
                     </TableHead>
                   </TableRow>
@@ -369,7 +372,7 @@ export function MembersTable({
                     return (
                       <Fragment key={group.id}>
                         <TableRow className="bg-muted/40 hover:bg-muted/50">
-                          <TableCell className="w-8 min-w-8 px-3 text-center">
+                          <TableCell className="w-8 min-w-8 px-2 text-center sm:px-3">
                             <MemberSelectionCheckbox
                               checked={isGroupSelected}
                               indeterminate={isGroupIndeterminate}
@@ -411,7 +414,7 @@ export function MembersTable({
                           </TableCell>
                           <TableCell className="hidden w-36 min-w-36 py-3 md:table-cell" />
                           <TableCell className="hidden w-36 min-w-36 py-3 md:table-cell" />
-                          <TableCell className="w-40 min-w-40 py-3 text-center">
+                          <TableCell className="hidden w-40 min-w-40 py-3 text-center sm:table-cell">
                             <Badge
                               variant="outline"
                               className="mx-auto w-max whitespace-nowrap"
@@ -419,7 +422,7 @@ export function MembersTable({
                               {formatGroupMemberStatusSummary(group.members)}
                             </Badge>
                           </TableCell>
-                          <TableCell className="w-36 min-w-36 py-3 text-center">
+                          <TableCell className="w-28 min-w-28 py-3 text-center sm:w-36 sm:min-w-36">
                             <div className="flex justify-end">
                               <RefreshGroupButton
                                 groupId={group.id}
@@ -467,7 +470,7 @@ export function MembersTable({
                               >
                                 <TableCell
                                   className={cn(
-                                    "w-8 min-w-8 px-3 text-center",
+                                    "w-8 min-w-8 px-2 text-center sm:px-3",
                                     memberRowMutedClass,
                                   )}
                                 >
@@ -481,7 +484,7 @@ export function MembersTable({
                                 </TableCell>
                                 <TableCell
                                   className={cn(
-                                    "overflow-hidden py-2 pl-8",
+                                    "overflow-hidden py-2 pl-4 sm:pl-8",
                                     memberRowMutedClass,
                                   )}
                                 >
@@ -500,21 +503,30 @@ export function MembersTable({
                                       className="size-[32px] shrink-0 rounded-full border border-border object-cover"
                                     />
                                     <div className="min-w-0 flex-1 overflow-hidden">
-                                      <div className="flex min-w-0 items-center gap-1.5">
-                                        <div className="min-w-0 max-w-40 overflow-hidden">
+                                      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                                        <div className="min-w-0 max-w-full overflow-hidden sm:max-w-40">
                                           <TruncatedTextTooltip
                                             text={displayName}
                                             variant="truncate"
                                             className="font-medium text-foreground"
                                           />
                                         </div>
-                                        <div className="flex shrink-0 items-center gap-1.5">
+                                        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
                                           {isMemberOwner(member) ? (
                                             <MemberOwnerBadge />
                                           ) : null}
                                           <MemberStripePayerBadge
                                             plans={member.linkedStripePlans}
                                           />
+                                          <Badge
+                                            variant="outline"
+                                            className={cn(
+                                              "h-4 gap-1 px-1.5 py-0 text-[10px] leading-none font-medium whitespace-nowrap sm:hidden",
+                                              memberStatusDisplay.className,
+                                            )}
+                                          >
+                                            {memberLeft ? "Saiu" : "Ativo"}
+                                          </Badge>
                                         </div>
                                       </div>
                                       <span className="truncate text-muted-foreground text-xs">
@@ -544,7 +556,7 @@ export function MembersTable({
 
                                 <TableCell
                                   className={cn(
-                                    "w-40 min-w-40 text-center align-middle",
+                                    "hidden w-40 min-w-40 text-center align-middle sm:table-cell",
                                     memberRowMutedClass,
                                   )}
                                 >
@@ -560,7 +572,7 @@ export function MembersTable({
                                 </TableCell>
                                 <TableCell
                                   className={cn(
-                                    "w-36 min-w-36 py-2 align-middle",
+                                    "w-28 min-w-28 py-2 align-middle sm:w-36 sm:min-w-36",
                                     memberRowMutedClass,
                                   )}
                                 >

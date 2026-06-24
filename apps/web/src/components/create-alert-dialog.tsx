@@ -52,11 +52,11 @@ import { PlusIcon, type PlusIconHandle } from "@/components/icons/plus";
 import { SlidersHorizontalIcon } from "@/components/icons/sliders-horizontal";
 import { UserRoundMinusIcon } from "@/components/icons/user-round-minus";
 import { UsersIcon } from "@/components/icons/users";
-import { XIcon, type XIconHandle } from "@/components/icons/x";
 import { ImageComponent } from "@/components/image-component";
 import {
   DialogStack,
   DialogStackBody,
+  DialogStackCloseButton,
   DialogStackContent,
   DialogStackDescription,
   DialogStackFooter,
@@ -140,6 +140,22 @@ function formatTopicReviewSummary(
 function formatStripeConnectionLabel(connection: StripeBillingConnectionDto) {
   const planLabel = connection.monitoredPlanLabel?.trim() || "Plano Stripe";
   return `${planLabel} ···${connection.apiKeyLast4}`;
+}
+
+function getStripeConnectionsLinkedToGroups(
+  connections: StripeBillingConnectionDto[],
+  groupIds: string[],
+): StripeBillingConnectionDto[] {
+  if (groupIds.length === 0) {
+    return [];
+  }
+
+  const groupIdSet = new Set(groupIds);
+  return connections.filter((connection) => {
+    const linkedGroupId =
+      connection.linkedGroup?.id ?? connection.telegramGroupId;
+    return linkedGroupId != null && groupIdSet.has(linkedGroupId);
+  });
 }
 
 function buildDestinationAudienceFields({
@@ -1079,6 +1095,7 @@ function AutomationEventSelectField({
 type StripePlanSelectFieldProps = {
   form: UseFormReturn<AlertUpsertInput>;
   stripeConnections: StripeBillingConnectionDto[];
+  hasAnyStripeConnection: boolean;
   fieldIds: string;
   error?: string;
 };
@@ -1086,6 +1103,7 @@ type StripePlanSelectFieldProps = {
 function StripePlanSelectField({
   form,
   stripeConnections,
+  hasAnyStripeConnection,
   fieldIds,
   error,
 }: StripePlanSelectFieldProps) {
@@ -1109,13 +1127,27 @@ function StripePlanSelectField({
       </FieldDescription>
       {stripeConnections.length === 0 ? (
         <FieldDescription className="rounded-lg text-center gap-y-1 h-28 flex flex-col items-center justify-center border border-border p-3 text-sm">
-          <span>Nenhum plano Stripe conectado.</span>
-          <Link
-            href="/integrations"
-            className="font-medium text-primary underline-offset-4 hover:underline"
-          >
-            Conectar na página de integrações
-          </Link>
+          {hasAnyStripeConnection ? (
+            <>
+              <span>Nenhum plano Stripe vinculado aos grupos selecionados.</span>
+              <Link
+                href="/integrations"
+                className="font-medium text-primary underline-offset-4 hover:underline"
+              >
+                Vincular plano ao grupo em Integrações
+              </Link>
+            </>
+          ) : (
+            <>
+              <span>Nenhum plano Stripe conectado.</span>
+              <Link
+                href="/integrations"
+                className="font-medium text-primary underline-offset-4 hover:underline"
+              >
+                Conectar na página de integrações
+              </Link>
+            </>
+          )}
         </FieldDescription>
       ) : (
         <FieldSet
@@ -1453,6 +1485,15 @@ function DetailsStep({
       triggerType as (typeof memberAutomationTriggerTypes)[number],
     );
 
+  const linkedStripeConnections = useMemo(
+    () =>
+      getStripeConnectionsLinkedToGroups(
+        stripeConnections,
+        selectedDestinationGroupIds,
+      ),
+    [stripeConnections, selectedDestinationGroupIds],
+  );
+
   useEffect(() => {
     if (!isStripeTrigger) {
       if (selectedStripeConnectionId) {
@@ -1464,26 +1505,49 @@ function DetailsStep({
       return;
     }
 
+    if (selectedDestinationGroupIds.length === 0) {
+      if (selectedStripeConnectionId) {
+        form.setValue("triggerConfig.stripeConnectionId", undefined, {
+          shouldDirty: true,
+          shouldValidate: false,
+        });
+      }
+      return;
+    }
+
     if (
       selectedStripeConnectionId &&
-      stripeConnections.some(
+      linkedStripeConnections.some(
         (connection) => connection.id === selectedStripeConnectionId,
       )
     ) {
       return;
     }
 
-    if (stripeConnections.length === 1) {
+    if (selectedStripeConnectionId) {
+      form.setValue("triggerConfig.stripeConnectionId", undefined, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+
+    if (linkedStripeConnections.length === 1) {
       form.setValue(
         "triggerConfig.stripeConnectionId",
-        stripeConnections[0].id,
+        linkedStripeConnections[0].id,
         {
           shouldDirty: true,
           shouldValidate: true,
         },
       );
     }
-  }, [form, isStripeTrigger, selectedStripeConnectionId, stripeConnections]);
+  }, [
+    form,
+    isStripeTrigger,
+    linkedStripeConnections,
+    selectedDestinationGroupIds.length,
+    selectedStripeConnectionId,
+  ]);
 
   return (
     <div>
@@ -1528,10 +1592,13 @@ function DetailsStep({
                 />
               ) : null}
 
-              {isAutomation && isStripeTrigger ? (
+              {isAutomation &&
+              isStripeTrigger &&
+              selectedDestinationGroupIds.length > 0 ? (
                 <StripePlanSelectField
                   form={form}
-                  stripeConnections={stripeConnections}
+                  stripeConnections={linkedStripeConnections}
+                  hasAnyStripeConnection={stripeConnections.length > 0}
                   fieldIds={fieldIds}
                   error={stripeConnectionError}
                 />
@@ -2066,9 +2133,10 @@ function ReviewStep({ form, groups, stripeConnections }: ReviewStepProps) {
       ? alertTriggerLabels[triggerType as keyof typeof alertTriggerLabels]
       : undefined;
 
-  const selectedStripeConnection = stripeConnections.find(
-    (connection) => connection.id === selectedStripeConnectionId,
-  );
+  const selectedStripeConnection = getStripeConnectionsLinkedToGroups(
+    stripeConnections,
+    selectedGroupIds,
+  ).find((connection) => connection.id === selectedStripeConnectionId);
   const stripePlanLabel = selectedStripeConnection
     ? formatStripeConnectionLabel(selectedStripeConnection)
     : undefined;
@@ -2182,7 +2250,6 @@ export function CreateAlertDialog({
     TelegramGroupSummaryDto[] | null
   >(null);
   const plusIconRef = useRef<PlusIconHandle | null>(null);
-  const xIconRefs = useRef<(XIconHandle | null)[]>([]);
   const arrowLeftIconRefs = useRef<(ArrowLeftIconHandle | null)[]>([]);
   const arrowRightIconRefs = useRef<(ArrowRightIconHandle | null)[]>([]);
 
@@ -2509,40 +2576,22 @@ export function CreateAlertDialog({
           return (
             <DialogStackContent
               key={step.title}
-              className="flex h-[640px] flex-col overflow-hidden"
+              className="flex h-[min(640px,calc(100dvh-2rem))] flex-col overflow-hidden"
             >
               <DialogStackHeader className="shrink-0">
                 <div className="flex items-start justify-between">
-                  <div className="flex flex-col gap-y-1 pr-2">
+                  <div className="flex flex-col gap-3.5 pr-2">
                     <DialogStackTitle>{step.title}</DialogStackTitle>
                     <DialogStackDescription>
                       {step.description}
                     </DialogStackDescription>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => handleOpenChange(false)}
-                    onMouseEnter={() =>
-                      xIconRefs.current[index]?.startAnimation()
-                    }
-                    onMouseLeave={() =>
-                      xIconRefs.current[index]?.stopAnimation()
-                    }
-                  >
-                    <XIcon
-                      ref={(el) => {
-                        xIconRefs.current[index] = el;
-                      }}
-                      size={16}
-                    />
-                  </Button>
+                  <DialogStackCloseButton />
                 </div>
                 <DialogStackProgress steps={progressSteps} />
               </DialogStackHeader>
 
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
                 {step.content}
               </div>
 

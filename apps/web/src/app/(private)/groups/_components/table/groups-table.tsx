@@ -6,6 +6,7 @@ import { TelegramGroupTypeCell } from "@/app/(private)/groups/_components/table/
 import { AddGroupBotDialog } from "@/components/add-group-bot-dialog";
 import { DataRefreshIndicator } from "@/components/data-refresh-indicator";
 import { DataTablePagination } from "@/components/data-table-pagination";
+import { DataTableToolbar } from "@/components/data-table-toolbar";
 import { SearchIcon, type SearchIconHandle } from "@/components/icons/search";
 import { ImageComponent } from "@/components/image-component";
 import {
@@ -182,9 +183,9 @@ export function GroupsTable({
         />
       ) : (
         <>
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex w-full items-center gap-3">
-              <div className="relative max-w-sm flex-1">
+          <DataTableToolbar
+            search={
+              <>
                 <SearchIcon
                   ref={searchIconRef}
                   className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
@@ -199,17 +200,23 @@ export function GroupsTable({
                   onBlur={() => searchIconRef.current?.stopAnimation()}
                   onChange={(e) => setSearch(e.target.value)}
                 />
-              </div>
-              <GroupsFiltersPopover
-                stripeConnections={stripeConnections}
-                control={filtersPopover}
+              </>
+            }
+            controls={
+              <>
+                <GroupsFiltersPopover
+                  stripeConnections={stripeConnections}
+                  control={filtersPopover}
+                />
+                <RefreshAllGroupsButton disabled={summary.totalGroups === 0} />
+              </>
+            }
+            actions={
+              <AddGroupBotDialog
+                onConnectionCompleted={handleGroupConnectionCompleted}
               />
-              <RefreshAllGroupsButton disabled={summary.totalGroups === 0} />
-            </div>
-            <AddGroupBotDialog
-              onConnectionCompleted={handleGroupConnectionCompleted}
-            />
-          </div>
+            }
+          />
           <div className="relative overflow-x-auto rounded-md border border-border bg-background shadow-xs">
             <DataRefreshIndicator visible={showDataRefresh} />
             <div
@@ -218,11 +225,13 @@ export function GroupsTable({
                 showDataRefresh && "opacity-50 blur-xs",
               )}
             >
-              <Table className="w-full min-w-max table-auto">
+              <Table className="w-full min-w-0 table-auto sm:min-w-max">
                 <TableHeader>
                   <TableRow className="bg-muted hover:bg-muted!">
-                    <TableHead className="min-w-60">Grupo</TableHead>
-                    <TableHead className="w-55 min-w-55">Membros</TableHead>
+                    <TableHead className="min-w-0 sm:min-w-60">Grupo</TableHead>
+                    <TableHead className="hidden w-55 min-w-55 lg:table-cell">
+                      Membros
+                    </TableHead>
                     <TableHead className="hidden w-32 min-w-32 whitespace-nowrap px-2 text-center sm:table-cell">
                       Tipo
                     </TableHead>
@@ -232,10 +241,10 @@ export function GroupsTable({
                     <TableHead className="hidden w-36 min-w-36 whitespace-nowrap px-2 text-center md:table-cell">
                       Conectado em
                     </TableHead>
-                    <TableHead className="w-40 min-w-40 whitespace-nowrap px-2 text-center">
+                    <TableHead className="hidden w-40 min-w-40 whitespace-nowrap px-2 text-center sm:table-cell">
                       Status
                     </TableHead>
-                    <TableHead className="w-20 min-w-20 px-2 text-center">
+                    <TableHead className="w-12 min-w-12 px-2 text-center sm:w-20 sm:min-w-20">
                       <span className="sr-only">Ações</span>
                     </TableHead>
                   </TableRow>
@@ -259,7 +268,7 @@ export function GroupsTable({
                         tabIndex={0}
                         aria-label={`Ver membros de ${group.title ?? "grupo"}`}
                       >
-                        <TableCell className="min-w-60">
+                        <TableCell className="min-w-0 sm:min-w-60">
                           <div className="flex min-w-0 gap-3">
                             <ImageComponent
                               src={
@@ -286,11 +295,36 @@ export function GroupsTable({
                               <span className="text-xs text-muted-foreground">
                                 {group.telegramChatId}
                               </span>
+                              <div className="mt-1.5 flex flex-col items-start gap-1.5 lg:hidden">
+                                <span
+                                  className={cn(
+                                    "text-[11px] tabular-nums",
+                                    group.trackedMemberLimitReached
+                                      ? "font-medium text-amber-600 dark:text-amber-500"
+                                      : "text-muted-foreground",
+                                  )}
+                                >
+                                  {group.trackedMemberCount} /{" "}
+                                  {group.trackedMemberLimitPerGroup} gerenciados
+                                </span>
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "h-auto max-w-full gap-1.5 py-0.5 font-medium sm:hidden",
+                                    botDisplay.className,
+                                  )}
+                                  title={botDisplay.label}
+                                >
+                                  <span className="truncate">
+                                    {botDisplay.label}
+                                  </span>
+                                </Badge>
+                              </div>
                             </div>
                           </div>
                         </TableCell>
 
-                        <TableCell className="w-55 min-w-55">
+                        <TableCell className="hidden w-55 min-w-55 lg:table-cell">
                           <div className="flex min-w-0 flex-col gap-1">
                             <div className="flex items-baseline justify-between gap-1 text-[11px]">
                               <span className="text-muted-foreground">
@@ -342,7 +376,7 @@ export function GroupsTable({
                           </span>
                         </TableCell>
 
-                        <TableCell className="w-40 min-w-40 px-2 align-middle">
+                        <TableCell className="hidden w-40 min-w-40 px-2 align-middle sm:table-cell">
                           <div className="flex min-w-0 justify-center">
                             <Badge
                               variant="outline"
@@ -360,7 +394,7 @@ export function GroupsTable({
                         </TableCell>
 
                         <TableCell
-                          className="w-20 min-w-20 px-1 text-center align-middle"
+                          className="w-12 min-w-12 px-1 text-center align-middle sm:w-20 sm:min-w-20"
                           onClick={(event) => event.stopPropagation()}
                           onKeyDown={(event) => event.stopPropagation()}
                         >

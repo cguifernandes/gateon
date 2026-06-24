@@ -217,7 +217,7 @@ function InsightSparkline({
 }
 
 const PLAN_CARD_SHELL_CLASS =
-  "relative flex h-fit w-full min-h-0 flex-col overflow-hidden rounded-xl p-5 max-lg:gap-6 lg:h-full lg:flex-1 lg:justify-between lg:gap-0";
+  "relative flex h-fit w-full flex-col gap-5 overflow-hidden rounded-xl p-5";
 
 function PlanUpsellCard() {
   const { planId, planLabel, connectedCount, maxGroups, remaining, isAtLimit } =
@@ -237,7 +237,7 @@ function PlanUpsellCard() {
       <div
         className={cn(
           PLAN_CARD_SHELL_CLASS,
-          "border border-border bg-card max-lg:gap-5",
+          "border border-border bg-card",
         )}
       >
         <div className="flex flex-col gap-3">
@@ -391,13 +391,13 @@ export function DashboardGroupInsights({
   if (!selectedGroup || !insights) {
     return (
       <section className="space-y-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-6 xl:gap-8">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6 xl:gap-8">
           <div className="flex min-w-0 flex-1 flex-col gap-4">
             <div className="min-w-0">
-              <p className="text-muted-foreground text-sm">
+              <p className="text-muted-foreground text-sm text-pretty">
                 Indicadores aparecem após conectar um grupo.
               </p>
-              <h2 className="mt-1 font-heading text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+              <h2 className="mt-1 font-heading text-xl font-bold tracking-tight text-foreground whitespace-nowrap sm:text-2xl">
                 Visão do grupo
               </h2>
             </div>
@@ -426,7 +426,7 @@ export function DashboardGroupInsights({
             </Empty>
           </div>
 
-          <aside className="flex w-full flex-col max-lg:h-fit lg:min-h-0 lg:w-80 lg:shrink-0 xl:w-[360px]">
+          <aside className="flex w-full flex-col lg:w-80 lg:shrink-0 lg:self-start xl:w-[360px]">
             <PlanUpsellCard />
           </aside>
         </div>
@@ -484,24 +484,24 @@ export function DashboardGroupInsights({
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-6 xl:gap-8">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6 xl:gap-8">
         <div className="flex min-w-0 flex-1 flex-col gap-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div className="min-w-0">
-              <p className="truncate text-muted-foreground text-sm">
+              <p className="text-muted-foreground text-sm text-pretty xl:truncate">
                 Indicadores de {groupTitle} no período selecionado.
               </p>
-              <h2 className="mt-1 font-heading text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+              <h2 className="mt-1 font-heading text-xl font-bold tracking-tight text-foreground whitespace-nowrap sm:text-2xl">
                 Visão do grupo
               </h2>
             </div>
 
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+            <div className="flex w-full shrink-0 flex-col gap-2 xl:w-auto xl:flex-row xl:items-center">
               <Select
                 value={datePreset}
                 onValueChange={(v) => setDatePreset(v as DatePreset)}
               >
-                <SelectTrigger className="w-full sm:w-40">
+                <SelectTrigger className="w-full xl:w-40">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -516,7 +516,7 @@ export function DashboardGroupInsights({
                 value={selectedGroup.id}
                 onValueChange={setSelectedGroupId}
               >
-                <SelectTrigger className="w-full sm:w-48">
+                <SelectTrigger className="w-full xl:w-48">
                   <SelectValue placeholder="Selecionar grupo" />
                 </SelectTrigger>
                 <SelectContent>
@@ -611,7 +611,7 @@ export function DashboardGroupInsights({
           </div>
         </div>
 
-        <aside className="flex w-full flex-col max-lg:h-fit lg:min-h-0 lg:w-80 lg:shrink-0 xl:w-[340px]">
+        <aside className="flex w-full flex-col lg:w-80 lg:shrink-0 lg:self-start xl:w-[360px]">
           <PlanUpsellCard />
         </aside>
       </div>

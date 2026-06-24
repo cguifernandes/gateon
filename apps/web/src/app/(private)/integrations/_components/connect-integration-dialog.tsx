@@ -20,10 +20,10 @@ import {
   ArrowRightIcon,
   type ArrowRightIconHandle,
 } from "@/components/icons/arrow-right";
-import { XIcon, type XIconHandle } from "@/components/icons/x";
 import {
   DialogStack,
   DialogStackBody,
+  DialogStackCloseButton,
   DialogStackContent,
   DialogStackDescription,
   DialogStackFooter,
@@ -308,7 +308,6 @@ export function ConnectIntegrationDialog({
   const formId = useId();
   const apiKeyInputId = useId();
   const consentCheckboxId = useId();
-  const xIconRefs = useRef<(XIconHandle | null)[]>([]);
   const arrowLeftIconRefs = useRef<(ArrowLeftIconHandle | null)[]>([]);
   const arrowRightIconRefs = useRef<(ArrowRightIconHandle | null)[]>([]);
 
@@ -583,39 +582,24 @@ export function ConnectIntegrationDialog({
           return (
             <DialogStackContent
               key={`${step.title}-${index}`}
-              className="flex h-[640px] flex-col overflow-hidden"
+              className="flex h-[min(640px,calc(100dvh-2rem))] flex-col overflow-hidden"
             >
               <DialogStackHeader className="shrink-0">
                 <div className="flex items-start justify-between">
-                  <div className="flex flex-col gap-y-1 pr-2">
+                  <div className="flex flex-col gap-3.5 pr-2">
                     <DialogStackTitle>{step.title}</DialogStackTitle>
                     <DialogStackDescription>
                       {step.description}
                     </DialogStackDescription>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => handleOpenChange(false)}
-                    onMouseEnter={() =>
-                      xIconRefs.current[index]?.startAnimation()
-                    }
-                  >
-                    <XIcon
-                      ref={(element) => {
-                        xIconRefs.current[index] = element;
-                      }}
-                      size={16}
-                    />
-                  </Button>
+                  <DialogStackCloseButton />
                 </div>
                 <DialogStackProgress steps={[...dialogProgressSteps]} />
               </DialogStackHeader>
 
               <div
                 className={cn(
-                  "min-h-0 flex-1 overflow-y-auto overscroll-contain p-6",
+                  "min-h-0 flex-1 overflow-y-auto overscroll-contain p-4",
                 )}
               >
                 {step.content}

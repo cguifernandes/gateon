@@ -25,6 +25,8 @@ import {
   useState,
 } from "react";
 import { CheckIcon } from "@/components/icons/check";
+import { XIcon, type XIconHandle } from "@/components/icons/x";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type DialogStackContextType = {
@@ -264,7 +266,7 @@ export const DialogStackBody = ({
           )}
           {...props}
         >
-          <div className="pointer-events-auto relative flex max-h-[100dvh] w-full flex-col items-center justify-center overflow-y-auto overscroll-contain py-4">
+          <div className="pointer-events-auto relative flex max-h-dvh w-full flex-col items-center justify-start overflow-y-auto overscroll-contain">
             {Children.map(children, (child, index) => {
               const childElement = child as ReactElement<{
                 index: number;
@@ -391,7 +393,7 @@ export const DialogStackHeader = ({
 }: DialogStackHeaderProps) => (
   <div
     className={cn(
-      "flex flex-col space-y-1.5 text-center sm:text-left px-6 py-4 border-b border-border",
+      "flex flex-col gap-3.5 border-b border-border p-4 text-start",
       className,
     )}
     {...props}
@@ -407,7 +409,7 @@ export const DialogStackFooter = ({
 }: DialogStackFooterProps) => (
   <div
     className={cn(
-      "flex items-center justify-end space-x-2 px-6 py-4 border-t border-border",
+      "flex items-center justify-end gap-2 border-t border-border p-4",
       className,
     )}
     {...props}
@@ -415,6 +417,37 @@ export const DialogStackFooter = ({
     {children}
   </div>
 );
+
+export type DialogStackCloseButtonProps = {
+  className?: string;
+};
+
+export function DialogStackCloseButton({
+  className,
+}: DialogStackCloseButtonProps) {
+  const context = useContext(DialogStackContext);
+  const xIconRef = useRef<XIconHandle>(null);
+
+  if (!context) {
+    throw new Error("DialogStackCloseButton must be used within a DialogStack");
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="icon-sm"
+      className={cn("shrink-0", className)}
+      aria-label="Fechar"
+      onClick={() => context.setIsOpen(false)}
+      onMouseEnter={() => xIconRef.current?.startAnimation()}
+      onMouseLeave={() => xIconRef.current?.stopAnimation()}
+    >
+      <XIcon size={14} isAnimateOnView={false} ref={xIconRef} />
+      <span className="sr-only">Fechar</span>
+    </Button>
+  );
+}
 
 export type DialogStackNextProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   asChild?: boolean;
@@ -600,7 +633,7 @@ export const DialogStackProgress = ({
   }
 
   return (
-    <div {...props} className={cn("pt-4 w-full space-y-4", className)}>
+    <div {...props} className={cn("w-full", className)}>
       <div className="relative flex w-full justify-between gap-1 px-2">
         <div
           className="pointer-events-none mx-10 absolute inset-x-0 top-[15px] z-0 h-px bg-border sm:top-4"

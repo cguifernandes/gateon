@@ -25,10 +25,10 @@ import {
   ShieldCheckIcon,
   type ShieldCheckIconHandle,
 } from "@/components/icons/shield-check";
-import { XIcon, type XIconHandle } from "@/components/icons/x";
 import {
   DialogStack,
   DialogStackBody,
+  DialogStackCloseButton,
   DialogStackContent,
   DialogStackDescription,
   DialogStackFooter,
@@ -72,6 +72,7 @@ import { ArrowRightIcon, type ArrowRightIconHandle } from "./icons/arrow-right";
 
 type AddGroupBotDialogProps = {
   presentation?: "default" | "icon";
+  triggerClassName?: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   onConnectionCompleted?: () => void | Promise<void>;
@@ -260,7 +261,7 @@ function ConnectStep({
   }
 
   return (
-    <Empty>
+    <Empty className="flex-none justify-start p-4">
       <EmptyHeader className="max-w-xl">
         <EmptyMedia className="size-16 rounded-xl bg-muted">
           <Image src={TelegramIcon} alt="Telegram" width={44} height={44} />
@@ -307,7 +308,7 @@ function ConfirmStatusEmpty({
   footer,
 }: ConfirmStatusView) {
   return (
-    <Empty>
+    <Empty className="flex-none justify-start p-4">
       <EmptyHeader>
         <EmptyMedia className={cn("mb-0 size-16 rounded-xl", mediaClassName)}>
           {icon}
@@ -545,6 +546,7 @@ function ConfirmStep({
 
 export function AddGroupBotDialog({
   presentation = "default",
+  triggerClassName,
   open: openProp,
   onOpenChange: onOpenChangeProp,
   onConnectionCompleted: onConnectionCompletedProp,
@@ -553,7 +555,6 @@ export function AddGroupBotDialog({
   const { canAddGroup, isAtLimit, maxGroups } = useGroupLimit();
   const [internalOpen, setInternalOpen] = useState(false);
   const [intentId, setIntentId] = useState<string | null>(null);
-  const xIconRefs = useRef<(XIconHandle | null)[]>([]);
   const plusIconRefs = useRef<PlusIconHandle | null>(null);
   const arrowLeftIconRefs = useRef<(ArrowLeftIconHandle | null)[]>([]);
   const arrowRightIconRefs = useRef<(ArrowRightIconHandle | null)[]>([]);
@@ -643,6 +644,7 @@ export function AddGroupBotDialog({
       variant="default"
       disabled={!canAddGroup}
       title={limitTitle}
+      className={cn("w-full sm:w-auto", triggerClassName)}
       onClick={() => {
         if (canAddGroup) {
           handleOpenChange(true);
@@ -711,42 +713,23 @@ export function AddGroupBotDialog({
 
           return (
             <DialogStackContent
-              className="flex h-[640px] flex-col overflow-hidden"
+              className="flex h-[min(640px,calc(100dvh-2rem))] flex-col overflow-hidden"
               key={`${step.title}-${index}`}
             >
               <DialogStackHeader className="shrink-0">
                 <div className="flex items-start justify-between">
-                  <div className="flex flex-col gap-y-1 pr-2">
+                  <div className="flex flex-col gap-3.5 pr-2">
                     <DialogStackTitle>{step.title}</DialogStackTitle>
                     <DialogStackDescription>
                       {step.description}
                     </DialogStackDescription>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => handleOpenChange(false)}
-                    onMouseEnter={() => {
-                      xIconRefs.current[index]?.startAnimation();
-                    }}
-                  >
-                    <XIcon
-                      ref={(el) => {
-                        xIconRefs.current[index] = el;
-                      }}
-                      size={16}
-                    />
-                  </Button>
+                  <DialogStackCloseButton />
                 </div>
                 <DialogStackProgress steps={[...dialogProgressSteps]} />
               </DialogStackHeader>
 
-              <div
-                className={cn(
-                  "min-h-0 shrink-0 flex-1 h-full overflow-y-auto overscroll-contain p-6",
-                  index !== 0 && "flex items-center justify-center",
-                )}
-              >
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
                 {step.content}
               </div>
 
