@@ -4,7 +4,7 @@ import pagseguro from "@/assets/gateway/pagseguro.svg";
 import stripe from "@/assets/gateway/stripe-4.svg";
 import type { GatewayId } from "@/lib/utils";
 import { PAYMENT_GATEWAYS } from "@/lib/utils";
-import { Container } from "../../../../components/container";
+import { Container } from "@/components/container";
 import { GatewayCard } from "../gateway-card";
 
 const gatewayLogos: Record<GatewayId, StaticImageData> = {

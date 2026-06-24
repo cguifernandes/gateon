@@ -3,7 +3,8 @@
 import { motion } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRef } from "react";
+import { useId, useRef } from "react";
+import { Container } from "@/components/container";
 import {
   ArrowUpRightIcon,
   type ArrowUpRightIconHandle,
@@ -14,8 +15,7 @@ import { RefreshCWIcon } from "@/components/icons/refresh-cw";
 import { UsersIcon } from "@/components/icons/users";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import ImageTelegram from "../../../../../public/hero-telegram-iphone.png";
-import { Container } from "../../../../components/container";
+import ImageTelegram from "../../../../public/hero-telegram-iphone.png";
 
 const floatTransition = {
   duration: 4.5,
@@ -47,7 +47,7 @@ function HeroIllustration() {
             <title>Linhas decorativas entre os cards e o celular</title>
             <defs>
               <linearGradient
-                id="hero-connector"
+                id={useId()}
                 gradientUnits="userSpaceOnUse"
                 x1="40"
                 y1="40"
@@ -243,7 +243,7 @@ export function Hero() {
   const arrowUpRightIcon = useRef<ArrowUpRightIconHandle>(null);
 
   return (
-    <section className="py-20 md:py-24" id="start">
+    <section className="py-20 md:py-24" id={useId()}>
       <Container>
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
           <div className="max-w-md flex flex-col gap-4">

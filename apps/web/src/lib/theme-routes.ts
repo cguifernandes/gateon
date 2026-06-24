@@ -5,7 +5,6 @@ export const PRIVATE_THEME_ROUTE_PREFIXES = [
   "/members",
   "/alerts",
   "/settings",
-  "/terms",
   "/integrations",
 ] as const;
 

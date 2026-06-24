@@ -207,12 +207,19 @@ export function StripeWebhookSetup({
               <div className="flex min-w-0 items-center gap-2">
                 <Input
                   id={`webhook-secret-${connection.id}`}
-                  type="password"
+                  type="text"
+                  inputMode="text"
                   autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  data-1p-ignore
+                  data-lpignore="true"
+                  data-form-type="other"
                   placeholder="whsec_..."
                   value={secret}
                   onChange={(event) => setSecret(event.target.value)}
-                  className="min-w-0"
+                  className="min-w-0 font-mono [-webkit-text-security:disc]"
                 />
                 <Button
                   type="button"

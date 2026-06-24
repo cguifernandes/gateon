@@ -59,7 +59,8 @@ const botActions = [
 const accordionTriggerClassName =
   "font-heading font-medium text-foreground text-sm hover:no-underline";
 
-const accordionContentClassName = "space-y-3 px-1.5 pt-0.5 pb-4 text-sm leading-relaxed";
+const accordionContentClassName =
+  "space-y-3 px-1.5 pt-0.5 pb-4 text-sm leading-relaxed";
 
 export function StripeTelegramLinkingGuide() {
   return (
@@ -144,7 +145,9 @@ export function StripeTelegramLinkingGuide() {
             <AccordionTrigger className={accordionTriggerClassName}>
               Privacidade e uso dos dados
             </AccordionTrigger>
-            <AccordionContent className={`${accordionContentClassName} space-y-4`}>
+            <AccordionContent
+              className={`${accordionContentClassName} space-y-4`}
+            >
               <section>
                 <h3 className="font-heading font-medium text-foreground">
                   O que as integrações fazem?

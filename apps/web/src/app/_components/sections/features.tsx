@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import { Container } from "../../../../components/container";
+import { Container } from "@/components/container";
 import {
   FeatureCardArtMembersFlow,
   FeatureCardArtReliability,
