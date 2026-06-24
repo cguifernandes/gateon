@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EMAIL_SUPPORT } from "@/lib/utils";
 import { BotStartSettingsSection } from "./_components/bot-start-settings-section";
+import { DeleteAccountCard } from "./_components/delete-account-card";
 
 export const metadata: Metadata = {
   title: "Configurações — Gateon",
@@ -13,12 +15,9 @@ export default function DashboardSettingsPage() {
   const exportSubject = encodeURIComponent(
     "Solicitação de exportação de dados",
   );
-  const deletionSubject = encodeURIComponent(
-    "Solicitação de exclusão de conta",
-  );
 
   return (
-    <div className="space-y-6 pb-4">
+    <div className="space-y-6 pb-10">
       <div className="space-y-1">
         <h1 className="font-semibold text-2xl tracking-tight">Configurações</h1>
         <p className="text-muted-foreground font-light text-sm">
@@ -42,31 +41,14 @@ export default function DashboardSettingsPage() {
             </p>
             <a
               href={`mailto:${EMAIL_SUPPORT}?subject=${exportSubject}`}
-              className="inline-flex h-9 items-center rounded-md bg-primary px-3 font-medium text-primary-foreground text-sm hover:bg-primary/80"
+              className={buttonVariants({ variant: "default" })}
             >
               Solicitar exportação
             </a>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Exclusão de conta</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm">
-            <p className="text-muted-foreground leading-relaxed">
-              Peça a exclusão da conta e dos dados associados. A remoção pode
-              exigir confirmação de identidade e não substitui obrigações legais
-              de retenção mínima quando aplicáveis.
-            </p>
-            <a
-              href={`mailto:${EMAIL_SUPPORT}?subject=${deletionSubject}`}
-              className="inline-flex h-9 items-center rounded-md border border-destructive/30 bg-destructive/10 px-3 font-medium text-destructive text-sm hover:bg-destructive/20"
-            >
-              Solicitar exclusão
-            </a>
-          </CardContent>
-        </Card>
+        <DeleteAccountCard />
 
         <Card className="lg:col-span-2">
           <CardHeader>

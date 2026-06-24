@@ -3,6 +3,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   InternalServerErrorException,
   Logger,
@@ -17,7 +18,7 @@ import type { Request, Response } from 'express';
 import { OAUTH_STATE_COOKIE_NAME, toPublicUser } from '../../utils/utils';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '../../lib/guards/auth.guard';
-import { loginSchema, registerSchema } from '../../lib/zod/auth-schemas';
+import { loginSchema, registerSchema, deleteAccountSchema } from '../../lib/zod/auth-schemas';
 
 @Controller('auth')
 export class AuthController {
@@ -66,6 +67,21 @@ export class AuthController {
       throw new InternalServerErrorException('Authenticated user not found.');
     }
     return { user: toPublicUser(user) };
+  }
+
+  @Delete('account')
+  @UseGuards(AuthGuard)
+  async deleteAccount(
+    @Body() body: unknown,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    deleteAccountSchema.parse(body);
+    const userId = req.authSession?.userId;
+    if (!userId) {
+      throw new InternalServerErrorException('Authenticated user not found.');
+    }
+    return this.auth.deleteAccount(userId, req, res);
   }
 
   @Get('google')

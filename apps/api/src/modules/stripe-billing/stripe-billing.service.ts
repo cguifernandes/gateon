@@ -809,6 +809,10 @@ type ConnectionRow = Prisma.StripeBillingConnectionsGetPayload<{
   select: typeof connectionSelect;
 }>;
 
+type StripeBillingRequestHeaders = {
+  get(name: string): string | null | undefined;
+};
+
 type CheckoutButtonResult = {
   connectionId: string;
   label: string;
@@ -831,11 +835,14 @@ export class StripeBillingService {
     private readonly groupLimit: GroupLimitService,
   ) {}
 
-  async getStatus(userId: string) {
-    return this.buildStatusPayload(userId);
+  async getStatus(userId: string, requestHeaders?: StripeBillingRequestHeaders) {
+    return this.buildStatusPayload(userId, requestHeaders);
   }
 
-  async listConnectionOptions(userId: string) {
+  async listConnectionOptions(
+    userId: string,
+    requestHeaders?: StripeBillingRequestHeaders,
+  ) {
     const connections = await this.prisma.stripeBillingConnections.findMany({
       where: {
         userId,
@@ -847,11 +854,14 @@ export class StripeBillingService {
 
     return {
       connections: connections.map((connection) =>
-        this.mapConnectionForResponse({
-          ...connection,
-          receivedPaymentCount: 0,
-          failedPaymentCount: 0,
-        }),
+        this.mapConnectionForResponse(
+          {
+            ...connection,
+            receivedPaymentCount: 0,
+            failedPaymentCount: 0,
+          },
+          requestHeaders,
+        ),
       ),
     };
   }
@@ -879,7 +889,11 @@ export class StripeBillingService {
     return { prices: catalog };
   }
 
-  async connect(userId: string, input: StripeBillingConnectInput) {
+  async connect(
+    userId: string,
+    input: StripeBillingConnectInput,
+    requestHeaders?: StripeBillingRequestHeaders,
+  ) {
     const apiKey = input.apiKey.trim();
     const client = new StripeBillingStripeClient(apiKey);
     const [account, selectedPrice] = await Promise.all([
@@ -959,13 +973,14 @@ export class StripeBillingService {
     });
     await this.sync.syncConnection(userId, connection.id);
 
-    return this.getStatus(userId);
+    return this.getStatus(userId, requestHeaders);
   }
 
   async updateLinkedGroup(
     userId: string,
     connectionId: string,
     input: StripeBillingUpdateLinkedGroupInput,
+    requestHeaders?: StripeBillingRequestHeaders,
   ) {
     await this.getOwnedConnection(userId, connectionId);
     await this.assertOwnedGroup(userId, input.telegramGroupId);
@@ -976,13 +991,14 @@ export class StripeBillingService {
       data: { telegramGroupId: input.telegramGroupId },
     });
 
-    return this.getStatus(userId);
+    return this.getStatus(userId, requestHeaders);
   }
 
   async updateWebhookSecret(
     userId: string,
     connectionId: string,
     input: StripeBillingUpdateWebhookSecretInput,
+    requestHeaders?: StripeBillingRequestHeaders,
   ) {
     await this.getOwnedConnection(userId, connectionId);
 
@@ -995,21 +1011,29 @@ export class StripeBillingService {
       },
     });
 
-    return this.getStatus(userId);
+    return this.getStatus(userId, requestHeaders);
   }
 
-  async syncNow(userId: string, connectionId: string) {
+  async syncNow(
+    userId: string,
+    connectionId: string,
+    requestHeaders?: StripeBillingRequestHeaders,
+  ) {
     await this.getOwnedConnection(userId, connectionId);
     await this.sync.syncConnection(userId, connectionId);
     await this.reconcilePendingSessions(connectionId);
-    return this.getStatus(userId);
+    return this.getStatus(userId, requestHeaders);
   }
 
-  async disconnect(userId: string, connectionId: string) {
+  async disconnect(
+    userId: string,
+    connectionId: string,
+    requestHeaders?: StripeBillingRequestHeaders,
+  ) {
     const connection = await this.getOwnedConnection(userId, connectionId);
 
     if (connection.status !== StripeBillingConnectionStatus.CONNECTED) {
-      return this.getStatus(userId);
+      return this.getStatus(userId, requestHeaders);
     }
 
     await this.prisma.$transaction([
@@ -1038,7 +1062,7 @@ export class StripeBillingService {
     ]);
     await this.sync.recordAudit(userId, connection.id, 'CONNECTION_REMOVED');
 
-    return this.getStatus(userId);
+    return this.getStatus(userId, requestHeaders);
   }
 
   async createCheckoutButtonsForStart(input: {
@@ -1644,7 +1668,10 @@ export class StripeBillingService {
     return connection;
   }
 
-  private async buildStatusPayload(userId: string) {
+  private async buildStatusPayload(
+    userId: string,
+    requestHeaders?: StripeBillingRequestHeaders,
+  ) {
     const planId = await this.groupLimit.resolvePlanId(userId);
     const connections = await this.prisma.stripeBillingConnections.findMany({
       where: {
@@ -1667,7 +1694,7 @@ export class StripeBillingService {
       connected: connectionsWithCounts.length > 0,
       canConnect: true,
       connections: connectionsWithCounts.map((connection) =>
-        this.mapConnectionForResponse(connection),
+        this.mapConnectionForResponse(connection, requestHeaders),
       ),
       totals: this.aggregateTotals(connectionsWithCounts),
       stripePaymentGroupLimit: {
@@ -1684,6 +1711,7 @@ export class StripeBillingService {
       receivedPaymentCount: number;
       failedPaymentCount: number;
     },
+    requestHeaders?: StripeBillingRequestHeaders,
   ) {
     const { group, encryptedWebhookSigningSecret, ...rest } = connection;
     const webhookConfigured =
@@ -1696,6 +1724,7 @@ export class StripeBillingService {
       webhookEndpointUrl: buildStripeWebhookEndpointUrl(
         this.config,
         connection.id,
+        requestHeaders,
       ),
       linkedGroup: group
         ? {

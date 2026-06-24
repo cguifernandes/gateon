@@ -1,6 +1,7 @@
 "use client";
 
 import { cva, type VariantProps } from "class-variance-authority";
+import { usePathname } from "next/navigation";
 import * as React from "react";
 import { type ComponentProps, useRef } from "react";
 import { Button } from "@/components/ui/button";
@@ -58,7 +59,14 @@ function SidebarProvider({
   ...props
 }: SidebarProviderProps) {
   const isMobile = useIsMobile();
+  const pathname = usePathname();
   const [openMobile, setOpenMobile] = React.useState(false);
+  const [prevPathname, setPrevPathname] = React.useState(pathname);
+
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
+    setOpenMobile(false);
+  }
 
   const open = React.useSyncExternalStore(
     subscribeSidebarOpen,
@@ -152,8 +160,15 @@ function Sidebar({
           side={side}
           sheetTitle="Navegação"
           showClose
+          style={
+            {
+              "--sidebar-width-mobile": SIDEBAR_WIDTH_MOBILE,
+              width: `min(100%, ${SIDEBAR_WIDTH_MOBILE})`,
+              maxWidth: `min(100%, ${SIDEBAR_WIDTH_MOBILE})`,
+            } as React.CSSProperties
+          }
           className={cn(
-            "w-[min(100%,var(--sidebar-width-mobile))] max-w-[min(100%,var(--sidebar-width-mobile))] border-border bg-background p-0 text-sidebar-foreground",
+            "border-border bg-background p-0 text-sidebar-foreground",
             className,
           )}
         >

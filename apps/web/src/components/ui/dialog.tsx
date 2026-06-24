@@ -37,9 +37,9 @@ function DialogCloseButton({ className }: { className?: string }) {
           {...closeProps}
           type="button"
           variant="outline"
-          size="icon"
+          size="icon-sm"
           className={cn(
-            "absolute inset-e-6 top-4 z-10 shrink-0",
+            "absolute inset-e-4 top-4 z-10 shrink-0",
             className,
             closeProps.className,
           )}
@@ -53,7 +53,7 @@ function DialogCloseButton({ className }: { className?: string }) {
             xIconRef.current?.stopAnimation();
           }}
         >
-          <XIcon size={16} isAnimateOnView={false} ref={xIconRef} />
+          <XIcon size={14} isAnimateOnView={false} ref={xIconRef} />
           <span className="sr-only">Fechar</span>
         </Button>
       )}
@@ -78,7 +78,7 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "pointer-events-auto fixed top-1/2 left-1/2 z-[101] flex max-h-[min(90vh,32rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-y-auto rounded-xl border border-border bg-background shadow-lg outline-none select-none",
+          "pointer-events-auto fixed top-1/2 gap-0! left-1/2 z-[101] flex max-h-[min(90vh,32rem)] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-y-auto rounded-xl border border-border bg-background shadow-lg outline-none select-none",
           "data-open:animate-in data-starting-style:fade-in-0 data-starting-style:zoom-in-95",
           "data-closed:animate-out data-ending-style:fade-out-0 data-ending-style:zoom-out-95",
           className,
@@ -96,7 +96,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-1.5 px-6 py-4 text-start", className)}
+      className={cn("flex flex-col gap-3.5 p-4 text-start", className)}
       {...props}
     />
   );
@@ -110,7 +110,7 @@ function DialogTitle({
     <DialogPrimitive.Title
       data-slot="dialog-title"
       className={cn(
-        "font-semibold font-heading text-lg leading-none tracking-tight",
+        "font-semibold font-heading text-xl leading-none tracking-tight",
         className,
       )}
       {...props}
@@ -136,7 +136,7 @@ function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="dialog-footer"
       className={cn(
-        "flex flex-col-reverse gap-2 border-t border-border px-6 py-4 sm:flex-row sm:justify-end",
+        "flex flex-col-reverse gap-2 border-t border-border p-4 sm:flex-row sm:justify-end",
         className,
       )}
       {...props}

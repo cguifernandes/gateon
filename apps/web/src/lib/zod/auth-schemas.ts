@@ -18,6 +18,12 @@ export const authSuccessBodySchema = z.object({
 
 export type AuthMode = "login" | "register";
 
+export const deleteAccountRequestSchema = z.object({
+  confirm: z.literal(true),
+});
+
+export type DeleteAccountRequest = z.infer<typeof deleteAccountRequestSchema>;
+
 export type AuthFormValues = {
   name?: string;
   email: string;

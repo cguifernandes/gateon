@@ -35,13 +35,16 @@ export class StripeBillingController {
   @Get()
   @UseGuards(AuthGuard)
   getStatus(@Req() req: Request) {
-    return this.stripeBilling.getStatus(this.getUserId(req));
+    return this.stripeBilling.getStatus(this.getUserId(req), req.headers);
   }
 
   @Get('connections/options')
   @UseGuards(AuthGuard)
   listConnectionOptions(@Req() req: Request) {
-    return this.stripeBilling.listConnectionOptions(this.getUserId(req));
+    return this.stripeBilling.listConnectionOptions(
+      this.getUserId(req),
+      req.headers,
+    );
   }
 
   @Post('catalog')
@@ -59,6 +62,7 @@ export class StripeBillingController {
     return this.stripeBilling.connect(
       this.getUserId(req),
       stripeBillingConnectSchema.parse(body),
+      req.headers,
     );
   }
 
@@ -73,7 +77,11 @@ export class StripeBillingController {
   @Post(':connectionId/sync')
   @UseGuards(AuthGuard)
   sync(@Req() req: Request, @Param('connectionId') connectionId: string) {
-    return this.stripeBilling.syncNow(this.getUserId(req), connectionId);
+    return this.stripeBilling.syncNow(
+      this.getUserId(req),
+      connectionId,
+      req.headers,
+    );
   }
 
   @Patch(':connectionId/linked-group')
@@ -87,6 +95,7 @@ export class StripeBillingController {
       this.getUserId(req),
       connectionId,
       stripeBillingUpdateLinkedGroupSchema.parse(body),
+      req.headers,
     );
   }
 
@@ -101,13 +110,18 @@ export class StripeBillingController {
       this.getUserId(req),
       connectionId,
       stripeBillingUpdateWebhookSecretSchema.parse(body),
+      req.headers,
     );
   }
 
   @Delete(':connectionId')
   @UseGuards(AuthGuard)
   disconnect(@Req() req: Request, @Param('connectionId') connectionId: string) {
-    return this.stripeBilling.disconnect(this.getUserId(req), connectionId);
+    return this.stripeBilling.disconnect(
+      this.getUserId(req),
+      connectionId,
+      req.headers,
+    );
   }
 
   private getUserId(req: Request) {

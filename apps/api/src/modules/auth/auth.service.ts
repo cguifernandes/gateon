@@ -417,6 +417,20 @@ export class AuthService {
     return { ok: true };
   }
 
+  async deleteAccount(
+    userId: string,
+    req: Request,
+    res: Response,
+  ): Promise<{ ok: true }> {
+    await this.prisma.users.delete({
+      where: { id: userId },
+    });
+    const token = req.cookies?.[SESSION_COOKIE_NAME] as string | undefined;
+    await this.revokeByToken(token);
+    res.clearCookie(SESSION_COOKIE_NAME, this.sessionCookieOptions());
+    return { ok: true };
+  }
+
   async refresh(req: Request, res: Response): Promise<{ user: PublicUser }> {
     const token = req.cookies?.[SESSION_COOKIE_NAME] as string | undefined;
     const rotated = await this.rotateSession(token, req);

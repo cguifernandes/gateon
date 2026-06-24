@@ -1,4 +1,5 @@
 import { cookies, headers } from "next/headers";
+import { buildUpstreamApiHeaders } from "@/lib/server/build-upstream-api-headers";
 import {
   DEFAULT_PLAN_ID,
   getMaxStripePaymentGroupsForPlan,
@@ -62,14 +63,13 @@ export async function getStripeBillingStatus(): Promise<{
   }
 
   const requestHeaders = await headers();
-  const forwardedFor =
-    requestHeaders.get("x-forwarded-for") ?? requestHeaders.get("x-real-ip");
+  const upstreamHeaders = buildUpstreamApiHeaders(requestHeaders);
 
   try {
     const response = await fetch(`${base}/stripe-billing`, {
       headers: {
         Cookie: `${SESSION_COOKIE_NAME}=${sessionToken}`,
-        ...(forwardedFor ? { "x-forwarded-for": forwardedFor } : {}),
+        ...upstreamHeaders,
       },
       cache: "no-store",
       signal: AbortSignal.timeout(15_000),

@@ -31,3 +31,11 @@ export const loginSchema = z.object({
 
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+
+export const deleteAccountSchema = z.object({
+  confirm: z.literal(true, {
+    errorMap: () => ({ message: 'Confirmação obrigatória.' }),
+  }),
+});
+
+export type DeleteAccountInput = z.infer<typeof deleteAccountSchema>;

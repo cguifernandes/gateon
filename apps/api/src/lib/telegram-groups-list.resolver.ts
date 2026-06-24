@@ -1,18 +1,22 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
 import { StripeBillingConnectionStatus } from '@prisma/client';
-import { buildPaginationMeta, resolvePagination } from '../../lib/pagination';
-import { matchesBotStatusFilter } from '../../lib/telegram-bot-status-filter';
+import { buildPaginationMeta, resolvePagination } from './pagination';
+import { matchesBotStatusFilter } from './telegram-bot-status-filter';
 import {
   buildTelegramGroupMembersWhere,
   buildTelegramGroupsBaseWhere,
   groupMatchesSearch,
   memberMatchesSearch,
   parseTelegramChatIdsFilter,
-} from '../../lib/telegram-groups-list-filter';
-import type { TelegramGroupsListQueryInput } from '../../lib/zod/telegram-groups-list-query-schemas';
-import type { PrismaService } from '../prisma/prisma.service';
+} from './telegram-groups-list-filter';
+import type { TelegramGroupsListQueryInput } from './zod/telegram-groups-list-query-schemas';
 
 const MEMBER_PREVIEW_LIMIT = 50;
+
+type TelegramGroupsListPrisma = Pick<
+  PrismaClient,
+  'telegramGroups' | 'stripeBillingConnections' | 'telegramGroupMembers'
+>;
 
 type TrackedMemberRow = {
   telegramUserId: string;
@@ -41,7 +45,7 @@ type GroupRow = {
 };
 
 type GroupsListDeps = {
-  prisma: PrismaService;
+  prisma: TelegramGroupsListPrisma;
   getTelegramChatMemberCount: (
     telegramChatId: string,
   ) => Promise<number | null>;
@@ -89,7 +93,7 @@ const groupSelect = {
 } satisfies Prisma.TelegramGroupsSelect;
 
 async function buildGroupsSummary(
-  prisma: PrismaService,
+  prisma: TelegramGroupsListPrisma,
   userId: string,
   trackedMemberLimitPerGroup: number,
 ) {
@@ -126,7 +130,10 @@ async function buildGroupsSummary(
   };
 }
 
-async function buildMembersSummary(prisma: PrismaService, userId: string) {
+async function buildMembersSummary(
+  prisma: TelegramGroupsListPrisma,
+  userId: string,
+) {
   const [activeCount, leftCount] = await Promise.all([
     prisma.telegramGroupMembers.count({
       where: { group: { userId }, leftAt: null },
@@ -144,7 +151,7 @@ async function buildMembersSummary(prisma: PrismaService, userId: string) {
 }
 
 async function resolveFilteredGroupIds(
-  prisma: PrismaService,
+  prisma: TelegramGroupsListPrisma,
   userId: string,
   query: TelegramGroupsListQueryInput,
 ) {
@@ -163,7 +170,7 @@ async function resolveFilteredGroupIds(
 }
 
 async function loadGroupsByIds(
-  prisma: PrismaService,
+  prisma: TelegramGroupsListPrisma,
   pageIds: string[],
   membersView: boolean,
   includeMembersPreview: boolean,

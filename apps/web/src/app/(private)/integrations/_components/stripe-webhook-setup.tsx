@@ -1,9 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
-import { CheckIcon, type CheckIconHandle } from "@/components/icons/check";
-import { CopyIcon, type CopyIconHandle } from "@/components/icons/copy";
+import { CopyToClipboardButton } from "@/components/copy-to-clipboard-button";
 import {
   Accordion,
   AccordionContent,
@@ -54,9 +53,6 @@ export function StripeWebhookSetup({
   const [secret, setSecret] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [guideExpanded, setGuideExpanded] = useState(false);
-  const [urlCopied, setUrlCopied] = useState(false);
-  const copyIconRef = useRef<CopyIconHandle>(null);
-  const checkIconRef = useRef<CheckIconHandle>(null);
 
   async function saveWebhookSecret() {
     const trimmed = secret.trim();
@@ -103,19 +99,6 @@ export function StripeWebhookSetup({
       });
     } finally {
       setIsSaving(false);
-    }
-  }
-
-  async function copyEndpointUrl() {
-    try {
-      await navigator.clipboard.writeText(connection.webhookEndpointUrl);
-      setUrlCopied(true);
-      toast.success("URL copiada", {
-        description: "Cole no painel de webhooks da Stripe.",
-      });
-      window.setTimeout(() => setUrlCopied(false), 2000);
-    } catch {
-      toast.error("Não foi possível copiar a URL");
     }
   }
 
@@ -211,44 +194,21 @@ export function StripeWebhookSetup({
             <Label className="text-muted-foreground text-xs">
               URL do endpoint (cole na Stripe)
             </Label>
-            <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="flex gap-2">
               <Input
                 readOnly
                 value={connection.webhookEndpointUrl}
-                className="font-mono text-xs sm:text-sm"
+                className="font-mono "
               />
-              <Button
-                type="button"
-                variant="outline"
-                className="shrink-0 h-full! min-h-9 w-40"
-                onClick={copyEndpointUrl}
-                onMouseEnter={() => {
-                  if (!urlCopied) {
-                    copyIconRef.current?.startAnimation();
-                  }
+              <CopyToClipboardButton
+                value={connection.webhookEndpointUrl}
+                label="Copiar URL"
+                successToast={{
+                  title: "URL copiada",
+                  description: "Cole no painel de webhooks da Stripe.",
                 }}
-                onMouseLeave={() => {
-                  if (!urlCopied) {
-                    copyIconRef.current?.stopAnimation();
-                  }
-                }}
-              >
-                {urlCopied ? (
-                  <CheckIcon
-                    ref={checkIconRef}
-                    size={16}
-                    isAnimateOnView={false}
-                  />
-                ) : (
-                  <CopyIcon
-                    ref={copyIconRef}
-                    size={16}
-                    isAnimateOnView={false}
-                    animateOnHover={false}
-                  />
-                )}
-                Copiar URL
-              </Button>
+                errorToast={{ title: "Não foi possível copiar a URL" }}
+              />
             </div>
           </div>
 
@@ -257,7 +217,7 @@ export function StripeWebhookSetup({
               <Label htmlFor={`webhook-secret-${connection.id}`}>
                 Signing secret da Stripe (whsec_...)
               </Label>
-              <div className="flex flex-col h-full items-center gap-2 sm:flex-row">
+              <div className="flex h-full items-center gap-2">
                 <Input
                   id={`webhook-secret-${connection.id}`}
                   type="password"
@@ -268,7 +228,7 @@ export function StripeWebhookSetup({
                 />
                 <Button
                   type="button"
-                  className="shrink-0 h-full! min-h-9 w-40"
+                  className="shrink-0 h-full! min-h-9 w-20 sm:w-40"
                   loading={isSaving}
                   onClick={saveWebhookSecret}
                 >

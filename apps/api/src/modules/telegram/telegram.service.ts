@@ -27,7 +27,7 @@ import {
   type TelegramGroupAdministratorRights,
 } from '../../lib/telegram-admin-rights';
 import type { TelegramGroupsListQueryInput } from '../../lib/zod/telegram-groups-list-query-schemas';
-import { resolveTelegramGroupsList } from './telegram-groups-list.resolver';
+import { resolveTelegramGroupsList } from '../../lib/telegram-groups-list.resolver';
 
 const DEFAULT_MEMBER_NOTICE_TEXT = 'Boa tarde';
 

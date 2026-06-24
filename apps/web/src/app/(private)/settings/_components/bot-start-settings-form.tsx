@@ -2,12 +2,11 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useState } from "react";
 import { useController, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { BotSettingSwitch } from "@/app/(private)/groups/[groupId]/bot/_components/bot-setting-switch";
-import { CheckIcon, type CheckIconHandle } from "@/components/icons/check";
-import { CopyIcon, type CopyIconHandle } from "@/components/icons/copy";
+import { CopyToClipboardButton } from "@/components/copy-to-clipboard-button";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -62,13 +61,10 @@ export function BotStartSettingsForm({
   const [availableConnections, setAvailableConnections] = useState(
     initialSettings.availableStripeConnections,
   );
-  const [copied, setCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [savingAction, setSavingAction] = useState<"save" | "restore" | null>(
     null,
   );
-  const copyIconRef = useRef<CopyIconHandle>(null);
-  const checkIconRef = useRef<CheckIconHandle>(null);
   const publicStartUrlId = useId();
   const welcomeMessageId = useId();
   const supportHintId = useId();
@@ -124,12 +120,6 @@ export function BotStartSettingsForm({
     paymentButtonConnectionIds.field.value,
   );
 
-  useEffect(() => {
-    if (copied) {
-      checkIconRef.current?.startAnimation();
-    }
-  }, [copied]);
-
   function toggleStripeConnection(connectionId: string, checked: boolean) {
     const current = stripeConnectionIds.field.value;
     if (checked) {
@@ -139,19 +129,6 @@ export function BotStartSettingsForm({
     stripeConnectionIds.field.onChange(
       current.filter((id) => id !== connectionId),
     );
-  }
-
-  async function copyPublicLink() {
-    try {
-      await navigator.clipboard.writeText(publicStartUrl);
-      setCopied(true);
-      toast.success("Link copiado", {
-        description: "Compartilhe com quem deve iniciar o bot no Telegram.",
-      });
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("Não foi possível copiar o link.");
-    }
   }
 
   function togglePaymentConnection(connectionId: string, checked: boolean) {
@@ -252,45 +229,23 @@ export function BotStartSettingsForm({
         <CardContent className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor={publicStartUrlId}>Link público do bot</Label>
-            <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="flex gap-2">
               <Input
                 id={publicStartUrlId}
                 readOnly
                 value={publicStartUrl}
-                className="font-mono text-xs sm:text-sm"
+                className="font-mono"
               />
-              <Button
-                type="button"
-                variant="outline"
-                className="shrink-0"
-                onClick={copyPublicLink}
-                onMouseEnter={() => {
-                  if (!copied) {
-                    copyIconRef.current?.startAnimation();
-                  }
+              <CopyToClipboardButton
+                value={publicStartUrl}
+                label="Copiar link"
+                successToast={{
+                  title: "Link copiado",
+                  description:
+                    "Compartilhe com quem deve iniciar o bot no Telegram.",
                 }}
-                onMouseLeave={() => {
-                  if (!copied) {
-                    copyIconRef.current?.stopAnimation();
-                  }
-                }}
-              >
-                {copied ? (
-                  <CheckIcon
-                    ref={checkIconRef}
-                    size={16}
-                    isAnimateOnView={false}
-                  />
-                ) : (
-                  <CopyIcon
-                    ref={copyIconRef}
-                    size={16}
-                    isAnimateOnView={false}
-                    animateOnHover={false}
-                  />
-                )}
-                Copiar link
-              </Button>
+                errorToast={{ title: "Não foi possível copiar o link." }}
+              />
             </div>
           </div>
 
@@ -476,7 +431,9 @@ export function BotStartSettingsForm({
                       </div>
                       <BotSettingSwitch
                         checked={paymentButtonsGroupFirst.field.value}
-                        onCheckedChange={paymentButtonsGroupFirst.field.onChange}
+                        onCheckedChange={
+                          paymentButtonsGroupFirst.field.onChange
+                        }
                         title="Primeiro escolher o grupo"
                         description="Na primeira etapa, o visitante vê os grupos conectados; ao tocar em um, aparecem os planos disponíveis para aquele grupo."
                         tooltip="Útil quando você vende acesso a vários grupos com planos diferentes. O grupo de cada plano continua definido em Integrações."
@@ -524,7 +481,7 @@ export function BotStartSettingsForm({
         </CardContent>
 
         <CardFooter className="border-t-0 justify-end pt-0">
-          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+          <div className="flex flex-col-reverse w-full gap-2 pt-2 sm:flex-row sm:justify-end">
             <Button
               type="button"
               variant="outline"

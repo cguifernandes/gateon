@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { buildUpstreamApiHeaders } from "@/lib/server/build-upstream-api-headers";
 import { reportBffError } from "@/lib/sentry/report-bff-error";
 import { getServerApiBaseUrl, SESSION_COOKIE_NAME } from "@/lib/utils";
 import { readUpstreamError } from "./read-upstream-error";
@@ -50,8 +51,7 @@ export async function proxyAuthenticatedJsonApi({
     );
   }
 
-  const forwardedFor =
-    request.headers.get("x-forwarded-for") ?? request.headers.get("x-real-ip");
+  const upstreamHeaders = buildUpstreamApiHeaders(request.headers);
 
   let upstream: Response;
   try {
@@ -60,7 +60,7 @@ export async function proxyAuthenticatedJsonApi({
       headers: {
         "content-type": "application/json",
         Cookie: `${SESSION_COOKIE_NAME}=${sessionToken}`,
-        ...(forwardedFor ? { "x-forwarded-for": forwardedFor } : {}),
+        ...upstreamHeaders,
         ...init?.headers,
       },
       cache: "no-store",

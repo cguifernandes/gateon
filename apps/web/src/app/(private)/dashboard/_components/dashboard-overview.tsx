@@ -36,7 +36,7 @@ export function DashboardOverview({
   const deliveryRateRounded = Math.round(alertStats.deliveryRate);
 
   return (
-    <div className="min-w-0 space-y-6 pb-8 sm:space-y-10 sm:pb-10">
+    <div className="min-w-0 space-y-6 sm:space-y-10 pb-10">
       <DashboardFiltersProvider initialGroupId={groups[0]?.id ?? ""}>
         <DashboardGroupInsights
           groups={groups}

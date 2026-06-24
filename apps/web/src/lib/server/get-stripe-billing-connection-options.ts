@@ -1,4 +1,5 @@
 import { cookies, headers } from "next/headers";
+import { buildUpstreamApiHeaders } from "@/lib/server/build-upstream-api-headers";
 import { getServerApiBaseUrl, SESSION_COOKIE_NAME } from "@/lib/utils";
 import {
   type StripeBillingConnectionDto,
@@ -27,14 +28,13 @@ export async function getStripeBillingConnectionOptions(): Promise<{
   }
 
   const requestHeaders = await headers();
-  const forwardedFor =
-    requestHeaders.get("x-forwarded-for") ?? requestHeaders.get("x-real-ip");
+  const upstreamHeaders = buildUpstreamApiHeaders(requestHeaders);
 
   try {
     const response = await fetch(`${base}/stripe-billing/connections/options`, {
       headers: {
         Cookie: `${SESSION_COOKIE_NAME}=${sessionToken}`,
-        ...(forwardedFor ? { "x-forwarded-for": forwardedFor } : {}),
+        ...upstreamHeaders,
       },
       cache: "no-store",
       signal: AbortSignal.timeout(15_000),
