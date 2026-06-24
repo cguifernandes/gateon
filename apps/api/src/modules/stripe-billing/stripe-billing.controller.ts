@@ -74,6 +74,15 @@ export class StripeBillingController {
     return this.stripeBilling.finalizeCheckoutSession(parsed.sessionId);
   }
 
+  @Post('products/sync')
+  @UseGuards(AuthGuard)
+  syncAllProducts(@Req() req: Request) {
+    return this.stripeBilling.syncAllProducts(
+      this.getUserId(req),
+      req.headers,
+    );
+  }
+
   @Post(':connectionId/sync')
   @UseGuards(AuthGuard)
   sync(@Req() req: Request, @Param('connectionId') connectionId: string) {

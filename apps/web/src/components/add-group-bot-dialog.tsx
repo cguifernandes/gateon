@@ -261,7 +261,7 @@ function ConnectStep({
   }
 
   return (
-    <Empty className="flex-none justify-start p-4">
+    <Empty className="w-full flex-none p-4">
       <EmptyHeader className="max-w-xl">
         <EmptyMedia className="size-16 rounded-xl bg-muted">
           <Image src={TelegramIcon} alt="Telegram" width={44} height={44} />
@@ -308,7 +308,7 @@ function ConfirmStatusEmpty({
   footer,
 }: ConfirmStatusView) {
   return (
-    <Empty className="flex-none justify-start p-4">
+    <Empty className="w-full flex-none p-4">
       <EmptyHeader>
         <EmptyMedia className={cn("mb-0 size-16 rounded-xl", mediaClassName)}>
           {icon}
@@ -730,7 +730,14 @@ export function AddGroupBotDialog({
               </DialogStackHeader>
 
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
-                {step.content}
+                <div
+                  className={cn(
+                    index !== 0 &&
+                      "flex min-h-full w-full flex-col items-center justify-center",
+                  )}
+                >
+                  {step.content}
+                </div>
               </div>
 
               {showFooter && (

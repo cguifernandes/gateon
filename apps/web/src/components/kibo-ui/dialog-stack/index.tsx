@@ -241,6 +241,8 @@ export const DialogStackBody = ({
 }: DialogStackBodyProps) => {
   const context = useContext(DialogStackContext);
   const [totalDialogs, setTotalDialogs] = useState(Children.count(children));
+  const stackOffsetPx = 3;
+  const stackTopInset = Math.max(0, totalDialogs - 1) * stackOffsetPx;
 
   if (!context) {
     throw new Error("DialogStackBody must be used within a DialogStack");
@@ -261,12 +263,15 @@ export const DialogStackBody = ({
       <Portal.Root>
         <div
           className={cn(
-            "pointer-events-none fixed inset-0 z-100 mx-auto flex w-full max-w-lg flex-col items-center justify-center p-4",
+            "pointer-events-none fixed inset-0 z-100 mx-auto flex w-full max-w-lg items-center justify-center overflow-y-auto overscroll-contain p-4",
             className,
           )}
           {...props}
         >
-          <div className="pointer-events-auto relative flex max-h-dvh w-full flex-col items-center justify-start overflow-y-auto overscroll-contain">
+          <div
+            className="pointer-events-auto relative flex w-full shrink-0 flex-col items-center justify-center"
+            style={{ paddingTop: stackTopInset }}
+          >
             {Children.map(children, (child, index) => {
               const childElement = child as ReactElement<{
                 index: number;
@@ -295,7 +300,7 @@ export const DialogStackContent = ({
   children,
   className,
   index = 0,
-  offset = 2,
+  offset = 10,
   ...props
 }: DialogStackContentProps) => {
   const context = useContext(DialogStackContext);
@@ -315,6 +320,10 @@ export const DialogStackContent = ({
   };
 
   const distanceFromActive = index - context.activeIndex;
+  const translateY =
+    distanceFromActive < 0
+      ? `-${Math.abs(distanceFromActive) * offset}px`
+      : `${Math.abs(distanceFromActive) * offset}px`;
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: "This is a clickable dialog"
@@ -327,7 +336,7 @@ export const DialogStackContent = ({
       onClick={handleClick}
       style={{
         top: 0,
-        transform: `translateY(5px)`,
+        transform: `translateY(${translateY})`,
         width: `calc(100% - ${Math.abs(distanceFromActive) * 10}px)`,
         zIndex: 50 - Math.abs(context.activeIndex - (index ?? 0)),
         position: distanceFromActive ? "absolute" : "relative",

@@ -245,6 +245,41 @@ export async function fetchBotStartPaymentGroups(
   return (await response.json()) as { groups: BotStartPaymentGroup[] };
 }
 
+export type SubscriptionCancelPortalOption = {
+  url: string;
+  label: string;
+};
+
+export async function fetchSubscriptionCancelPortal(
+  config: AppConfig,
+  telegramUserId: string,
+): Promise<{ options: SubscriptionCancelPortalOption[] }> {
+  const response = await fetch(
+    `${config.GATEON_API_BASE_URL}/telegram/internal/bot-start/cancel-portal`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-gateon-bot-secret": config.TELEGRAM_BOT_INTERNAL_SECRET,
+      },
+      body: JSON.stringify({ telegramUserId }),
+    },
+  );
+
+  const body: unknown = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(
+      readGateonApiErrorMessage(
+        body,
+        "Não foi possível abrir o portal de cancelamento.",
+      ),
+    );
+  }
+
+  return body as { options: SubscriptionCancelPortalOption[] };
+}
+
 export async function triggerTelegramAlerts(
   config: AppConfig,
   event: {

@@ -18,6 +18,7 @@ import {
   telegramBotStartPaymentGroupsSchema,
   telegramBotStartSettingsPatchSchema,
 } from '../../lib/zod/bot-start-settings-schemas';
+import { telegramSubscriptionCancelPortalSchema } from '../../lib/zod/telegram-subscription-schemas';
 import { StripeBillingService } from '../stripe-billing/stripe-billing.service';
 
 @Controller('bot-start-settings')
@@ -99,5 +100,20 @@ export class BotStartSettingsInternalController {
     });
 
     return { groups };
+  }
+
+  @Post('cancel-portal')
+  async createCancelPortal(
+    @Headers('x-gateon-bot-secret') botSecret: string | undefined,
+    @Body() body: unknown,
+  ) {
+    if (!this.botStartSettings.isInternalSecretValid(botSecret)) {
+      throw new UnauthorizedException();
+    }
+
+    const input = telegramSubscriptionCancelPortalSchema.parse(body);
+    return this.stripeBilling.createCancelPortalsForTelegramUser(
+      input.telegramUserId,
+    );
   }
 }

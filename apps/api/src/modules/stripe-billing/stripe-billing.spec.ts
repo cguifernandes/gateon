@@ -111,6 +111,79 @@ describe('StripeBillingService', () => {
       ]);
     });
   });
+
+  describe('syncAllProducts', () => {
+    const findMany = jest.fn();
+    const refreshConnectionProductMetadata = jest.fn();
+
+    function createService() {
+      const service = new StripeBillingService(
+        {
+          stripeBillingConnections: { findMany },
+        } as never,
+        {
+          refreshConnectionProductMetadata,
+        } as never,
+        { get: jest.fn() } as never,
+        {} as never,
+        {} as never,
+      );
+
+      jest.spyOn(service, 'getStatus').mockResolvedValue({
+        connected: true,
+        canConnect: false,
+        connections: [],
+        totals: {
+          activeSubscriptionCount: 0,
+          expiringSubscriptionCount: 0,
+          expiredSubscriptionCount: 0,
+          customerCount: 0,
+          monthlyRevenueCents: 0,
+          receivedPaymentCount: 0,
+          failedPaymentCount: 0,
+        },
+        stripePaymentGroupLimit: {
+          planId: 'free',
+          planLabel: 'Free',
+          maxDistinctGroups: 1,
+          usedDistinctGroups: 0,
+        },
+      });
+
+      return service;
+    }
+
+    beforeEach(() => {
+      findMany.mockReset();
+      refreshConnectionProductMetadata.mockReset();
+    });
+
+    it('refreshes product metadata for all connected integrations', async () => {
+      findMany.mockResolvedValue([{ id: 'conn-1' }, { id: 'conn-2' }]);
+      refreshConnectionProductMetadata
+        .mockResolvedValueOnce('refreshed')
+        .mockResolvedValueOnce('skipped');
+
+      const result = await createService().syncAllProducts('user-1');
+
+      expect(refreshConnectionProductMetadata).toHaveBeenNthCalledWith(
+        1,
+        'user-1',
+        'conn-1',
+      );
+      expect(refreshConnectionProductMetadata).toHaveBeenNthCalledWith(
+        2,
+        'user-1',
+        'conn-2',
+      );
+      expect(result.productsSync).toEqual({
+        refreshedCount: 1,
+        skippedCount: 1,
+        failedCount: 0,
+      });
+      expect(result.connected).toBe(true);
+    });
+  });
 });
 
 describeWithDb('Stripe automation alerts (database)', () => {

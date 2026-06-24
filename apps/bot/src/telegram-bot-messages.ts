@@ -21,6 +21,8 @@ export function buildHelpMessage(chatType: string | undefined): string {
       "3. Adicione o bot aqui como administrador, com as permissões indicadas no painel.",
       "",
       "Dúvidas sobre o fluxo completo? Peça a um administrador para abrir o painel ou envie /help no chat privado com o bot.",
+      "",
+      "Assinantes podem enviar /cancelar no PV do bot para gerenciar ou cancelar o plano na Stripe.",
     ].join("\n");
   }
 
@@ -37,6 +39,7 @@ export function buildHelpMessage(chatType: string | undefined): string {
     "",
     "Comandos:",
     "• /start — use só com o link do painel (não digite /start vazio).",
+    "• /cancelar — abre o portal da Stripe para cancelar ou gerenciar sua assinatura (somente no chat privado, após ter assinado por este bot).",
     "• /help — mostra esta mensagem.",
     "",
     "Se algo falhar, confira as mensagens do bot no grupo e tente um novo cadastro no painel.",

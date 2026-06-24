@@ -172,6 +172,21 @@ export class StripeBillingSyncService {
     monitoredPriceId: string,
     fallbackLabel: string | null,
   ): Promise<string | null> {
+    const result = await this.refreshMonitoredPlanMetadataResult(
+      client,
+      connectionId,
+      monitoredPriceId,
+      fallbackLabel,
+    );
+    return result.label;
+  }
+
+  private async refreshMonitoredPlanMetadataResult(
+    client: StripeBillingStripeClient,
+    connectionId: string,
+    monitoredPriceId: string,
+    fallbackLabel: string | null,
+  ): Promise<{ label: string | null; refreshed: boolean }> {
     try {
       const price = await client.getPrice(monitoredPriceId);
       const mapped = client.mapCatalogPrice(price);
@@ -186,10 +201,63 @@ export class StripeBillingSyncService {
         },
       });
 
-      return mapped.label;
+      return { label: mapped.label, refreshed: true };
     } catch {
-      return fallbackLabel;
+      return { label: fallbackLabel, refreshed: false };
     }
+  }
+
+  async refreshConnectionProductMetadata(
+    userId: string,
+    connectionId: string,
+  ): Promise<'refreshed' | 'skipped' | 'failed'> {
+    const connection = await this.prisma.stripeBillingConnections.findFirst({
+      where: {
+        id: connectionId,
+        userId,
+        status: StripeBillingConnectionStatus.CONNECTED,
+      },
+      select: {
+        id: true,
+        encryptedApiKey: true,
+        monitoredStripePriceId: true,
+        monitoredPlanLabel: true,
+      },
+    });
+
+    if (!connection) {
+      return 'failed';
+    }
+
+    if (!connection.monitoredStripePriceId) {
+      return 'skipped';
+    }
+
+    let apiKey: string;
+    try {
+      apiKey = decryptSecretValue(connection.encryptedApiKey);
+    } catch {
+      return 'failed';
+    }
+
+    const client = new StripeBillingStripeClient(apiKey);
+    const result = await this.refreshMonitoredPlanMetadataResult(
+      client,
+      connection.id,
+      connection.monitoredStripePriceId,
+      connection.monitoredPlanLabel,
+    );
+
+    if (!result.refreshed) {
+      return 'failed';
+    }
+
+    await this.recordAudit(userId, connection.id, 'SYNC_EXECUTED', {
+      productsOnly: true,
+      monitoredStripePriceId: connection.monitoredStripePriceId,
+    });
+
+    return 'refreshed';
   }
 
   async recordAudit(
@@ -1022,6 +1090,50 @@ export class StripeBillingService {
     return this.getStatus(userId, requestHeaders);
   }
 
+  async syncAllProducts(
+    userId: string,
+    requestHeaders?: IncomingHttpHeaders,
+  ) {
+    const connections = await this.prisma.stripeBillingConnections.findMany({
+      where: {
+        userId,
+        status: StripeBillingConnectionStatus.CONNECTED,
+      },
+      select: { id: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    let refreshedCount = 0;
+    let skippedCount = 0;
+    let failedCount = 0;
+
+    for (const connection of connections) {
+      const result = await this.sync.refreshConnectionProductMetadata(
+        userId,
+        connection.id,
+      );
+
+      if (result === 'refreshed') {
+        refreshedCount += 1;
+      } else if (result === 'skipped') {
+        skippedCount += 1;
+      } else {
+        failedCount += 1;
+      }
+    }
+
+    const status = await this.getStatus(userId, requestHeaders);
+
+    return {
+      ...status,
+      productsSync: {
+        refreshedCount,
+        skippedCount,
+        failedCount,
+      },
+    };
+  }
+
   async disconnect(
     userId: string,
     connectionId: string,
@@ -1181,6 +1293,85 @@ export class StripeBillingService {
     return Array.from(groups.entries())
       .map(([id, title]) => ({ id, title }))
       .sort((left, right) => left.title.localeCompare(right.title, 'pt-BR'));
+  }
+
+  async createCancelPortalsForTelegramUser(telegramUserId: string) {
+    const links = await this.prisma.stripeTelegramMemberLinks.findMany({
+      where: {
+        telegramUserId: telegramUserId.trim(),
+        status: StripeTelegramMemberLinkStatus.ACTIVE,
+      },
+      orderBy: { linkedAt: 'desc' },
+      select: {
+        connectionId: true,
+        stripeCustomerId: true,
+        connection: {
+          select: {
+            status: true,
+            monitoredPlanLabel: true,
+          },
+        },
+        group: {
+          select: {
+            title: true,
+          },
+        },
+      },
+    });
+
+    if (links.length === 0) {
+      throw new NotFoundException(
+        'Não encontramos assinatura vinculada a este Telegram. Se você assinou recentemente, aguarde alguns minutos e tente de novo.',
+      );
+    }
+
+    const returnUrl = this.getTelegramBotPublicUrl();
+    const seen = new Set<string>();
+    const options: Array<{ url: string; label: string }> = [];
+
+    for (const link of links) {
+      if (link.connection.status !== StripeBillingConnectionStatus.CONNECTED) {
+        continue;
+      }
+
+      const dedupeKey = `${link.connectionId}:${link.stripeCustomerId}`;
+      if (seen.has(dedupeKey)) {
+        continue;
+      }
+      seen.add(dedupeKey);
+
+      try {
+        const client = await this.getClientForConnection(link.connectionId);
+        const session = await client.createBillingPortalSession({
+          customer: link.stripeCustomerId,
+          returnUrl,
+        });
+
+        if (!session.url) {
+          continue;
+        }
+
+        options.push({
+          url: session.url,
+          label:
+            link.connection.monitoredPlanLabel?.trim() ||
+            link.group.title?.trim() ||
+            'Gerenciar assinatura',
+        });
+      } catch (error) {
+        this.logger.warn(
+          `Failed to create billing portal for telegram user ${telegramUserId} on connection ${link.connectionId}: ${error instanceof Error ? error.message : 'unknown'}`,
+        );
+      }
+    }
+
+    if (options.length === 0) {
+      throw new BadRequestException(
+        'Não foi possível abrir o portal de cancelamento. O criador precisa ativar o Customer Portal na conta Stripe (Settings → Billing → Customer portal).',
+      );
+    }
+
+    return { options };
   }
 
   async finalizeCheckoutSession(

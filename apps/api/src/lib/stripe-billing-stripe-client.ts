@@ -182,6 +182,20 @@ export class StripeBillingStripeClient {
     );
   }
 
+  async createBillingPortalSession(input: {
+    customer: string;
+    returnUrl: string;
+  }): Promise<{ url: string | null }> {
+    const body = new URLSearchParams();
+    body.set('customer', input.customer);
+    body.set('return_url', input.returnUrl);
+
+    return this.postRequest<{ url: string | null }>(
+      '/billing_portal/sessions',
+      body,
+    );
+  }
+
   mapCatalogPrice(price: StripePriceRecord) {
     const product =
       price.product && typeof price.product === 'object' ? price.product : null;

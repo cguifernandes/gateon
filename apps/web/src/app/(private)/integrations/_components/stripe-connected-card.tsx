@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import {
   type StripeBillingConnectionDto,
   type StripeBillingStatusDto,
+  stripeBillingProductsSyncResponseSchema,
   stripeBillingStatusSchema,
 } from "@/lib/zod/stripe-billing-schemas";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
@@ -288,6 +289,7 @@ export function StripeConnectedCard({
   groups,
 }: StripeConnectedCardProps) {
   const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [syncingProducts, setSyncingProducts] = useState(false);
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
   const provider = getIntegrationProvider("stripe");
   const gatewayName = provider?.name ?? "Stripe";
@@ -348,6 +350,52 @@ export function StripeConnectedCard({
       });
     } finally {
       setDisconnectingId(null);
+    }
+  }
+
+  async function syncAllProducts() {
+    setSyncingProducts(true);
+    try {
+      const response = await fetch("/api/stripe-billing/products/sync", {
+        method: "POST",
+      });
+      const body: unknown = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(
+          getErrorMessage(body, "Não foi possível sincronizar os produtos."),
+        );
+      }
+
+      const parsed = stripeBillingProductsSyncResponseSchema.safeParse(body);
+      if (!parsed.success) {
+        throw new Error("A resposta da API veio em formato inválido.");
+      }
+
+      const { productsSync, ...status } = parsed.data;
+      onStatusChange(status);
+
+      if (productsSync.failedCount > 0) {
+        toast.warning("Sincronização parcial", {
+          description: `${productsSync.refreshedCount} produto(s) atualizado(s), ${productsSync.failedCount} falha(s).`,
+        });
+        return;
+      }
+
+      toast.success("Produtos sincronizados", {
+        description:
+          productsSync.refreshedCount === 0
+            ? "Nenhum produto precisava de atualização."
+            : `${productsSync.refreshedCount} produto(s) atualizado(s) na Stripe.`,
+      });
+    } catch (error) {
+      toast.error("Falha ao sincronizar produtos", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "Tente novamente em instantes.",
+      });
+    } finally {
+      setSyncingProducts(false);
     }
   }
 
@@ -430,18 +478,31 @@ export function StripeConnectedCard({
         ))}
       </CardContent>
 
-      {planCount > 1 ? (
+      {planCount >= 1 ? (
         <CardFooter className="border-border border-t">
-          <div className="flex w-full justify-end">
+          <div className="flex w-full flex-wrap justify-end gap-2">
             <Button
               type="button"
               variant="outline"
-              className="w-40"
-              loading={syncingId === "all"}
-              onClick={syncAll}
+              className="w-full sm:w-auto"
+              loading={syncingProducts}
+              disabled={syncingId !== null}
+              onClick={syncAllProducts}
             >
-              Sincronizar todos
+              Sincronizar produtos
             </Button>
+            {planCount > 1 ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-40"
+                loading={syncingId === "all"}
+                disabled={syncingProducts}
+                onClick={syncAll}
+              >
+                Sincronizar todos
+              </Button>
+            ) : null}
           </div>
         </CardFooter>
       ) : null}

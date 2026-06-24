@@ -4,6 +4,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EMAIL_SUPPORT } from "@/lib/utils";
 import { BotStartSettingsSection } from "./_components/bot-start-settings-section";
+import { CancelCommandSettingsCard } from "./_components/cancel-command-settings-card";
 import { DeleteAccountCard } from "./_components/delete-account-card";
 
 export const metadata: Metadata = {
@@ -27,6 +28,8 @@ export default function DashboardSettingsPage() {
       </div>
 
       <BotStartSettingsSection />
+
+      <CancelCommandSettingsCard />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

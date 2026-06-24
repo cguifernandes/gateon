@@ -52,14 +52,9 @@ export function StripeWebhookGuideContent({
   return (
     <div className={cn("space-y-4", className)}>
       <section className="space-y-3 rounded-xl border border-border p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="font-heading mb-0! font-medium text-foreground text-sm">
-            Como a integração funciona
-          </p>
-          <Badge variant="outline" className="text-[10px]">
-            2 etapas
-          </Badge>
-        </div>
+        <p className="font-heading mb-0! font-medium text-foreground text-sm">
+          Como a integração funciona
+        </p>
         <ol className="list-decimal space-y-2 pl-4 text-muted-foreground text-xs leading-relaxed">
           <li>
             <span className="font-medium text-foreground">Chave de API</span>{" "}
@@ -161,9 +156,7 @@ export function StripeWebhookGuideContent({
           </li>
           <li>
             Cole a URL do Gateon em{" "}
-            <span className="font-medium text-foreground">
-              URL do endpoint
-            </span>
+            <span className="font-medium text-foreground">URL do endpoint</span>
             .
           </li>
           <li>
@@ -178,7 +171,10 @@ export function StripeWebhookGuideContent({
             e marque exatamente estes (use a busca da Stripe pelo nome técnico):
             <ul className="mt-2 space-y-1.5 rounded-lg border border-border bg-muted/30 p-3">
               {stripeWebhookEventsToSelect.map((event) => (
-                <li key={event.type} className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-2">
+                <li
+                  key={event.type}
+                  className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-2"
+                >
                   <code className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-foreground">
                     {event.type}
                   </code>
