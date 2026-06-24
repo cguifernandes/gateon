@@ -243,7 +243,7 @@ function StripePlanConnectionSection({
 
   return (
     <section
-      className={cn("space-y-3 px-5", planCount > 1 && isLast && "pb-5")}
+      className={cn("space-y-3 px-4", planCount > 1 && isLast && "pb-5")}
     >
       <h3 className="font-semibold font-heading text-xl leading-tight">
         {planTitle}
@@ -382,7 +382,7 @@ export function StripeConnectedCard({
 
   return (
     <Card className="gap-0">
-      <CardHeader className="flex flex-col gap-3 border-border border-b sm:flex-row sm:items-start sm:justify-between">
+      <CardHeader className="flex flex-col gap-3 border-border border-b bg-linear-to-br from-card via-card to-primary/20 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-20 shrink-0 items-center justify-center rounded-lg border border-border bg-background px-4">
             <Image
@@ -394,8 +394,8 @@ export function StripeConnectedCard({
           <div>
             <CardTitle>{gatewayName}</CardTitle>
             <CardDescription>
-              Monitore assinaturas e dispare alertas automaticamente via
-              webhook Stripe.
+              Monitore assinaturas e dispare alertas automaticamente via webhook
+              Stripe.
             </CardDescription>
           </div>
         </div>
@@ -403,7 +403,7 @@ export function StripeConnectedCard({
       </CardHeader>
 
       <CardContent className="space-y-5 p-0">
-        <div className="flex flex-col gap-1 p-5 pb-0">
+        <div className="flex flex-col gap-1 p-4 pb-0">
           <p className="font-medium font-heading text-muted-foreground text-xs uppercase tracking-wide">
             Detalhes da integração
           </p>

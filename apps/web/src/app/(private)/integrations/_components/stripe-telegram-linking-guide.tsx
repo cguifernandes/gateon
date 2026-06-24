@@ -56,6 +56,11 @@ const botActions = [
   "Monitorar o status da assinatura para automações de acesso (avisos e remoções conforme suas regras).",
 ];
 
+const accordionTriggerClassName =
+  "font-heading font-medium text-foreground text-sm hover:no-underline";
+
+const accordionContentClassName = "space-y-3 px-1.5 pt-0.5 pb-4 text-sm leading-relaxed";
+
 export function StripeTelegramLinkingGuide() {
   return (
     <Card className="gap-0 overflow-hidden pb-0">
@@ -73,63 +78,73 @@ export function StripeTelegramLinkingGuide() {
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="space-y-6 py-4">
-        <section className="space-y-3">
-          <h3 className="font-heading font-medium text-foreground text-sm">
-            Para você (criador)
-          </h3>
-          <ol className="list-decimal space-y-2 pl-5 text-muted-foreground text-sm leading-relaxed">
-            {creatorSteps.map((step) => (
-              <li key={step}>{step}</li>
-            ))}
-          </ol>
-          <p className="text-muted-foreground text-sm leading-relaxed">
-            Ao conectar um plano, escolha o grupo de destino. O limite de grupos
-            distintos segue o seu plano Gateon:
-          </p>
-          <ul className="list-disc space-y-1 pl-5 text-muted-foreground text-sm">
-            {stripePaymentGroupLimitsByPlan.map((item) => (
-              <li key={item.plan}>
-                <span className="font-medium text-foreground">{item.plan}</span>
-                : até {item.maxGroups} grupo(s) distintos no /start
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="space-y-3">
-          <h3 className="font-heading font-medium text-foreground text-sm">
-            Para quem assina (seu cliente)
-          </h3>
-          <ol className="list-decimal space-y-2 pl-5 text-muted-foreground text-sm leading-relaxed">
-            {customerSteps.map((step) => (
-              <li key={step}>{step}</li>
-            ))}
-          </ol>
-        </section>
-
-        <section className="space-y-3 rounded-lg border border-border bg-background/60 p-4">
-          <h3 className="font-heading font-medium text-foreground text-sm">
-            O que o bot faz (e o que não faz)
-          </h3>
-          <ul className="list-disc space-y-2 pl-5 text-muted-foreground text-sm leading-relaxed">
-            {botActions.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-          <p className="text-muted-foreground text-xs leading-relaxed">
-            O bot não lê mensagens do grupo para fins de pagamento, não vende
-            dados e não acessa informações além do necessário para o controle de
-            assinatura e acesso.
-          </p>
-        </section>
-
+      <CardContent className="py-4">
         <Accordion className="gap-2">
-          <AccordionItem value="privacy">
-            <AccordionTrigger className="font-heading font-medium text-foreground text-sm hover:no-underline">
+          <AccordionItem className="bg-transparent!" value="creator">
+            <AccordionTrigger className={accordionTriggerClassName}>
+              Para você (criador)
+            </AccordionTrigger>
+            <AccordionContent className={accordionContentClassName}>
+              <ol className="list-decimal space-y-2 pl-5 text-muted-foreground">
+                {creatorSteps.map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ol>
+              <p className="text-muted-foreground">
+                Ao conectar um plano, escolha o grupo de destino. O limite de
+                grupos distintos segue o seu plano Gateon:
+              </p>
+              <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+                {stripePaymentGroupLimitsByPlan.map((item) => (
+                  <li key={item.plan}>
+                    <span className="font-medium text-foreground">
+                      {item.plan}
+                    </span>
+                    : até {item.maxGroups} grupo(s) distintos no /start
+                  </li>
+                ))}
+              </ul>
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem className="bg-transparent!" value="customer">
+            <AccordionTrigger className={accordionTriggerClassName}>
+              Para quem assina (seu cliente)
+            </AccordionTrigger>
+            <AccordionContent className={accordionContentClassName}>
+              <ol className="list-decimal space-y-2 pl-5 text-muted-foreground">
+                {customerSteps.map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ol>
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem className="bg-transparent!" value="bot-actions">
+            <AccordionTrigger className={accordionTriggerClassName}>
+              O que o bot faz (e o que não faz)
+            </AccordionTrigger>
+            <AccordionContent className={accordionContentClassName}>
+              <div className="space-y-3 rounded-lg border border-border bg-background/60 p-4">
+                <ul className="list-disc space-y-2 pl-5 text-muted-foreground">
+                  {botActions.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+                <p className="text-muted-foreground text-xs leading-relaxed">
+                  O bot não lê mensagens do grupo para fins de pagamento, não
+                  vende dados e não acessa informações além do necessário para o
+                  controle de assinatura e acesso.
+                </p>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem className="bg-transparent!" value="privacy">
+            <AccordionTrigger className={accordionTriggerClassName}>
               Privacidade e uso dos dados
             </AccordionTrigger>
-            <AccordionContent className="space-y-4 pb-4 text-sm leading-relaxed">
+            <AccordionContent className={`${accordionContentClassName} space-y-4`}>
               <section>
                 <h3 className="font-heading font-medium text-foreground">
                   O que as integrações fazem?

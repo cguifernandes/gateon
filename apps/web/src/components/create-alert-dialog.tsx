@@ -1237,7 +1237,7 @@ function GroupSelectField({
         aria-invalid={Boolean(error)}
         aria-label="Seleção de grupo"
         className={cn(
-          "grid max-h-64 list-none grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3",
+          "grid max-h-64 list-none overflow-y-auto grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3",
           selectableGroups.length === 2 && "lg:grid-cols-2",
         )}
       >

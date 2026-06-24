@@ -91,12 +91,10 @@ export function AlertsClient({
       initialPage: initialData.pagination.page,
     });
 
+  const paginationMeta = data?.pagination ?? initialData.pagination;
   const alerts = data?.alerts ?? initialData.alerts;
   const stats = data?.stats ?? initialData.stats;
-  const pagination = toClientPaginationState(
-    data?.pagination ?? initialData.pagination,
-    setPage,
-  );
+  const pagination = toClientPaginationState(paginationMeta, setPage);
 
   const isSearchPending = query.trim() !== debouncedSearch;
   const showDataRefresh =
@@ -122,8 +120,18 @@ export function AlertsClient({
     }
   }, [reload]);
 
+  const refreshAlertsAfterCreate = useCallback(async () => {
+    try {
+      await setPage(1);
+    } catch {
+      toast.error("Falha ao atualizar alertas", {
+        description: "Verifique sua conexão e tente novamente.",
+      });
+    }
+  }, [setPage]);
+
   const hasNoAlerts =
-    initialData.pagination.totalItems === 0 &&
+    paginationMeta.totalItems === 0 &&
     filtersControl.appliedActiveCount === 0 &&
     debouncedSearch.length === 0;
 
@@ -193,7 +201,7 @@ export function AlertsClient({
           <CreateAlertDialog
             groups={groups}
             stripeConnections={stripeConnections}
-            onCreated={refreshAlerts}
+            onCreated={refreshAlertsAfterCreate}
           />
         </div>
         <div className="grid gap-4 lg:grid-cols-[295px_1fr]">
@@ -204,7 +212,7 @@ export function AlertsClient({
               <AlertsEmptyState
                 groups={groups}
                 stripeConnections={stripeConnections}
-                onCreated={refreshAlerts}
+                onCreated={refreshAlertsAfterCreate}
               />
             ) : (
               <div className="relative flex flex-col gap-4">
@@ -282,7 +290,7 @@ export function AlertsClient({
         }}
         onCreated={() => {
           setSelectedAlert(null);
-          void refreshAlerts();
+          void refreshAlertsAfterCreate();
         }}
         showTrigger={false}
       />

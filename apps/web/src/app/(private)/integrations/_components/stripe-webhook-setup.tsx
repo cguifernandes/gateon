@@ -103,12 +103,7 @@ export function StripeWebhookSetup({
   }
 
   return (
-    <Accordion
-      className="gap-2"
-      defaultValue={
-        connection.webhookConfigured ? undefined : ["realtime-alerts"]
-      }
-    >
+    <Accordion className="gap-2">
       <AccordionItem className="bg-transparent!" value="realtime-alerts">
         <AccordionTrigger className="font-heading font-medium text-foreground text-sm hover:no-underline">
           <span className="flex flex-1 items-center justify-between gap-2 pr-2">
@@ -122,7 +117,7 @@ export function StripeWebhookSetup({
           </span>
         </AccordionTrigger>
 
-        <AccordionContent className="space-y-4 pb-4">
+        <AccordionContent className="space-y-4 px-1.5 pt-0.5 pb-4">
           {!connection.webhookConfigured ? (
             guideExpanded ? (
               <div className="space-y-3">
@@ -194,11 +189,11 @@ export function StripeWebhookSetup({
             <Label className="text-muted-foreground text-xs">
               URL do endpoint (cole na Stripe)
             </Label>
-            <div className="flex gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <Input
                 readOnly
                 value={connection.webhookEndpointUrl}
-                className="font-mono "
+                className="min-w-0 font-mono"
               />
               <CopyToClipboardButton
                 value={connection.webhookEndpointUrl}
@@ -217,7 +212,7 @@ export function StripeWebhookSetup({
               <Label htmlFor={`webhook-secret-${connection.id}`}>
                 Signing secret da Stripe (whsec_...)
               </Label>
-              <div className="flex h-full items-center gap-2">
+              <div className="flex min-w-0 items-center gap-2">
                 <Input
                   id={`webhook-secret-${connection.id}`}
                   type="password"
@@ -225,10 +220,11 @@ export function StripeWebhookSetup({
                   placeholder="whsec_..."
                   value={secret}
                   onChange={(event) => setSecret(event.target.value)}
+                  className="min-w-0"
                 />
                 <Button
                   type="button"
-                  className="shrink-0 h-full! min-h-9 w-20 sm:w-40"
+                  className="h-10 shrink-0 sm:w-40"
                   loading={isSaving}
                   onClick={saveWebhookSecret}
                 >
