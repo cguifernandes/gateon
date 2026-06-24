@@ -11,7 +11,6 @@ import {
   AlertTriggerType,
   Prisma,
   StripeBillingConnectionStatus,
-  StripeTelegramMemberLinkStatus,
 } from '@prisma/client';
 import { GroupLimitService } from '../../lib/group-limit.service';
 import { isPaidPlan, PLAN_LABELS } from '../../lib/plan-limits';
@@ -220,18 +219,6 @@ export class BotStartSettingsService {
           telegramUserIds: [subscriber.telegramUserId],
         },
       );
-
-      if (result.successCount > 0) {
-        await this.prisma.stripeTelegramMemberLinks.updateMany({
-          where: {
-            connectionId: input.connectionId,
-            telegramUserId: subscriber.telegramUserId,
-          },
-          data: {
-            status: StripeTelegramMemberLinkStatus.REVOKED,
-          },
-        });
-      }
 
       if (result.failedCount > 0) {
         this.logger.warn(

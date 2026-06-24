@@ -50,7 +50,7 @@ async function resolveSubscriberForStripeContext(
     connectionId,
     stripeCustomerId: stripeContext.stripeCustomerId,
     stripeSubscriptionId: stripeContext.stripeSubscriptionId,
-  });
+  }, { includeRevokedLinks: true });
 }
 
 export async function dispatchStripeAutomationTrigger(

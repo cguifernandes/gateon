@@ -728,6 +728,13 @@ export class AlertsService {
 
       if (
         alert.destinationType === AlertDestinationType.AUTOMATION &&
+        isStripeAutomationTriggerType(alert.triggerType)
+      ) {
+        return [];
+      }
+
+      if (
+        alert.destinationType === AlertDestinationType.AUTOMATION &&
         options?.scopeToTelegramChatId
       ) {
         const deliverToPrivate =

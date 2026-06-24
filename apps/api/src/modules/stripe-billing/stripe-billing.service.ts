@@ -26,6 +26,11 @@ import {
 } from '../../lib/stripe-payment-group-limits';
 import { resolveStripeCheckoutRedirectUrls } from '../../lib/stripe-checkout-redirect';
 import { buildStripeWebhookEndpointUrl } from '../../lib/stripe-billing-webhook-url';
+import {
+  isEntitledStripeSubscription,
+  revokeStripeTelegramMemberLinks,
+  shouldRevokeStripeTelegramMemberLink,
+} from '../../lib/stripe-telegram-member-links';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import {
@@ -639,6 +644,14 @@ export class StripeBillingSyncService {
           userId,
           connectionId,
           triggerType: eventType,
+          stripeSubscriptionId: subscription.id,
+          stripeCustomerId,
+        });
+      }
+
+      if (shouldRevokeStripeTelegramMemberLink(status)) {
+        await revokeStripeTelegramMemberLinks(this.prisma, {
+          connectionId,
           stripeSubscriptionId: subscription.id,
           stripeCustomerId,
         });

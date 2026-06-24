@@ -12,6 +12,10 @@ type StripeTelegramSubscriberPrisma = Pick<
   'stripeTelegramMemberLinks' | 'telegramGroupMembers'
 >;
 
+type ResolveStripeLinkedTelegramSubscriberOptions = {
+  includeRevokedLinks?: boolean;
+};
+
 export async function resolveStripeLinkedTelegramSubscriber(
   prisma: StripeTelegramSubscriberPrisma,
   params: {
@@ -19,15 +23,23 @@ export async function resolveStripeLinkedTelegramSubscriber(
     stripeCustomerId?: string | null;
     stripeSubscriptionId?: string | null;
   },
+  options?: ResolveStripeLinkedTelegramSubscriberOptions,
 ): Promise<StripeLinkedTelegramSubscriber | null> {
   const { connectionId, stripeCustomerId, stripeSubscriptionId } = params;
   if (!stripeCustomerId && !stripeSubscriptionId) {
     return null;
   }
 
+  const linkStatuses = options?.includeRevokedLinks
+    ? [
+        StripeTelegramMemberLinkStatus.ACTIVE,
+        StripeTelegramMemberLinkStatus.REVOKED,
+      ]
+    : [StripeTelegramMemberLinkStatus.ACTIVE];
+
   const baseWhere: Prisma.StripeTelegramMemberLinksWhereInput = {
     connectionId,
-    status: StripeTelegramMemberLinkStatus.ACTIVE,
+    status: { in: linkStatuses },
   };
 
   let link: {

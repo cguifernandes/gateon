@@ -13,6 +13,7 @@ import {
   StripeTelegramMemberLinkStatus,
 } from '@prisma/client';
 import { GroupLimitService } from '../../lib/group-limit.service';
+import { isEntitledStripeSubscription } from '../../lib/stripe-telegram-member-links';
 import { PrismaService } from '../prisma/prisma.service';
 import { hashSensitiveValue } from '../../utils/utils';
 import type { TelegramGroupChatNoticeRequestInput } from '../../lib/zod/telegram-group-chat-notice-schemas';
@@ -26,6 +27,10 @@ import {
   parseTelegramGroupAdministratorRightsPayload,
   type TelegramGroupAdministratorRights,
 } from '../../lib/telegram-admin-rights';
+import {
+  isTelegramMemberGoneStatus,
+  isTelegramMemberLookupGoneError,
+} from '../../lib/telegram-member-presence';
 import type { TelegramGroupsListQueryInput } from '../../lib/zod/telegram-groups-list-query-schemas';
 import { resolveTelegramGroupsList } from '../../lib/telegram-groups-list.resolver';
 
@@ -217,6 +222,7 @@ export class TelegramService {
         telegramGroupId: true,
         telegramUserId: true,
         connectionId: true,
+        stripeSubscriptionId: true,
         connection: {
           select: {
             monitoredPlanLabel: true,
@@ -226,12 +232,57 @@ export class TelegramService {
       },
     });
 
+    const subscriptionIds = [
+      ...new Set(
+        memberLinks
+          .map((link) => link.stripeSubscriptionId)
+          .filter((subscriptionId): subscriptionId is string =>
+            Boolean(subscriptionId),
+          ),
+      ),
+    ];
+
+    const subscriptions =
+      subscriptionIds.length === 0
+        ? []
+        : await this.prisma.stripeBillingSubscriptions.findMany({
+            where: {
+              connectionId: {
+                in: [...new Set(memberLinks.map((link) => link.connectionId))],
+              },
+              stripeSubscriptionId: { in: subscriptionIds },
+            },
+            select: {
+              connectionId: true,
+              stripeSubscriptionId: true,
+              status: true,
+              cancelAtPeriodEnd: true,
+            },
+          });
+
+    const subscriptionByKey = new Map(
+      subscriptions.map((subscription) => [
+        `${subscription.connectionId}:${subscription.stripeSubscriptionId}`,
+        subscription,
+      ]),
+    );
+
     const plansByMemberKey = new Map<
       string,
       { connectionId: string; label: string }[]
     >();
 
     for (const link of memberLinks) {
+      const subscription = link.stripeSubscriptionId
+        ? subscriptionByKey.get(
+            `${link.connectionId}:${link.stripeSubscriptionId}`,
+          )
+        : null;
+
+      if (!isEntitledStripeSubscription(subscription)) {
+        continue;
+      }
+
       const key = `${link.telegramGroupId}:${link.telegramUserId}`;
       const label =
         link.connection.monitoredPlanLabel?.trim() ||
@@ -682,6 +733,10 @@ export class TelegramService {
       await this.syncTelegramGroupRichMetadata(group.id, group.telegramChatId);
 
     await this.syncGroupMemberOwnerFlags(group.id, syncedChatId);
+    const membersSync = await this.syncTrackedMembersPresence(
+      group.id,
+      syncedChatId,
+    );
 
     const updated = await this.prisma.telegramGroups.findFirst({
       where: { id: groupId, userId },
@@ -710,6 +765,11 @@ export class TelegramService {
         where: { id: groupId },
         data: { botStatus: permissions.botStatus },
       });
+    } else if (membersSync.markedLeftCount > 0) {
+      await this.prisma.telegramGroups.update({
+        where: { id: groupId },
+        data: { updatedAt: new Date() },
+      });
     }
 
     return {
@@ -721,6 +781,8 @@ export class TelegramService {
         isForum: updated.isForum,
         memberCount,
         telegramChatId: syncedChatId,
+        membersCheckedCount: membersSync.checkedCount,
+        membersMarkedLeftCount: membersSync.markedLeftCount,
       },
       botStatus: permissions?.botStatus ?? null,
       permissions,
@@ -2349,6 +2411,88 @@ export class TelegramService {
           ]
         : []),
     ]);
+  }
+
+  private async syncTrackedMembersPresence(
+    gateonGroupId: string,
+    telegramChatId: string,
+  ): Promise<{ checkedCount: number; markedLeftCount: number }> {
+    const chatId = telegramChatId.trim();
+    if (!chatId) {
+      return { checkedCount: 0, markedLeftCount: 0 };
+    }
+
+    const activeMembers = await this.prisma.telegramGroupMembers.findMany({
+      where: {
+        telegramGroupId: gateonGroupId,
+        leftAt: null,
+      },
+      select: { telegramUserId: true },
+    });
+
+    if (activeMembers.length === 0) {
+      return { checkedCount: 0, markedLeftCount: 0 };
+    }
+
+    let markedLeftCount = 0;
+    const concurrency = 5;
+
+    for (let index = 0; index < activeMembers.length; index += concurrency) {
+      const batch = activeMembers.slice(index, index + concurrency);
+      const results = await Promise.all(
+        batch.map((member) =>
+          this.resolveTrackedMemberPresence(chatId, gateonGroupId, member.telegramUserId),
+        ),
+      );
+
+      markedLeftCount += results.filter(Boolean).length;
+    }
+
+    return {
+      checkedCount: activeMembers.length,
+      markedLeftCount,
+    };
+  }
+
+  private async resolveTrackedMemberPresence(
+    telegramChatId: string,
+    gateonGroupId: string,
+    telegramUserId: string,
+  ): Promise<boolean> {
+    const userId = this.parseTelegramUserId(telegramUserId);
+    if (userId === null) {
+      return false;
+    }
+
+    const memberResult = await this.callTelegramBotMethodDetailed<
+      Record<string, unknown>
+    >('getChatMember', {
+      chat_id: telegramChatId,
+      user_id: userId,
+    });
+
+    const isGone = memberResult.ok
+      ? isTelegramMemberGoneStatus(
+          typeof memberResult.result.status === 'string'
+            ? memberResult.result.status
+            : null,
+        )
+      : isTelegramMemberLookupGoneError(memberResult.reason);
+
+    if (!isGone) {
+      return false;
+    }
+
+    const updated = await this.prisma.telegramGroupMembers.updateMany({
+      where: {
+        telegramGroupId: gateonGroupId,
+        telegramUserId,
+        leftAt: null,
+      },
+      data: { leftAt: new Date() },
+    });
+
+    return updated.count > 0;
   }
 
   private async executeGroupMemberAction(params: {
