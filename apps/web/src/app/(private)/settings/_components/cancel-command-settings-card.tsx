@@ -30,17 +30,26 @@ export function CancelCommandSettingsCard() {
               chat privado com o bot do Gateon.
             </li>
             <li>
-              O bot gera um link seguro do{" "}
+              O bot lista cada assinatura ainda gerenciável na Stripe que foi
+              vinculada a este Telegram após o checkout —{" "}
+              <span className="font-medium text-foreground">
+                não depende dos botões atuais do /start
+              </span>
+              . Remover um plano das opções de assinar não impede o
+              cancelamento de quem já pagou.
+            </li>
+            <li>
+              Cada botão abre o{" "}
               <span className="font-medium text-foreground">
                 Customer Portal
               </span>{" "}
-              da Stripe (somente se a assinatura estiver vinculada ao Telegram
-              após o checkout).
+              da Stripe (somente com integração conectada e portal habilitado
+              na conta Stripe).
             </li>
             <li>
-              Na Stripe, o assinante pode cancelar a assinatura, atualizar
-              pagamento ou ver faturas — conforme o que você habilitar no
-              portal.
+              Se o assinante cancelou e assinou de novo pelo bot, o Gateon
+              reativa o vínculo após o checkout ou na próxima sincronização
+              Stripe.
             </li>
           </ol>
         </div>

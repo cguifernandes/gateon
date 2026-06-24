@@ -16,13 +16,17 @@ import { useRefreshAllTelegramGroups } from "../_hooks/use-refresh-all-telegram-
 
 type RefreshAllGroupsButtonProps = {
   disabled?: boolean;
+  onSynced?: () => void;
 };
 
 export function RefreshAllGroupsButton({
   disabled = false,
+  onSynced,
 }: RefreshAllGroupsButtonProps) {
   const refreshIconRef = useRef<RefreshCWIconHandle>(null);
-  const { refreshAll, isPending } = useRefreshAllTelegramGroups();
+  const { refreshAll, isPending } = useRefreshAllTelegramGroups({
+    onSuccess: onSynced,
+  });
   const isDisabled = disabled || isPending;
 
   return (

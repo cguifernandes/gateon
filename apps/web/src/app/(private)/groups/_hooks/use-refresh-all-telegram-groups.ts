@@ -43,7 +43,9 @@ function getRefreshAllSuccessMessage(result: RefreshAllTelegramGroupsResultDto) 
   return `${result.refreshedCount} de ${result.totalCount} grupo(s) sincronizado(s).`;
 }
 
-export function useRefreshAllTelegramGroups() {
+export function useRefreshAllTelegramGroups(options?: {
+  onSuccess?: () => void;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -101,6 +103,7 @@ export function useRefreshAllTelegramGroups() {
         }
 
         router.refresh();
+        options?.onSuccess?.();
       } catch {
         toast.error("Falha ao recarregar grupos", {
           id: toastId,

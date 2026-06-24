@@ -27,7 +27,10 @@ import {
 import { resolveStripeCheckoutRedirectUrls } from '../../lib/stripe-checkout-redirect';
 import { buildStripeWebhookEndpointUrl } from '../../lib/stripe-billing-webhook-url';
 import {
+  canOpenStripeSubscriptionCancelPortal,
   isEntitledStripeSubscription,
+  pickStripeSubscriptionForCancel,
+  reactivateStripeTelegramMemberLinks,
   revokeStripeTelegramMemberLinks,
   shouldRevokeStripeTelegramMemberLink,
 } from '../../lib/stripe-telegram-member-links';
@@ -651,6 +654,12 @@ export class StripeBillingSyncService {
 
       if (shouldRevokeStripeTelegramMemberLink(status)) {
         await revokeStripeTelegramMemberLinks(this.prisma, {
+          connectionId,
+          stripeSubscriptionId: subscription.id,
+          stripeCustomerId,
+        });
+      } else if (isEntitledStripeSubscription({ status })) {
+        await reactivateStripeTelegramMemberLinks(this.prisma, {
           connectionId,
           stripeSubscriptionId: subscription.id,
           stripeCustomerId,
@@ -1318,12 +1327,19 @@ export class StripeBillingService {
     const links = await this.prisma.stripeTelegramMemberLinks.findMany({
       where: {
         telegramUserId: telegramUserId.trim(),
-        status: StripeTelegramMemberLinkStatus.ACTIVE,
+        status: {
+          in: [
+            StripeTelegramMemberLinkStatus.ACTIVE,
+            StripeTelegramMemberLinkStatus.REVOKED,
+          ],
+        },
       },
       orderBy: { linkedAt: 'desc' },
       select: {
         connectionId: true,
         stripeCustomerId: true,
+        stripeSubscriptionId: true,
+        status: true,
         connection: {
           select: {
             status: true,
@@ -1344,20 +1360,73 @@ export class StripeBillingService {
       );
     }
 
+    const connectedLinks = links.filter(
+      (link) =>
+        link.connection.status === StripeBillingConnectionStatus.CONNECTED,
+    );
+
+    const uniqueLinks = new Map<string, (typeof links)[number]>();
+    for (const link of connectedLinks) {
+      const dedupeKey = `${link.connectionId}:${link.stripeCustomerId}`;
+      const existing = uniqueLinks.get(dedupeKey);
+      if (!existing) {
+        uniqueLinks.set(dedupeKey, link);
+        continue;
+      }
+
+      if (
+        existing.status !== StripeTelegramMemberLinkStatus.ACTIVE &&
+        link.status === StripeTelegramMemberLinkStatus.ACTIVE
+      ) {
+        uniqueLinks.set(dedupeKey, link);
+      }
+    }
+
+    const subscriptionRows =
+      uniqueLinks.size > 0
+        ? await this.prisma.stripeBillingSubscriptions.findMany({
+            where: {
+              OR: Array.from(uniqueLinks.values()).map((link) => ({
+                connectionId: link.connectionId,
+                stripeCustomerId: link.stripeCustomerId,
+              })),
+            },
+            select: {
+              connectionId: true,
+              stripeCustomerId: true,
+              stripeSubscriptionId: true,
+              status: true,
+              cancelAtPeriodEnd: true,
+              planName: true,
+            },
+            orderBy: { updatedAt: 'desc' },
+          })
+        : [];
+
+    const subscriptionsByCustomerKey = new Map<
+      string,
+      (typeof subscriptionRows)[number][]
+    >();
+    for (const subscription of subscriptionRows) {
+      const key = `${subscription.connectionId}:${subscription.stripeCustomerId}`;
+      const existing = subscriptionsByCustomerKey.get(key) ?? [];
+      existing.push(subscription);
+      subscriptionsByCustomerKey.set(key, existing);
+    }
+
     const returnUrl = this.getTelegramBotPublicUrl();
-    const seen = new Set<string>();
     const options: Array<{ url: string; label: string }> = [];
 
-    for (const link of links) {
-      if (link.connection.status !== StripeBillingConnectionStatus.CONNECTED) {
+    for (const [dedupeKey, link] of uniqueLinks) {
+      const subscriptions = subscriptionsByCustomerKey.get(dedupeKey) ?? [];
+      if (!canOpenStripeSubscriptionCancelPortal(subscriptions)) {
         continue;
       }
 
-      const dedupeKey = `${link.connectionId}:${link.stripeCustomerId}`;
-      if (seen.has(dedupeKey)) {
-        continue;
-      }
-      seen.add(dedupeKey);
+      const subscription = pickStripeSubscriptionForCancel(
+        subscriptions,
+        link.stripeSubscriptionId,
+      );
 
       try {
         const client = await this.getClientForConnection(link.connectionId);
@@ -1373,6 +1442,7 @@ export class StripeBillingService {
         options.push({
           url: session.url,
           label:
+            subscription?.planName?.trim() ||
             link.connection.monitoredPlanLabel?.trim() ||
             link.group.title?.trim() ||
             'Gerenciar assinatura',
@@ -1385,6 +1455,19 @@ export class StripeBillingService {
     }
 
     if (options.length === 0) {
+      const hasEndedSubscriptions =
+        uniqueLinks.size > 0 &&
+        Array.from(uniqueLinks.keys()).every((dedupeKey) => {
+          const subscriptions = subscriptionsByCustomerKey.get(dedupeKey) ?? [];
+          return !canOpenStripeSubscriptionCancelPortal(subscriptions);
+        });
+
+      if (hasEndedSubscriptions) {
+        throw new NotFoundException(
+          'Não encontramos assinatura ativa vinculada a este Telegram. Se você já cancelou, não é necessário usar este comando.',
+        );
+      }
+
       throw new BadRequestException(
         'Não foi possível abrir o portal de cancelamento. O criador precisa ativar o Customer Portal na conta Stripe (Settings → Billing → Customer portal).',
       );

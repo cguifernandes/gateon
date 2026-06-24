@@ -32,19 +32,23 @@ type GroupRowActionsMenuProps = {
   groupId: string;
   groupTitle: string;
   onViewMembers: () => void;
+  onSynced?: () => void;
 };
 
 export function GroupRowActionsMenu({
   groupId,
   groupTitle,
   onViewMembers,
+  onSynced,
 }: GroupRowActionsMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [removeOpen, setRemoveOpen] = useState(false);
   const closeMenuAfterRefreshRef = useRef(false);
   const refreshIconRef = useRef<RefreshCWIconHandle>(null);
   const removeIconRef = useRef<XIconHandle>(null);
-  const { refresh, isPending } = useRefreshTelegramGroup(groupId, groupTitle);
+  const { refresh, isPending } = useRefreshTelegramGroup(groupId, groupTitle, {
+    onSuccess: onSynced,
+  });
   const eyeIconRef = useRef<EyeIconHandle>(null);
   const ellipsisVerticalIconRef = useRef<EllipsisVerticalIconHandle>(null);
   const settingsIconRef = useRef<SettingsIconHandle>(null);

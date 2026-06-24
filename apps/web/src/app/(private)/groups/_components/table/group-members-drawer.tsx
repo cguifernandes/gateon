@@ -214,6 +214,7 @@ type GroupMembersDrawerProps = {
   onOpenChange?: (open: boolean) => void;
   onRequestRemove?: () => void;
   onQuickNoticeRequest?: (payload: QuickNoticePayload) => void;
+  onGroupSynced?: () => void;
   /** When a dialog is open on top of this drawer. */
   nestedDialogOpen?: boolean;
   showTrigger?: boolean;
@@ -225,6 +226,7 @@ export function GroupMembersDrawer({
   onOpenChange,
   onRequestRemove,
   onQuickNoticeRequest,
+  onGroupSynced,
   nestedDialogOpen = false,
   showTrigger = true,
 }: GroupMembersDrawerProps) {
@@ -336,6 +338,7 @@ export function GroupMembersDrawer({
       onSuccess: (result) => {
         applyRefreshResult(result);
         void loadMembers({ silent: true });
+        onGroupSynced?.();
       },
     },
   );

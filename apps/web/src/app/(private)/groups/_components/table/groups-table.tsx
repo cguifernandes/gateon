@@ -144,6 +144,10 @@ export function GroupsTable({
     router.refresh();
   }, [router, setPage]);
 
+  const handleGroupDataSynced = useCallback(() => {
+    void reload();
+  }, [reload]);
+
   useEffect(() => {
     if (!membersDrawerGroup) {
       return;
@@ -208,7 +212,10 @@ export function GroupsTable({
                   stripeConnections={stripeConnections}
                   control={filtersPopover}
                 />
-                <RefreshAllGroupsButton disabled={summary.totalGroups === 0} />
+                <RefreshAllGroupsButton
+                  disabled={summary.totalGroups === 0}
+                  onSynced={handleGroupDataSynced}
+                />
               </>
             }
             actions={
@@ -402,6 +409,7 @@ export function GroupsTable({
                             groupId={group.id}
                             groupTitle={group.title ?? ""}
                             onViewMembers={() => setMembersDrawerGroup(group)}
+                            onSynced={handleGroupDataSynced}
                           />
                         </TableCell>
                       </TableRow>
@@ -432,6 +440,7 @@ export function GroupsTable({
               open
               showTrigger={false}
               nestedDialogOpen={quickNoticePayload !== null}
+              onGroupSynced={handleGroupDataSynced}
               onOpenChange={(open) => {
                 if (!open) setMembersDrawerGroup(null);
               }}

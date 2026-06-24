@@ -169,6 +169,9 @@ export function MembersTable({
     visibleMembers: group.members,
   }));
   const paginatedGroups = visibleGroups;
+  const handleGroupDataSynced = useCallback(() => {
+    void reload();
+  }, [reload]);
   const hasNoGroups =
     (data?.summary.totalGroups ?? initialSummary.totalGroups) === 0;
   const hasNoMembers = membersSummary.totalMembers === 0;
@@ -427,6 +430,7 @@ export function MembersTable({
                               <RefreshGroupButton
                                 groupId={group.id}
                                 groupTitle={group.title ?? undefined}
+                                onSynced={handleGroupDataSynced}
                               />
                             </div>
                           </TableCell>

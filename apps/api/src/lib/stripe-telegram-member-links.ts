@@ -30,6 +30,64 @@ export function shouldRevokeStripeTelegramMemberLink(
   return !ENTITLED_STRIPE_SUBSCRIPTION_STATUSES.has(subscriptionStatus);
 }
 
+const MANAGEABLE_STRIPE_SUBSCRIPTION_STATUSES = new Set([
+  ...ENTITLED_STRIPE_SUBSCRIPTION_STATUSES,
+  'past_due',
+]);
+
+export function isManageableStripeSubscriptionForCancel(
+  subscription: StripeSubscriptionEntitlementSnapshot | null | undefined,
+): boolean {
+  if (!subscription) {
+    return true;
+  }
+
+  return MANAGEABLE_STRIPE_SUBSCRIPTION_STATUSES.has(subscription.status);
+}
+
+export type StripeSubscriptionCancelSnapshot =
+  StripeSubscriptionEntitlementSnapshot & {
+    stripeSubscriptionId?: string | null;
+    planName?: string | null;
+  };
+
+export function canOpenStripeSubscriptionCancelPortal(
+  subscriptions: StripeSubscriptionEntitlementSnapshot[],
+): boolean {
+  if (subscriptions.length === 0) {
+    return true;
+  }
+
+  return subscriptions.some((subscription) =>
+    isManageableStripeSubscriptionForCancel(subscription),
+  );
+}
+
+export function pickStripeSubscriptionForCancel(
+  subscriptions: StripeSubscriptionCancelSnapshot[],
+  preferredStripeSubscriptionId?: string | null,
+): StripeSubscriptionCancelSnapshot | undefined {
+  const manageable = subscriptions.filter((subscription) =>
+    isManageableStripeSubscriptionForCancel(subscription),
+  );
+
+  if (manageable.length === 0) {
+    return undefined;
+  }
+
+  if (preferredStripeSubscriptionId) {
+    const preferred = manageable.find(
+      (subscription) =>
+        subscription.stripeSubscriptionId === preferredStripeSubscriptionId,
+    );
+    if (preferred) {
+      return preferred;
+    }
+  }
+
+  return manageable[0];
+}
+
 type RevokeStripeTelegramMemberLinksParams = {
   connectionId: string;
   stripeSubscriptionId?: string | null;
@@ -63,6 +121,40 @@ export async function revokeStripeTelegramMemberLinks(
     },
     data: {
       status: StripeTelegramMemberLinkStatus.REVOKED,
+    },
+  });
+
+  return result.count;
+}
+
+export async function reactivateStripeTelegramMemberLinks(
+  prisma: Pick<PrismaService, 'stripeTelegramMemberLinks'>,
+  params: RevokeStripeTelegramMemberLinksParams,
+): Promise<number> {
+  const { connectionId, stripeSubscriptionId, stripeCustomerId } = params;
+  const matchFilters: Prisma.StripeTelegramMemberLinksWhereInput[] = [];
+
+  if (stripeSubscriptionId) {
+    matchFilters.push({ stripeSubscriptionId });
+  }
+
+  if (stripeCustomerId) {
+    matchFilters.push({ stripeCustomerId });
+  }
+
+  if (matchFilters.length === 0) {
+    return 0;
+  }
+
+  const result = await prisma.stripeTelegramMemberLinks.updateMany({
+    where: {
+      connectionId,
+      status: StripeTelegramMemberLinkStatus.REVOKED,
+      OR: matchFilters,
+    },
+    data: {
+      status: StripeTelegramMemberLinkStatus.ACTIVE,
+      ...(stripeSubscriptionId ? { stripeSubscriptionId } : {}),
     },
   });
 

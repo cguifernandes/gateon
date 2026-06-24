@@ -12,14 +12,18 @@ import { cn } from "@/lib/utils";
 type RefreshGroupButtonProps = {
   groupId: string;
   groupTitle?: string;
+  onSynced?: () => void;
 };
 
 export function RefreshGroupButton({
   groupId,
   groupTitle,
+  onSynced,
 }: RefreshGroupButtonProps) {
   const refreshIconRef = useRef<RefreshCWIconHandle>(null);
-  const { refresh, isPending } = useRefreshTelegramGroup(groupId, groupTitle);
+  const { refresh, isPending } = useRefreshTelegramGroup(groupId, groupTitle, {
+    onSuccess: onSynced,
+  });
 
   return (
     <Button
