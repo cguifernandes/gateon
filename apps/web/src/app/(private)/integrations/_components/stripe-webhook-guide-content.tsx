@@ -1,11 +1,42 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-const webhookEvents = [
-  "Pagamento confirmado ou falhou",
-  "Assinatura cancelada, renovada ou próxima do vencimento",
-  "Assinatura expirada por inadimplência",
-  "Checkout concluído (vínculo Telegram após pagamento)",
+/** Keep in sync with StripeBillingWebhookService.processEvent (apps/api). */
+const stripeWebhookEventsToSelect = [
+  {
+    type: "customer.subscription.created",
+    label: "Assinatura criada",
+  },
+  {
+    type: "customer.subscription.updated",
+    label: "Assinatura atualizada (renovação, cancelamento agendado, etc.)",
+  },
+  {
+    type: "customer.subscription.deleted",
+    label: "Assinatura encerrada",
+  },
+  {
+    type: "invoice.paid",
+    label: "Fatura paga",
+  },
+  {
+    type: "invoice.payment_failed",
+    label: "Pagamento da fatura falhou",
+  },
+  {
+    type: "invoice.voided",
+    label: "Fatura anulada",
+  },
+  {
+    type: "checkout.session.completed",
+    label: "Checkout concluído (vínculo Telegram após pagamento pelo bot)",
+  },
+] as const;
+
+const webhookEffects = [
+  "Atualiza assinaturas e métricas no painel sem clicar em Sincronizar",
+  "Dispara alertas de pagamento, cancelamento e vencimento em tempo real",
+  "Finaliza o vínculo assinante ↔ Telegram após checkout pelo bot",
 ];
 
 type StripeWebhookGuideContentProps = {
@@ -20,97 +51,164 @@ export function StripeWebhookGuideContent({
 }: StripeWebhookGuideContentProps) {
   return (
     <div className={cn("space-y-4", className)}>
-      <section className={cn("space-y-3 rounded-xl border border-border p-4")}>
-        <div className="flex flex-wrap justify-between items-center gap-2">
+      <section className="space-y-3 rounded-xl border border-border p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="font-heading mb-0! font-medium text-foreground text-sm">
-            Por que configurar o webhook?
+            Como a integração funciona
           </p>
           <Badge variant="outline" className="text-[10px]">
-            Recomendado
+            2 etapas
           </Badge>
         </div>
+        <ol className="list-decimal space-y-2 pl-4 text-muted-foreground text-xs leading-relaxed">
+          <li>
+            <span className="font-medium text-foreground">Chave de API</span>{" "}
+            (já conectada): o Gateon{" "}
+            <span className="font-medium text-foreground">consulta</span> a
+            Stripe quando você sincroniza — clientes, assinaturas e faturas
+            entram no painel.
+          </li>
+          <li>
+            <span className="font-medium text-foreground">Webhook</span>{" "}
+            (configure abaixo): a Stripe{" "}
+            <span className="font-medium text-foreground">
+              avisa o Gateon na hora
+            </span>{" "}
+            quando um evento acontece. Sem isso, alertas automáticos só disparam
+            na sincronização manual.
+          </li>
+        </ol>
         <p className="text-muted-foreground text-xs leading-relaxed">
-          A chave da Stripe permite que o Gateon{" "}
-          <span className="font-medium text-foreground">consulte</span> seus
-          dados quando você sincroniza. Já o webhook é o canal em que a Stripe{" "}
-          <span className="font-medium text-foreground">
-            avisa o Gateon na hora
-          </span>{" "}
-          quando algo acontece — sem precisar clicar em &quot;Sincronizar&quot;.
-          Sem webhook, alertas automáticos (pagamento, cancelamento, vencimento)
-          só disparam na sincronização manual. Com webhook ativo, eles chegam em
-          tempo real ao Telegram.
-        </p>
-      </section>
-      <section className="space-y-2 rounded-xl border border-border p-4">
-        <p className="font-heading font-medium text-foreground text-sm">
-          O que o webhook faz no Gateon
-        </p>
-        <ul className="space-y-1.5 text-muted-foreground text-xs leading-relaxed">
-          {webhookEvents.map((event) => (
-            <li key={event} className="flex gap-2">
-              <span className="text-primary" aria-hidden>
-                •
-              </span>
-              <span>{event}</span>
-            </li>
-          ))}
-        </ul>
-        <p className="pt-1 text-muted-foreground text-xs leading-relaxed">
-          Cada evento atualiza o painel e pode disparar os alertas que você
-          configurou na Central de Alertas. Se o assinante estiver vinculado ao
-          Telegram, a mensagem vai no privado; caso contrário, no grupo
-          vinculado ao plano.
+          As duas partes são complementares: a chave traz o histórico; o webhook
+          mantém tudo em tempo real.
         </p>
       </section>
 
       <section className="space-y-2 rounded-xl border border-border p-4">
         <p className="font-heading font-medium text-foreground text-sm">
-          Como configurar
+          O que o webhook faz no Gateon
         </p>
-        <ol className="list-decimal space-y-2 pl-4 text-muted-foreground text-xs leading-relaxed">
+        <ul className="space-y-1.5 text-muted-foreground text-xs leading-relaxed">
+          {webhookEffects.map((effect) => (
+            <li key={effect} className="flex gap-2">
+              <span className="text-primary" aria-hidden>
+                •
+              </span>
+              <span>{effect}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="pt-1 text-muted-foreground text-xs leading-relaxed">
+          Cada evento pode disparar os alertas da Central de Alertas. Se o
+          assinante estiver vinculado ao Telegram, a mensagem vai no privado;
+          caso contrário, no grupo vinculado ao plano.
+        </p>
+      </section>
+
+      <section className="space-y-3 rounded-xl border border-border p-4">
+        <p className="font-heading font-medium text-foreground text-sm">
+          Como configurar na Stripe
+        </p>
+        <p className="text-muted-foreground text-xs leading-relaxed">
+          Cada plano conectado no Gateon tem uma URL de webhook exclusiva. Siga
+          o passo a passo e marque{" "}
+          <span className="font-medium text-foreground">
+            todos os eventos listados abaixo
+          </span>{" "}
+          — sem eles, parte dos alertas e do vínculo pelo bot não funciona em
+          tempo real.
+        </p>
+
+        <ol className="list-decimal space-y-2.5 pl-4 text-muted-foreground text-xs leading-relaxed">
           <li>
             {showPostConnectNote ? (
               <>
-                Conclua esta integração. Em seguida, no card da Stripe, copie a{" "}
+                Conclua esta integração. No card da Stripe em Integrações, abra{" "}
+                <span className="font-medium text-foreground">
+                  Alertas em tempo real
+                </span>{" "}
+                e copie a{" "}
                 <span className="font-medium text-foreground">
                   URL do endpoint
-                </span>{" "}
-                — ela é única para este plano.
+                </span>
+                .
               </>
             ) : (
               <>
-                No card da integração Stripe, copie a{" "}
+                Neste card, copie a{" "}
                 <span className="font-medium text-foreground">
                   URL do endpoint
                 </span>{" "}
-                exibida na seção &quot;Alertas em tempo real&quot;.
+                exibida em &quot;Alertas em tempo real&quot;.
               </>
             )}
           </li>
           <li>
-            No{" "}
+            Acesse{" "}
             <a
               href="https://dashboard.stripe.com/webhooks"
               target="_blank"
               rel="noopener noreferrer"
               className="font-medium text-primary underline-offset-2 hover:underline"
             >
-              painel da Stripe
-            </a>
-            , crie um endpoint apontando para essa URL. Inclua eventos de
-            assinatura, fatura e checkout.
+              Desenvolvedores → Webhooks
+            </a>{" "}
+            no painel da Stripe e clique em{" "}
+            <span className="font-medium text-foreground">
+              Adicionar destino
+            </span>{" "}
+            (ou &quot;Add endpoint&quot;).
           </li>
           <li>
-            Copie o{" "}
-            <span className="font-medium text-foreground">signing secret</span>{" "}
+            Cole a URL do Gateon em{" "}
+            <span className="font-medium text-foreground">
+              URL do endpoint
+            </span>
+            .
+          </li>
+          <li>
+            Em{" "}
+            <span className="font-medium text-foreground">
+              Selecionar eventos
+            </span>
+            , escolha{" "}
+            <span className="font-medium text-foreground">
+              Selecionar eventos específicos
+            </span>{" "}
+            e marque exatamente estes (use a busca da Stripe pelo nome técnico):
+            <ul className="mt-2 space-y-1.5 rounded-lg border border-border bg-muted/30 p-3">
+              {stripeWebhookEventsToSelect.map((event) => (
+                <li key={event.type} className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-2">
+                  <code className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-foreground">
+                    {event.type}
+                  </code>
+                  <span className="text-muted-foreground">{event.label}</span>
+                </li>
+              ))}
+            </ul>
+          </li>
+          <li>
+            Salve o endpoint. Na página do webhook criado, revele o{" "}
+            <span className="font-medium text-foreground">Signing secret</span>{" "}
             (
             <code className="rounded bg-muted px-1 py-0.5 font-mono text-[10px]">
               whsec_...
             </code>
-            ) gerado pela Stripe e cole no Gateon.
+            ).
+          </li>
+          <li>
+            Cole o signing secret no campo abaixo e clique em{" "}
+            <span className="font-medium text-foreground">Ativar</span>. O badge
+            passará para &quot;Webhook ativo&quot; quando a validação estiver
+            correta.
           </li>
         </ol>
+
+        <p className="text-muted-foreground text-[11px] leading-relaxed">
+          Dica: não use &quot;Receber todos os eventos&quot; — selecione só os
+          listados acima. Se adicionar outro plano no Gateon, repita o processo
+          com a URL exclusiva daquele plano.
+        </p>
       </section>
     </div>
   );

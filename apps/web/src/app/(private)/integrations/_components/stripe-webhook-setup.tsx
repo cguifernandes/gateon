@@ -149,22 +149,14 @@ export function StripeWebhookSetup({
                     </Badge>
                   </div>
                   <p className="text-muted-foreground text-xs leading-relaxed">
-                    A chave da Stripe permite que o Gateon{" "}
-                    <span className="font-medium text-foreground">
-                      consulte
-                    </span>{" "}
-                    seus dados quando você sincroniza. Já o webhook é o canal em
-                    que a Stripe{" "}
-                    <span className="font-medium text-foreground">
-                      avisa o Gateon na hora
-                    </span>{" "}
-                    quando algo acontece — sem precisar clicar em
-                    &quot;Sincronizar&quot;.
+                    A chave consulta dados na sincronização; o webhook avisa o
+                    Gateon na hora. Na Stripe, crie o endpoint com a URL abaixo
+                    e selecione os eventos de assinatura, fatura e checkout.
                   </p>
                   <p className="text-muted-foreground text-xs leading-relaxed">
-                    Sem webhook, alertas automáticos (pagamento, cancelamento,
-                    vencimento) só disparam na sincronização manual. Com webhook
-                    ativo, eles chegam em tempo real ao Telegram.
+                    Sem webhook, alertas automáticos só disparam ao
+                    sincronizar. Com webhook ativo, chegam em tempo real ao
+                    Telegram.
                   </p>
                 </section>
                 <div
