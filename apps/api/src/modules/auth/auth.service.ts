@@ -3,6 +3,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -21,7 +22,7 @@ import {
   hashSensitiveValue,
   toPublicUser,
 } from '../../utils/utils';
-import type { LoginInput, RegisterInput } from '../../lib/zod/auth-schemas';
+import type { LoginInput, RegisterInput, UpdateProfileInput } from '../../lib/zod/auth-schemas';
 
 type GoogleUserProfile = {
   sub: string;
@@ -444,6 +445,189 @@ export class AuthService {
       this.sessionCookieOptions(rotated.session.expiresAt),
     );
     return { user: toPublicUser(rotated.session.user) };
+  }
+
+  private resolveAccountLabel(providerId: string): string {
+    if (providerId === PROVIDER_GOOGLE) {
+      return 'Google';
+    }
+    if (providerId === PROVIDER_CREDENTIALS) {
+      return 'E-mail e senha';
+    }
+    return providerId;
+  }
+
+  async getProfile(userId: string, currentSessionId: string) {
+    const [user, accounts, sessions, stats] = await Promise.all([
+      this.prisma.users.findUniqueOrThrow({
+        where: { id: userId },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          image: true,
+          emailVerified: true,
+          planId: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      this.prisma.accounts.findMany({
+        where: { userId },
+        select: {
+          id: true,
+          providerId: true,
+          password: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.sessions.findMany({
+        where: { userId },
+        select: {
+          id: true,
+          createdAt: true,
+          updatedAt: true,
+          expiresAt: true,
+          ipHash: true,
+          userAgentHash: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      Promise.all([
+        this.prisma.telegramGroups.count({ where: { userId } }),
+        this.prisma.telegramGroupMembers.count({
+          where: { group: { userId }, leftAt: null },
+        }),
+        this.prisma.telegramAlerts.count({ where: { userId } }),
+        this.prisma.stripeBillingConnections.count({ where: { userId } }),
+      ]),
+    ]);
+
+    const [telegramGroups, members, alerts, stripeConnections] = stats;
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        image: user.image,
+        emailVerified: user.emailVerified,
+        planId: user.planId,
+        createdAt: user.createdAt.toISOString(),
+        updatedAt: user.updatedAt.toISOString(),
+      },
+      accounts: accounts.map((account) => ({
+        id: account.id,
+        providerId: account.providerId,
+        label: this.resolveAccountLabel(account.providerId),
+        linkedAt: account.createdAt.toISOString(),
+        hasPassword:
+          account.providerId === PROVIDER_CREDENTIALS &&
+          Boolean(account.password),
+      })),
+      sessions: sessions.map((session) => ({
+        id: session.id,
+        createdAt: session.createdAt.toISOString(),
+        updatedAt: session.updatedAt.toISOString(),
+        expiresAt: session.expiresAt.toISOString(),
+        isCurrent: session.id === currentSessionId,
+        hasIpMetadata: Boolean(session.ipHash),
+        hasUserAgentMetadata: Boolean(session.userAgentHash),
+      })),
+      stats: {
+        telegramGroups,
+        members,
+        alerts,
+        stripeConnections,
+      },
+    };
+  }
+
+  async updateProfile(userId: string, input: UpdateProfileInput) {
+    const data: {
+      name?: string;
+      image?: string | null;
+    } = {};
+
+    if (input.name !== undefined) {
+      data.name = input.name.trim();
+    }
+
+    if (input.image !== undefined) {
+      data.image =
+        input.image === '' || input.image === null
+          ? null
+          : input.image.trim();
+    }
+
+    if (Object.keys(data).length === 0) {
+      throw new BadRequestException('Nenhum campo para atualizar.');
+    }
+
+    const user = await this.prisma.users.update({
+      where: { id: userId },
+      data,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        image: true,
+        emailVerified: true,
+        planId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        image: user.image,
+        emailVerified: user.emailVerified,
+        planId: user.planId,
+        createdAt: user.createdAt.toISOString(),
+        updatedAt: user.updatedAt.toISOString(),
+      },
+    };
+  }
+
+  async revokeSession(
+    userId: string,
+    sessionId: string,
+    currentSessionId: string,
+  ): Promise<{ ok: true }> {
+    if (sessionId === currentSessionId) {
+      throw new BadRequestException(
+        'Não é possível encerrar a sessão atual. Use Sair.',
+      );
+    }
+
+    const result = await this.prisma.sessions.deleteMany({
+      where: { id: sessionId, userId },
+    });
+
+    if (result.count === 0) {
+      throw new NotFoundException('Sessão não encontrada.');
+    }
+
+    return { ok: true };
+  }
+
+  async revokeOtherSessions(
+    userId: string,
+    currentSessionId: string,
+  ): Promise<{ revokedCount: number }> {
+    const result = await this.prisma.sessions.deleteMany({
+      where: {
+        userId,
+        id: { not: currentSessionId },
+      },
+    });
+
+    return { revokedCount: result.count };
   }
 
   async signInWithGoogle(

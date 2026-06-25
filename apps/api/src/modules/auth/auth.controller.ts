@@ -7,6 +7,8 @@ import {
   Get,
   InternalServerErrorException,
   Logger,
+  Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -18,7 +20,7 @@ import type { Request, Response } from 'express';
 import { OAUTH_STATE_COOKIE_NAME, toPublicUser } from '../../utils/utils';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '../../lib/guards/auth.guard';
-import { loginSchema, registerSchema, deleteAccountSchema } from '../../lib/zod/auth-schemas';
+import { loginSchema, registerSchema, deleteAccountSchema, updateProfileSchema } from '../../lib/zod/auth-schemas';
 
 @Controller('auth')
 export class AuthController {
@@ -67,6 +69,50 @@ export class AuthController {
       throw new InternalServerErrorException('Authenticated user not found.');
     }
     return { user: toPublicUser(user) };
+  }
+
+  @Get('profile')
+  @UseGuards(AuthGuard)
+  profile(@Req() req: Request) {
+    const session = req.authSession;
+    if (!session) {
+      throw new InternalServerErrorException('Authenticated session not found.');
+    }
+    return this.auth.getProfile(session.userId, session.id);
+  }
+
+  @Patch('profile')
+  @UseGuards(AuthGuard)
+  async updateProfile(@Req() req: Request, @Body() body: unknown) {
+    const input = updateProfileSchema.parse(body);
+    const userId = req.authSession?.userId;
+    if (!userId) {
+      throw new InternalServerErrorException('Authenticated user not found.');
+    }
+    return this.auth.updateProfile(userId, input);
+  }
+
+  @Delete('sessions/:sessionId')
+  @UseGuards(AuthGuard)
+  async revokeSession(
+    @Req() req: Request,
+    @Param('sessionId') sessionId: string,
+  ) {
+    const session = req.authSession;
+    if (!session) {
+      throw new InternalServerErrorException('Authenticated session not found.');
+    }
+    return this.auth.revokeSession(session.userId, sessionId, session.id);
+  }
+
+  @Delete('sessions')
+  @UseGuards(AuthGuard)
+  async revokeOtherSessions(@Req() req: Request) {
+    const session = req.authSession;
+    if (!session) {
+      throw new InternalServerErrorException('Authenticated session not found.');
+    }
+    return this.auth.revokeOtherSessions(session.userId, session.id);
   }
 
   @Delete('account')

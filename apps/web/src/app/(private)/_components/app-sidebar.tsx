@@ -4,6 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, type RefObject, useRef } from "react";
+import { AccountPlanCtaButton } from "@/components/account-plan-cta-button";
 import { GateonLogo } from "@/components/gateon-logo";
 import { BellIcon, type BellIconHandle } from "@/components/icons/bell";
 import {
@@ -38,6 +39,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { resolveAccountPlanCta } from "@/lib/account-plan-cta";
 import { cn, getUserInitials } from "@/lib/utils";
 import type { PublicUserDto } from "@/lib/zod/auth-schemas";
 
@@ -53,7 +55,8 @@ type AnimatedIconKey =
   | "settings"
   | "terms"
   | "members"
-  | "plug";
+  | "plug"
+  | "user";
 
 type NavItem =
   | {
@@ -219,6 +222,15 @@ function SidebarAnimatedIcon({
           className={className}
         />
       );
+    case "user":
+      return (
+        <UserIcon
+          ref={iconRef as RefObject<UserIconHandle | null>}
+          size={16}
+          isAnimateOnView={false}
+          className={className}
+        />
+      );
   }
 }
 
@@ -339,6 +351,7 @@ type SidebarUserFooterProps = {
 function SidebarUserFooter({ user, isCollapsed }: SidebarUserFooterProps) {
   const label = user.name ?? user.email;
   const sublabel = user.name ? user.email : null;
+  const planCta = resolveAccountPlanCta(user.planId);
 
   const linkClassName = cn(
     "block rounded-lg outline-none transition-colors",
@@ -351,7 +364,8 @@ function SidebarUserFooter({ user, isCollapsed }: SidebarUserFooterProps) {
       <Tooltip>
         <TooltipTrigger
           render={(triggerProps) => (
-            <div
+            <Link
+              href="/profile"
               {...triggerProps}
               className={cn(
                 linkClassName,
@@ -367,44 +381,59 @@ function SidebarUserFooter({ user, isCollapsed }: SidebarUserFooterProps) {
                   {getUserInitials(user)}
                 </AvatarFallback>
               </Avatar>
-            </div>
+            </Link>
           )}
         />
         <TooltipContent
           side="right"
           sideOffset={8}
-          className="max-w-xs flex flex-col gap-0.5"
+          className="max-w-xs flex flex-col gap-2"
         >
-          <p className="font-medium">{label}</p>
-          {sublabel ? <p className="text-xs">{sublabel}</p> : null}
+          <div className="flex flex-col gap-0.5">
+            <p className="font-medium">{label}</p>
+            {sublabel ? <p className="text-xs">{sublabel}</p> : null}
+          </div>
+          <Link
+            href={planCta.href}
+            className="text-primary text-xs font-medium underline-offset-4 hover:underline"
+          >
+            {planCta.label}
+          </Link>
         </TooltipContent>
       </Tooltip>
     );
   }
 
   return (
-    <div
-      className={cn(
-        "flex min-w-0 items-center gap-2.5 p-2",
-        isCollapsed ? "justify-center" : "w-full",
-      )}
-    >
-      <Avatar className="size-8 shrink-0 shadow-sm ring-1 ring-border">
-        {user.image ? <AvatarImage src={user.image} alt={label} /> : null}
-        <AvatarFallback className="text-xs">
-          {getUserInitials(user)}
-        </AvatarFallback>
-      </Avatar>
-      {!isCollapsed ? (
-        <div className="min-w-0 flex-1 text-left leading-tight">
-          <p className="truncate font-medium text-foreground text-sm">
-            {label}
-          </p>
-          {sublabel ? (
-            <p className="truncate text-muted-foreground text-xs">{sublabel}</p>
-          ) : null}
-        </div>
-      ) : null}
+    <div className="flex flex-col gap-2 p-2">
+      <div
+        className={cn(
+          "flex min-w-0 items-center gap-2",
+          isCollapsed ? "justify-center" : "w-full",
+        )}
+      >
+        <Link href="/profile" className={linkClassName}>
+          <Avatar className="size-8 shrink-0 shadow-sm ring-1 ring-border">
+            {user.image ? <AvatarImage src={user.image} alt={label} /> : null}
+            <AvatarFallback className="text-xs">
+              {getUserInitials(user)}
+            </AvatarFallback>
+          </Avatar>
+        </Link>
+        {!isCollapsed ? (
+          <div className="min-w-0 flex-1 text-left leading-tight">
+            <p className="truncate font-medium text-foreground text-sm">
+              {label}
+            </p>
+            {sublabel ? (
+              <p className="truncate text-muted-foreground text-xs">
+                {sublabel}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+      {!isCollapsed ? <AccountPlanCtaButton planId={user.planId} /> : null}
     </div>
   );
 }

@@ -1,17 +1,19 @@
 "use client";
 
-import Link from "next/link";
 import { useRef } from "react";
+import { AccountPlanCtaMenuItem } from "@/components/account-plan-cta-menu-item";
 import { LogoutIcon, type LogoutIconHandle } from "@/components/icons/logout";
 import {
   SettingsIcon,
   type SettingsIconHandle,
 } from "@/components/icons/settings";
+import { UserIcon, type UserIconHandle } from "@/components/icons/user";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLinkItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -24,6 +26,7 @@ type ProfileDropdownProps = {
 };
 
 export function ProfileDropdown({ user }: ProfileDropdownProps) {
+  const profileIconRef = useRef<UserIconHandle>(null);
   const settingsIconRef = useRef<SettingsIconHandle>(null);
   const logoutFormRef = useRef<HTMLFormElement>(null);
   const logoutIconRef = useRef<LogoutIconHandle>(null);
@@ -42,7 +45,7 @@ export function ProfileDropdown({ user }: ProfileDropdownProps) {
         <button type="submit">Sair da conta</button>
       </form>
 
-      <DropdownMenu>
+      <DropdownMenu highlightItemOnHover={false}>
         <DropdownMenuTrigger
           className={cn(
             "rounded-full outline-none ring-offset-background transition-[box-shadow,color]",
@@ -85,23 +88,37 @@ export function ProfileDropdown({ user }: ProfileDropdownProps) {
 
           <DropdownMenuSeparator />
 
-          <DropdownMenuItem
+          <DropdownMenuLinkItem
+            href="/profile"
+            closeOnClick
+            onMouseEnter={() => profileIconRef.current?.startAnimation()}
+            onMouseLeave={() => profileIconRef.current?.stopAnimation()}
+            className="cursor-pointer group hover:bg-accent hover:text-accent-foreground"
+          >
+            <UserIcon
+              ref={profileIconRef}
+              className="text-muted-foreground group-hover:text-foreground transition-colors duration-200 ease-in-out"
+              size={16}
+            />
+            Perfil
+          </DropdownMenuLinkItem>
+
+          <DropdownMenuLinkItem
+            href="/settings"
+            closeOnClick
             onMouseEnter={() => settingsIconRef.current?.startAnimation()}
             onMouseLeave={() => settingsIconRef.current?.stopAnimation()}
-            className="p-0 cursor-pointer"
+            className="cursor-pointer group hover:bg-accent hover:text-accent-foreground"
           >
-            <Link
-              href="/settings"
-              className="flex group items-center p-2 gap-2"
-            >
-              <SettingsIcon
-                ref={settingsIconRef}
-                className="text-muted-foreground group-hover:text-foreground transition-colors duration-200 ease-in-out"
-                size={16}
-              />
-              Configurações
-            </Link>
-          </DropdownMenuItem>
+            <SettingsIcon
+              ref={settingsIconRef}
+              className="text-muted-foreground group-hover:text-foreground transition-colors duration-200 ease-in-out"
+              size={16}
+            />
+            Configurações
+          </DropdownMenuLinkItem>
+
+          <AccountPlanCtaMenuItem planId={user.planId} />
 
           <DropdownMenuSeparator />
 
@@ -109,7 +126,7 @@ export function ProfileDropdown({ user }: ProfileDropdownProps) {
             onMouseEnter={() => logoutIconRef.current?.startAnimation()}
             onMouseLeave={() => logoutIconRef.current?.stopAnimation()}
             onClick={() => logoutFormRef.current?.requestSubmit()}
-            className="cursor-pointer text-destructive focus:bg-destructive/5 focus:text-destructive data-highlighted:bg-destructive/5 data-highlighted:text-destructive"
+            className="cursor-pointer text-destructive hover:bg-destructive/5 hover:text-destructive focus:bg-destructive/5 focus:text-destructive data-highlighted:bg-destructive/5 data-highlighted:text-destructive"
           >
             <LogoutIcon
               ref={logoutIconRef}

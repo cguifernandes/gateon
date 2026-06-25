@@ -24,6 +24,63 @@ export const deleteAccountRequestSchema = z.object({
 
 export type DeleteAccountRequest = z.infer<typeof deleteAccountRequestSchema>;
 
+export const updateProfileRequestSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, "Informe seu nome.")
+    .max(120, "Nome muito longo.")
+    .optional(),
+  image: z
+    .union([z.string().url("Informe uma URL válida."), z.literal(""), z.null()])
+    .optional(),
+});
+
+export type UpdateProfileRequest = z.infer<typeof updateProfileRequestSchema>;
+
+export const profileAccountDtoSchema = z.object({
+  id: z.string(),
+  providerId: z.string(),
+  label: z.string(),
+  linkedAt: z.string(),
+  hasPassword: z.boolean(),
+});
+
+export const profileSessionDtoSchema = z.object({
+  id: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  expiresAt: z.string(),
+  isCurrent: z.boolean(),
+  hasIpMetadata: z.boolean(),
+  hasUserAgentMetadata: z.boolean(),
+});
+
+export const profileStatsDtoSchema = z.object({
+  telegramGroups: z.number().int().nonnegative(),
+  members: z.number().int().nonnegative(),
+  alerts: z.number().int().nonnegative(),
+  stripeConnections: z.number().int().nonnegative(),
+});
+
+export const userProfileDtoSchema = z.object({
+  user: z.object({
+    id: z.string(),
+    email: z.string(),
+    name: z.string().nullable(),
+    image: z.string().nullable(),
+    emailVerified: z.boolean(),
+    planId: planIdSchema,
+    createdAt: z.string(),
+    updatedAt: z.string(),
+  }),
+  accounts: z.array(profileAccountDtoSchema),
+  sessions: z.array(profileSessionDtoSchema),
+  stats: profileStatsDtoSchema,
+});
+
+export type UserProfileDto = z.infer<typeof userProfileDtoSchema>;
+
 export type AuthFormValues = {
   name?: string;
   email: string;
