@@ -383,9 +383,10 @@ model StripeBillingConnections {
   customers        StripeBillingCustomers[]
   subscriptions    StripeBillingSubscriptions[]
   payments         StripeBillingPayments[]
-  auditLogs        StripeBillingAuditLogs[]
+  auditLogs            StripeBillingAuditLogs[]
   memberLinks      StripeTelegramMemberLinks[]
   checkoutSessions StripeTelegramCheckoutSessions[]
+  processedWebhookEvents StripeBillingProcessedWebhookEvents[]
 
   @@index([userId, status])
   @@index([userId, monitoredStripePriceId])
@@ -424,8 +425,9 @@ model StripeBillingSubscriptions {
   currentPeriodEnd     DateTime?
   cancelAtPeriodEnd    Boolean   @default(false)
   canceledAt           DateTime?
-  lastEventType        String?
-  createdAt            DateTime  @default(now())
+  lastEventType            String?
+  lastAutomationDedupeKey  String?
+  createdAt                DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
   user       Users                    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -449,6 +451,7 @@ model StripeBillingPayments {
   amountCents           Int
   currency              String
   paidAt                DateTime?
+  lastAutomationDedupeKey String?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
@@ -473,6 +476,19 @@ model StripeBillingAuditLogs {
   connection StripeBillingConnections? @relation(fields: [connectionId], references: [id], onDelete: SetNull)
 
   @@index([userId, action])
+  @@index([connectionId, createdAt])
+}
+
+model StripeBillingProcessedWebhookEvents {
+  id              String   @id @default(cuid())
+  connectionId    String
+  stripeEventId   String
+  stripeEventType String
+  createdAt       DateTime @default(now())
+
+  connection StripeBillingConnections @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, stripeEventId])
   @@index([connectionId, createdAt])
 }
 

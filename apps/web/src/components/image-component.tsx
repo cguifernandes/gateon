@@ -13,10 +13,7 @@ function isSessionProxiedSrc(src: ImageProps["src"]): boolean {
 function isExternalAbsoluteUrl(src: ImageProps["src"]): boolean {
   if (typeof src !== "string") return false;
   const trimmed = src.trim();
-  return (
-    trimmed.startsWith("http://") ||
-    trimmed.startsWith("https://")
-  );
+  return trimmed.startsWith("http://") || trimmed.startsWith("https://");
 }
 
 function shouldUseUnoptimizedSrc(
@@ -106,7 +103,7 @@ function ImageComponentInner({
   return (
     <span
       className={cn(
-        "relative inline-flex shrink-0 overflow-hidden",
+        "relative flex items-center justify-center shrink-0 overflow-hidden",
         containerClassName,
       )}
     >

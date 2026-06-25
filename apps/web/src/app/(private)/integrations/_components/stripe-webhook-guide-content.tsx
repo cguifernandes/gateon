@@ -94,9 +94,10 @@ export function StripeWebhookGuideContent({
           ))}
         </ul>
         <p className="pt-1 text-muted-foreground text-xs leading-relaxed">
-          Cada evento pode disparar os alertas da Central de Alertas. Se o
-          assinante estiver vinculado ao Telegram, a mensagem vai no privado;
-          caso contrário, no grupo vinculado ao plano.
+          Cada evento Stripe dispara no máximo uma rodada de alertas no Gateon.
+          Eventos repetidos (retentativas da Stripe) e combinações como sync +
+          webhook para o mesmo pagamento ou cancelamento não geram mensagens
+          duplicadas.
         </p>
       </section>
 

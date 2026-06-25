@@ -9,7 +9,6 @@ import {
 import type { IncomingHttpHeaders } from 'node:http';
 import { ConfigService } from '@nestjs/config';
 import {
-  AlertTriggerType,
   Prisma,
   StripeBillingAuditAction,
   StripeBillingConnectionStatus,
@@ -58,7 +57,6 @@ import {
 import { AlertsService } from '../alerts/alerts.service';
 import { BotStartSettingsService } from '../bot-start-settings/bot-start-settings.service';
 import {
-  dispatchStripeAutomationTrigger,
   dispatchSubscriptionStripeTrigger,
   processInvoiceStripeEvent,
 } from '../../lib/stripe-billing-alert-dispatch';
@@ -68,7 +66,12 @@ import {
   shouldDispatchInvoicePaymentTrigger,
   STRIPE_EXPIRING_WINDOW_DAYS,
 } from '../../lib/stripe-billing-sync-events';
-import { verifyStripeWebhookSignature } from '../../lib/stripe-webhook-signature';
+import {
+  buildInvoiceAutomationDedupeKey,
+  buildSubscriptionAutomationDedupeKey,
+  isPrismaUniqueConstraintError,
+  shouldDispatchStripeAutomation,
+} from '../../lib/stripe-billing-automation-dedup';
 
 const EXPIRING_WINDOW_DAYS = STRIPE_EXPIRING_WINDOW_DAYS;
 
@@ -587,16 +590,33 @@ export class StripeBillingSyncService {
           currentPeriodEnd: true,
           cancelAtPeriodEnd: true,
           lastEventType: true,
+          lastAutomationDedupeKey: true,
         },
       });
       const status = subscription.status ?? 'unknown';
       const currentPeriodEnd = this.fromUnix(subscription.current_period_end);
+      const cancelAtPeriodEnd = subscription.cancel_at_period_end === true;
       const eventType = resolveSubscriptionStripeTrigger(
         existing,
         status,
         currentPeriodEnd,
-        subscription.cancel_at_period_end === true,
+        cancelAtPeriodEnd,
       );
+      const automationDedupeKey = eventType
+        ? buildSubscriptionAutomationDedupeKey(eventType, {
+            stripeSubscriptionId: subscription.id,
+            status,
+            currentPeriodEnd,
+            cancelAtPeriodEnd,
+          })
+        : null;
+      const shouldDispatchAutomation =
+        Boolean(eventType) &&
+        Boolean(automationDedupeKey) &&
+        shouldDispatchStripeAutomation(
+          existing?.lastAutomationDedupeKey,
+          automationDedupeKey!,
+        );
 
       await this.prisma.stripeBillingSubscriptions.upsert({
         where: {
@@ -617,9 +637,12 @@ export class StripeBillingSyncService {
           planName:
             monitoredPlanLabel ?? this.getPlanName(subscription, productNames),
           currentPeriodEnd,
-          cancelAtPeriodEnd: subscription.cancel_at_period_end === true,
+          cancelAtPeriodEnd,
           canceledAt: this.fromUnix(subscription.canceled_at),
-          lastEventType: eventType,
+          ...(eventType ? { lastEventType: eventType } : {}),
+          ...(shouldDispatchAutomation && automationDedupeKey
+            ? { lastAutomationDedupeKey: automationDedupeKey }
+            : {}),
         },
         update: {
           customerId: stripeCustomerId
@@ -630,13 +653,16 @@ export class StripeBillingSyncService {
           planName:
             monitoredPlanLabel ?? this.getPlanName(subscription, productNames),
           currentPeriodEnd,
-          cancelAtPeriodEnd: subscription.cancel_at_period_end === true,
+          cancelAtPeriodEnd,
           canceledAt: this.fromUnix(subscription.canceled_at),
-          lastEventType: eventType,
+          ...(eventType ? { lastEventType: eventType } : {}),
+          ...(shouldDispatchAutomation && automationDedupeKey
+            ? { lastAutomationDedupeKey: automationDedupeKey }
+            : {}),
         },
       });
 
-      if (eventType) {
+      if (shouldDispatchAutomation && eventType) {
         await dispatchSubscriptionStripeTrigger(
           this.dispatchDeps(),
           userId,
@@ -730,7 +756,7 @@ export class StripeBillingSyncService {
             stripeInvoiceId: invoice.id,
           },
         },
-        select: { status: true },
+        select: { status: true, lastAutomationDedupeKey: true },
       });
       const previousStatus = existing?.status;
 
@@ -759,13 +785,24 @@ export class StripeBillingSyncService {
         status,
         options?.stripeWebhookEventType,
       );
-      const shouldDispatch = shouldDispatchInvoicePaymentTrigger(
+      const automationDedupeKey = paymentTrigger
+        ? buildInvoiceAutomationDedupeKey(paymentTrigger, invoice.id)
+        : null;
+      const shouldDispatchStatus = shouldDispatchInvoicePaymentTrigger(
         paymentTrigger,
         previousStatus,
         status,
         options,
       );
-      if (shouldDispatch) {
+      const shouldDispatchAutomation =
+        shouldDispatchStatus &&
+        Boolean(automationDedupeKey) &&
+        shouldDispatchStripeAutomation(
+          existing?.lastAutomationDedupeKey,
+          automationDedupeKey!,
+        );
+
+      if (shouldDispatchAutomation && paymentTrigger && automationDedupeKey) {
         const stripeCustomerId = getStripeCustomerId(invoice.customer);
         await processInvoiceStripeEvent(
           this.dispatchDeps(),
@@ -775,25 +812,19 @@ export class StripeBillingSyncService {
           invoice.id,
           stripeCustomerId,
         );
+        await this.prisma.stripeBillingPayments.update({
+          where: {
+            connectionId_stripeInvoiceId: {
+              connectionId,
+              stripeInvoiceId: invoice.id,
+            },
+          },
+          data: { lastAutomationDedupeKey: automationDedupeKey },
+        });
       }
     }
 
     return syncedInvoiceIds;
-  }
-
-  async dispatchPaymentSucceededForCheckout(
-    userId: string,
-    connectionId: string,
-    stripeCustomerId: string,
-    stripeSubscriptionId?: string | null,
-  ) {
-    await dispatchStripeAutomationTrigger(
-      this.dispatchDeps(),
-      userId,
-      connectionId,
-      AlertTriggerType.STRIPE_PAYMENT_SUCCEEDED,
-      { stripeCustomerId, stripeSubscriptionId },
-    );
   }
 
   private buildPaymentData(
@@ -1765,13 +1796,6 @@ export class StripeBillingService {
       });
     });
 
-    await this.sync.dispatchPaymentSucceededForCheckout(
-      pending.userId,
-      pending.connectionId,
-      stripeCustomerId,
-      stripeSubscriptionId,
-    );
-
     await this.notifySubscriberAccessGranted({
       telegramUserId: pending.telegramUserId,
       telegramGroupId,
@@ -2245,6 +2269,21 @@ export class StripeBillingWebhookService {
       return;
     }
 
+    const stripeEventId = event.id?.trim();
+    if (stripeEventId) {
+      const claimed = await this.claimStripeWebhookEvent(
+        connectionId,
+        stripeEventId,
+        type,
+      );
+      if (!claimed) {
+        this.logger.debug(
+          `Skipping duplicate Stripe webhook ${stripeEventId} (${type}) for connection ${connectionId}`,
+        );
+        return;
+      }
+    }
+
     try {
       switch (type) {
         case 'customer.subscription.created':
@@ -2290,6 +2329,28 @@ export class StripeBillingWebhookService {
           error instanceof Error ? error.message : 'unknown'
         }`,
       );
+      throw error;
+    }
+  }
+
+  private async claimStripeWebhookEvent(
+    connectionId: string,
+    stripeEventId: string,
+    stripeEventType: string,
+  ): Promise<boolean> {
+    try {
+      await this.prisma.stripeBillingProcessedWebhookEvents.create({
+        data: {
+          connectionId,
+          stripeEventId,
+          stripeEventType,
+        },
+      });
+      return true;
+    } catch (error) {
+      if (isPrismaUniqueConstraintError(error)) {
+        return false;
+      }
       throw error;
     }
   }
