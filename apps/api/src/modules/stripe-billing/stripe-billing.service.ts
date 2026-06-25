@@ -78,6 +78,8 @@ const EXPIRING_WINDOW_DAYS = STRIPE_EXPIRING_WINDOW_DAYS;
 
 @Injectable()
 export class StripeBillingSyncService {
+  private readonly logger = new Logger(StripeBillingSyncService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly alerts: AlertsService,
@@ -803,6 +805,10 @@ export class StripeBillingSyncService {
           existing?.lastAutomationDedupeKey,
           automationDedupeKey!,
         );
+
+      this.logger.log(
+        `[alert-dispatch] syncInvoices invoice=${invoice.id} status=${status} previousStatus=${previousStatus ?? 'none'} paymentTrigger=${paymentTrigger ?? 'none'} shouldDispatchStatus=${shouldDispatchStatus} shouldDispatchAutomation=${shouldDispatchAutomation} dedupeKey=${automationDedupeKey ?? 'none'} lastDedupeKey=${existing?.lastAutomationDedupeKey ?? 'none'}`,
+      );
 
       if (shouldDispatchAutomation && paymentTrigger && automationDedupeKey) {
         const stripeCustomerId = getStripeCustomerId(invoice.customer);

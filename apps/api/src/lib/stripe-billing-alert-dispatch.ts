@@ -46,11 +46,15 @@ async function resolveSubscriberForStripeContext(
     return null;
   }
 
-  return resolveStripeLinkedTelegramSubscriber(deps.prisma, {
-    connectionId,
-    stripeCustomerId: stripeContext.stripeCustomerId,
-    stripeSubscriptionId: stripeContext.stripeSubscriptionId,
-  }, { includeRevokedLinks: true });
+  return resolveStripeLinkedTelegramSubscriber(
+    deps.prisma,
+    {
+      connectionId,
+      stripeCustomerId: stripeContext.stripeCustomerId,
+      stripeSubscriptionId: stripeContext.stripeSubscriptionId,
+    },
+    { includeRevokedLinks: true },
+  );
 }
 
 export async function dispatchStripeAutomationTrigger(
@@ -60,11 +64,25 @@ export async function dispatchStripeAutomationTrigger(
   triggerType: AlertTriggerType,
   stripeContext?: StripeAutomationStripeContext,
 ) {
+  console.log('[alert-dispatch] dispatchStripeAutomationTrigger:start', {
+    userId,
+    connectionId,
+    triggerType,
+    stripeContext,
+  });
+
   const subscriber = await resolveSubscriberForStripeContext(
     deps,
     connectionId,
     stripeContext,
   );
+
+  console.log('[alert-dispatch] dispatchStripeAutomationTrigger:subscriber', {
+    connectionId,
+    triggerType,
+    subscriber: subscriber ?? null,
+    deliveryChannel: subscriber ? 'telegram_dm' : 'none (no subscriber link)',
+  });
 
   const result = await deps.alerts.triggerAutomationAlertsForUser(
     userId,
@@ -72,6 +90,13 @@ export async function dispatchStripeAutomationTrigger(
     connectionId,
     subscriber ?? undefined,
   );
+
+  console.log('[alert-dispatch] dispatchStripeAutomationTrigger:result', {
+    connectionId,
+    triggerType,
+    triggeredCount: result.triggeredCount,
+  });
+
   if (result.triggeredCount === 0) {
     return result;
   }
@@ -165,6 +190,14 @@ export async function processInvoiceStripeEvent(
   stripeCustomerId?: string | null,
 ) {
   const triggerType = resolveInvoicePaymentTrigger(invoiceStatus);
+  console.log('[alert-dispatch] processInvoiceStripeEvent', {
+    userId,
+    connectionId,
+    invoiceStatus,
+    stripeInvoiceId,
+    stripeCustomerId,
+    triggerType: triggerType ?? null,
+  });
   if (!triggerType) {
     return null;
   }

@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -52,6 +53,8 @@ type RunAlertOptions = {
 
 @Injectable()
 export class AlertsService {
+  private readonly logger = new Logger(AlertsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly telegram: TelegramService,
@@ -418,6 +421,10 @@ export class AlertsService {
       stripeConnectionId,
     );
 
+    this.logger.log(
+      `[alert-dispatch] triggerAutomationAlertsForUser userId=${userId} triggerType=${triggerType} connectionId=${stripeConnectionId} activeAlerts=${automationAlerts.length} matchingAlerts=${matchingAlerts.length} subscriber=${subscriber?.telegramUserId ?? 'none'}`,
+    );
+
     const runOptions: RunAlertOptions = {
       throwOnTotalFailure: false,
       ...(subscriber
@@ -429,6 +436,9 @@ export class AlertsService {
     };
 
     for (const alert of matchingAlerts) {
+      this.logger.log(
+        `[alert-dispatch] running alert id=${alert.id} triggerConfig=${JSON.stringify(alert.triggerConfig)}`,
+      );
       await this.runAlert(alert.id, runOptions);
     }
 
@@ -449,6 +459,20 @@ export class AlertsService {
     }
 
     const targets = await this.resolveDeliveryTargets(alert, runOptions);
+
+    this.logger.log(
+      `[alert-dispatch] runAlert alertId=${alertId} destinationType=${alert.destinationType} triggerType=${alert.triggerType ?? 'none'} targets=${targets.length} scopeToTelegramUserId=${runOptions?.scopeToTelegramUserId ?? 'none'}`,
+    );
+    if (targets.length === 0) {
+      this.logger.warn(
+        `[alert-dispatch] runAlert alertId=${alertId} has 0 delivery targets — no Telegram message will be sent`,
+      );
+    } else {
+      this.logger.log(
+        `[alert-dispatch] runAlert targets detail: ${JSON.stringify(targets)}`,
+      );
+    }
+
     const run = await this.prisma.telegramAlertRuns.create({
       data: {
         alertId: alert.id,
@@ -499,6 +523,9 @@ export class AlertsService {
         );
         if (blockReason) {
           deliveryError = blockReason;
+          this.logger.warn(
+            `[alert-dispatch] delivery blocked alertId=${alertId} chatId=${target.chatId} reason=${blockReason}`,
+          );
         } else {
           const result = await this.telegram.sendAlertToChat({
             chatId: target.chatId,
@@ -512,6 +539,13 @@ export class AlertsService {
           delivered = result.ok;
           if (!result.ok) {
             deliveryError = result.reason;
+            this.logger.warn(
+              `[alert-dispatch] chat delivery failed alertId=${alertId} chatId=${target.chatId} reason=${result.reason}`,
+            );
+          } else {
+            this.logger.log(
+              `[alert-dispatch] chat delivery ok alertId=${alertId} chatId=${target.chatId}`,
+            );
           }
         }
       } else {
@@ -531,6 +565,13 @@ export class AlertsService {
         delivered = result.ok;
         if (!result.ok) {
           deliveryError = result.reason;
+          this.logger.warn(
+            `[alert-dispatch] dm delivery failed alertId=${alertId} telegramUserId=${target.telegramUserId} reason=${result.reason}`,
+          );
+        } else {
+          this.logger.log(
+            `[alert-dispatch] dm delivery ok alertId=${alertId} telegramUserId=${target.telegramUserId}`,
+          );
         }
       }
 
@@ -565,6 +606,10 @@ export class AlertsService {
       successCount + failCount === 0
         ? 0
         : Math.round((successCount / (successCount + failCount)) * 100);
+
+    this.logger.log(
+      `[alert-dispatch] runAlert finished alertId=${alertId} runId=${run.id} status=${status} success=${successCount} fail=${failCount} estimated=${targets.length}`,
+    );
 
     await this.prisma.$transaction([
       this.prisma.telegramAlertRuns.update({
@@ -730,6 +775,9 @@ export class AlertsService {
         alert.destinationType === AlertDestinationType.AUTOMATION &&
         isStripeAutomationTriggerType(alert.triggerType)
       ) {
+        this.logger.warn(
+          `[alert-dispatch] resolveDeliveryTargets: Stripe automation without subscriber scope → 0 targets triggerType=${alert.triggerType} scopeToTelegramUserId=${options?.scopeToTelegramUserId ?? 'none'}`,
+        );
         return [];
       }
 

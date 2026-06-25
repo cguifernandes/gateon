@@ -49,7 +49,7 @@ export function MemberStripeCancelScheduledBadge({
         className="max-w-xs flex flex-col gap-1! text-pretty"
       >
         <p className="font-medium text-xs">Cancelamento agendado</p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-center">
           A assinatura ainda está ativa na Stripe até o fim do período pago. O
           membro permanece no grupo até a assinatura expirar de fato.
         </p>

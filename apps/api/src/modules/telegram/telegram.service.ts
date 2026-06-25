@@ -569,6 +569,7 @@ export class TelegramService {
         id: true,
         telegramChatId: true,
         botStatus: true,
+        type: true,
       },
     });
 
@@ -633,6 +634,7 @@ export class TelegramService {
       const actionResult = await this.executeGroupMemberAction({
         action: input.action,
         telegramChatId: group.telegramChatId,
+        chatType: group.type,
         telegramUserId,
         text: input.text?.trim() || DEFAULT_MEMBER_NOTICE_TEXT,
       });
@@ -2093,6 +2095,9 @@ export class TelegramService {
       }>('sendPhoto', photoPayload);
 
       if (!sendResult.ok) {
+        this.logger.warn(
+          `[alert-dispatch] Telegram sendPhoto failed chatId=${params.chatId} reason=${sendResult.reason}`,
+        );
         return { ok: false, reason: params.mapFailure(sendResult.reason) };
       }
 
@@ -2113,6 +2118,9 @@ export class TelegramService {
         }>('sendMessage', followUpPayload);
 
         if (!followUpResult.ok) {
+          this.logger.warn(
+            `[alert-dispatch] Telegram sendMessage (photo follow-up) failed chatId=${params.chatId} reason=${followUpResult.reason}`,
+          );
           return {
             ok: false,
             reason: params.mapFailure(followUpResult.reason),
@@ -2147,6 +2155,9 @@ export class TelegramService {
     }>('sendMessage', messagePayload);
 
     if (!sendResult.ok) {
+      this.logger.warn(
+        `[alert-dispatch] Telegram sendMessage failed chatId=${params.chatId} reason=${sendResult.reason}`,
+      );
       return { ok: false, reason: params.mapFailure(sendResult.reason) };
     }
 
@@ -2500,6 +2511,7 @@ export class TelegramService {
   private async executeGroupMemberAction(params: {
     action: TelegramGroupMemberBulkActionInput['action'];
     telegramChatId: string;
+    chatType?: string | null;
     telegramUserId: string;
     text: string;
   }): Promise<{ ok: true } | { ok: false; reason: string }> {
@@ -2542,6 +2554,13 @@ export class TelegramService {
     }
 
     if (params.action === 'remove') {
+      const chatType = params.chatType?.trim().toLowerCase();
+      const canUnban = chatType === 'supergroup' || chatType === 'channel';
+      if (!canUnban) {
+        // Basic groups: banChatMember kicks the user; unbanChatMember is supergroup/channel only.
+        return { ok: true };
+      }
+
       const unbanResult = await this.callTelegramBotMethodDetailed<unknown>(
         'unbanChatMember',
         {
@@ -2551,7 +2570,11 @@ export class TelegramService {
         },
       );
       if (!unbanResult.ok) {
-        return { ok: false, reason: unbanResult.reason };
+        this.logger.warn(
+          `[member-action] remove: ban ok but unban failed chatId=${chatId} userId=${userId} reason=${unbanResult.reason}`,
+        );
+        // User was already removed by ban; treat as success.
+        return { ok: true };
       }
     }
 

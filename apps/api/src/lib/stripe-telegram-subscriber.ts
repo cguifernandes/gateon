@@ -27,6 +27,10 @@ export async function resolveStripeLinkedTelegramSubscriber(
 ): Promise<StripeLinkedTelegramSubscriber | null> {
   const { connectionId, stripeCustomerId, stripeSubscriptionId } = params;
   if (!stripeCustomerId && !stripeSubscriptionId) {
+    console.log(
+      '[alert-dispatch] resolveStripeLinkedTelegramSubscriber:skipped (no stripe ids)',
+      { connectionId },
+    );
     return null;
   }
 
@@ -81,6 +85,15 @@ export async function resolveStripeLinkedTelegramSubscriber(
   }
 
   if (!link) {
+    console.log(
+      '[alert-dispatch] resolveStripeLinkedTelegramSubscriber:not_found',
+      {
+        connectionId,
+        stripeCustomerId,
+        stripeSubscriptionId,
+        includeRevokedLinks: options?.includeRevokedLinks ?? false,
+      },
+    );
     return null;
   }
 
@@ -98,9 +111,19 @@ export async function resolveStripeLinkedTelegramSubscriber(
     .join(' ')
     .trim();
 
-  return {
+  const subscriber = {
     telegramUserId: link.telegramUserId,
     telegramGroupId: link.telegramGroupId,
     ...(displayName ? { displayName } : {}),
   };
+
+  console.log('[alert-dispatch] resolveStripeLinkedTelegramSubscriber:found', {
+    connectionId,
+    stripeCustomerId,
+    stripeSubscriptionId,
+    subscriber,
+    memberStillInGroup: Boolean(member),
+  });
+
+  return subscriber;
 }
