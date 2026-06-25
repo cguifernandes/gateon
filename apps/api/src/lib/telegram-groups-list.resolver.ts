@@ -10,6 +10,10 @@ import {
   parseTelegramChatIdsFilter,
 } from './telegram-groups-list-filter';
 import type { TelegramGroupsListQueryInput } from './zod/telegram-groups-list-query-schemas';
+import {
+  memberHasStripeCancelScheduled,
+  type LinkedStripePlanSummary,
+} from './stripe-telegram-member-links';
 
 const MEMBER_PREVIEW_LIMIT = 50;
 
@@ -61,17 +65,17 @@ type GroupsListDeps = {
     leftAt: string | null;
     status: 'active' | 'left';
     isOwner: boolean;
-    linkedStripePlans: { connectionId: string; label: string }[];
+    linkedStripePlans: LinkedStripePlanSummary[];
   };
   withMemberStripePayerPlans: (
     groupId: string,
     member: ReturnType<GroupsListDeps['mapTrackedMemberToDto']>,
-    plansByMemberKey: Map<string, { connectionId: string; label: string }[]>,
+    plansByMemberKey: Map<string, LinkedStripePlanSummary[]>,
   ) => ReturnType<GroupsListDeps['mapTrackedMemberToDto']>;
   buildStripePayerPlansByMemberKey: (
     userId: string,
     groupIds: string[],
-  ) => Promise<Map<string, { connectionId: string; label: string }[]>>;
+  ) => Promise<Map<string, LinkedStripePlanSummary[]>>;
   trackedMemberLimitPerGroup: number;
 };
 
@@ -227,24 +231,28 @@ function hasMembersViewFilters(query: TelegramGroupsListQueryInput): boolean {
 function memberIsStripePayer(
   groupId: string,
   telegramUserId: string,
-  stripePayerPlansByMemberKey: Map<
-    string,
-    { connectionId: string; label: string }[]
-  >,
+  stripePayerPlansByMemberKey: Map<string, LinkedStripePlanSummary[]>,
 ): boolean {
   const plans =
     stripePayerPlansByMemberKey.get(`${groupId}:${telegramUserId}`) ?? [];
   return plans.length > 0;
 }
 
+function memberIsStripeCancelScheduled(
+  groupId: string,
+  telegramUserId: string,
+  stripePayerPlansByMemberKey: Map<string, LinkedStripePlanSummary[]>,
+): boolean {
+  const plans =
+    stripePayerPlansByMemberKey.get(`${groupId}:${telegramUserId}`) ?? [];
+  return memberHasStripeCancelScheduled(plans);
+}
+
 function filterMembersForMembersView(
   group: GroupRow,
   query: TelegramGroupsListQueryInput,
   memberWhere: Prisma.TelegramGroupMembersWhereInput,
-  stripePayerPlansByMemberKey: Map<
-    string,
-    { connectionId: string; label: string }[]
-  >,
+  stripePayerPlansByMemberKey: Map<string, LinkedStripePlanSummary[]>,
 ) {
   const q = query.q?.trim() ?? '';
 
@@ -293,6 +301,18 @@ function filterMembersForMembersView(
       }
     }
 
+    if (query.stripePayer === 'cancel_scheduled') {
+      if (
+        !memberIsStripeCancelScheduled(
+          group.id,
+          member.telegramUserId,
+          stripePayerPlansByMemberKey,
+        )
+      ) {
+        return false;
+      }
+    }
+
     return true;
   });
 
@@ -332,10 +352,7 @@ async function mapGroupsToResponse(
           },
         })
       : [];
-  const stripePlansByGroupId = new Map<
-    string,
-    { connectionId: string; label: string }[]
-  >();
+  const stripePlansByGroupId = new Map<string, LinkedStripePlanSummary[]>();
   for (const link of stripeLinks) {
     if (!link.telegramGroupId) continue;
     const label =
@@ -343,7 +360,11 @@ async function mapGroupsToResponse(
       link.monitoredStripePriceId ||
       'Plano Stripe';
     const current = stripePlansByGroupId.get(link.telegramGroupId) ?? [];
-    current.push({ connectionId: link.id, label });
+    current.push({
+      connectionId: link.id,
+      label,
+      cancelAtPeriodEnd: false,
+    });
     stripePlansByGroupId.set(link.telegramGroupId, current);
   }
 
@@ -366,8 +387,8 @@ async function mapGroupsToResponse(
     ? query.includeMemberStripePlans !== false ||
       (query.stripePayer && query.stripePayer !== 'all')
       ? await deps.buildStripePayerPlansByMemberKey(userId, groupIds)
-      : new Map<string, { connectionId: string; label: string }[]>()
-    : new Map<string, { connectionId: string; label: string }[]>();
+      : new Map<string, LinkedStripePlanSummary[]>()
+    : new Map<string, LinkedStripePlanSummary[]>();
 
   const memberWhere = buildTelegramGroupMembersWhere(query);
   const mappedGroups = [];

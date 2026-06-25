@@ -15,6 +15,7 @@ import {
 import { GroupLimitService } from '../../lib/group-limit.service';
 import {
   resolveStripePayerSubscriptionForLink,
+  type LinkedStripePlanSummary,
 } from '../../lib/stripe-telegram-member-links';
 import { PrismaService } from '../prisma/prisma.service';
 import { hashSensitiveValue } from '../../utils/utils';
@@ -202,7 +203,7 @@ export class TelegramService {
       leftAt: member.leftAt?.toISOString() ?? null,
       status: member.leftAt ? ('left' as const) : ('active' as const),
       isOwner: member.isOwner,
-      linkedStripePlans: [] as { connectionId: string; label: string }[],
+      linkedStripePlans: [] as LinkedStripePlanSummary[],
     };
   }
 
@@ -211,7 +212,7 @@ export class TelegramService {
     groupIds: string[],
   ) {
     if (groupIds.length === 0) {
-      return new Map<string, { connectionId: string; label: string }[]>();
+      return new Map<string, LinkedStripePlanSummary[]>();
     }
 
     const memberLinks = await this.prisma.stripeTelegramMemberLinks.findMany({
@@ -268,10 +269,7 @@ export class TelegramService {
             },
           });
 
-    const plansByMemberKey = new Map<
-      string,
-      { connectionId: string; label: string }[]
-    >();
+    const plansByMemberKey = new Map<string, LinkedStripePlanSummary[]>();
 
     for (const link of memberLinks) {
       const subscription = resolveStripePayerSubscriptionForLink(
@@ -291,7 +289,11 @@ export class TelegramService {
       const current = plansByMemberKey.get(key) ?? [];
 
       if (!current.some((plan) => plan.connectionId === link.connectionId)) {
-        current.push({ connectionId: link.connectionId, label });
+        current.push({
+          connectionId: link.connectionId,
+          label,
+          cancelAtPeriodEnd: subscription.cancelAtPeriodEnd === true,
+        });
       }
 
       plansByMemberKey.set(key, current);
@@ -303,7 +305,7 @@ export class TelegramService {
   private withMemberStripePayerPlans(
     groupId: string,
     member: ReturnType<TelegramService['mapTrackedMemberToDto']>,
-    plansByMemberKey: Map<string, { connectionId: string; label: string }[]>,
+    plansByMemberKey: Map<string, LinkedStripePlanSummary[]>,
   ) {
     return {
       ...member,

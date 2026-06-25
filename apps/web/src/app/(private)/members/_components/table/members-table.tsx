@@ -16,7 +16,7 @@ import { SearchIcon, type SearchIconHandle } from "@/components/icons/search";
 import { ImageComponent } from "@/components/image-component";
 import { MemberActionsToolbar } from "@/components/member-actions-toolbar";
 import { MemberOwnerBadge } from "@/components/member-owner-badge";
-import { MemberStripePayerBadge } from "@/components/member-stripe-payer-badge";
+import { MemberStripeBadges } from "@/components/member-stripe-badges";
 import { QuickNoticeDialog } from "@/components/quick-notice-dialog";
 import { RefreshGroupButton } from "@/components/refresh-group-button";
 import { TableResultsEmptyState } from "@/components/table-results-empty-state";
@@ -519,7 +519,7 @@ export function MembersTable({
                                           {isMemberOwner(member) ? (
                                             <MemberOwnerBadge />
                                           ) : null}
-                                          <MemberStripePayerBadge
+                                          <MemberStripeBadges
                                             plans={member.linkedStripePlans}
                                           />
                                           <Badge

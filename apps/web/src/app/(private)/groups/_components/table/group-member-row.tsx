@@ -9,7 +9,7 @@ import {
 import { SearchIcon, type SearchIconHandle } from "@/components/icons/search";
 import { MemberActionsToolbar } from "@/components/member-actions-toolbar";
 import { MemberOwnerBadge } from "@/components/member-owner-badge";
-import { MemberStripePayerBadge } from "@/components/member-stripe-payer-badge";
+import { MemberStripeBadges } from "@/components/member-stripe-badges";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -70,7 +70,7 @@ export function GroupMemberRow({
           <p className="flex items-center gap-1 truncate font-medium text-foreground text-sm">
             {displayName}
             {member.isOwner ? <MemberOwnerBadge /> : null}
-            <MemberStripePayerBadge plans={member.linkedStripePlans} />
+            <MemberStripeBadges plans={member.linkedStripePlans} />
             <Badge
               variant="outline"
               className={cn(

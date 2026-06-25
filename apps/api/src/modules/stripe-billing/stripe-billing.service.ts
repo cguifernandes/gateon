@@ -655,8 +655,7 @@ export class StripeBillingSyncService {
         });
       }
 
-      if (
-        shouldRevokeStripeTelegramMemberLinkForSubscription({
+      if (shouldRevokeStripeTelegramMemberLinkForSubscription({
           status,
           cancelAtPeriodEnd: subscription.cancel_at_period_end === true,
         })
@@ -666,10 +665,7 @@ export class StripeBillingSyncService {
           stripeSubscriptionId: subscription.id,
           stripeCustomerId,
         });
-      } else if (
-        isEntitledStripeSubscription({ status }) &&
-        subscription.cancel_at_period_end !== true
-      ) {
+      } else if (isEntitledStripeSubscription({ status })) {
         await reactivateStripeTelegramMemberLinks(this.prisma, {
           connectionId,
           stripeSubscriptionId: subscription.id,

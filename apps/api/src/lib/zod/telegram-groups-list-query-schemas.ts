@@ -16,7 +16,12 @@ export const botStatusFilterSchema = z.enum([
 
 export const memberStatusFilterSchema = z.enum(['all', 'active', 'left']);
 
-export const stripePayerFilterSchema = z.enum(['all', 'payer', 'non_payer']);
+export const stripePayerFilterSchema = z.enum([
+  'all',
+  'payer',
+  'non_payer',
+  'cancel_scheduled',
+]);
 
 export const telegramGroupsListQuerySchema = paginationQuerySchema.extend({
   view: z.enum(['members']).optional(),

@@ -35,23 +35,58 @@ export function CancelCommandSettingsCard() {
               <span className="font-medium text-foreground">
                 não depende dos botões atuais do /start
               </span>
-              . Remover um plano das opções de assinar não impede o
-              cancelamento de quem já pagou.
+              .
             </li>
             <li>
               Cada botão abre o{" "}
               <span className="font-medium text-foreground">
                 Customer Portal
               </span>{" "}
-              da Stripe (somente com integração conectada e portal habilitado
-              na conta Stripe).
-            </li>
-            <li>
-              Se o assinante cancelou e assinou de novo pelo bot, o Gateon
-              reativa o vínculo após o checkout ou na próxima sincronização
-              Stripe.
+              da Stripe (integração conectada + portal habilitado na conta
+              Stripe).
             </li>
           </ol>
+        </div>
+
+        <div className="rounded-lg border border-amber-200/80 bg-amber-50/70 p-4 dark:border-amber-900 dark:bg-amber-950/30">
+          <p className="font-medium text-foreground">
+            Cancelou, mas ainda está no grupo?
+          </p>
+          <p className="mt-2 text-muted-foreground leading-relaxed">
+            Na Stripe, o cancelamento costuma ser{" "}
+            <span className="font-medium text-foreground">
+              ao fim do período já pago
+            </span>
+            . Até lá a assinatura continua{" "}
+            <span className="font-medium text-foreground">ativa</span> e o
+            membro permanece no grupo — o Gateon não remove antes da expiração
+            real.
+          </p>
+          <p className="mt-2 text-muted-foreground leading-relaxed">
+            Nesses casos, em{" "}
+            <Link
+              href="/members"
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Membros
+            </Link>{" "}
+            e{" "}
+            <Link
+              href="/groups"
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Grupos
+            </Link>{" "}
+            o membro mantém o badge{" "}
+            <span className="font-medium text-foreground">Stripe</span> (ainda é
+            pagante) e ganha o badge{" "}
+            <span className="font-medium text-foreground">Cancelou</span>{" "}
+            (cancelamento agendado). Use o filtro{" "}
+            <span className="font-medium text-foreground">
+              Cancelamento agendado
+            </span>{" "}
+            para listar quem está nessa situação.
+          </p>
         </div>
 
         <p className="font-medium text-foreground">
@@ -62,20 +97,7 @@ export function CancelCommandSettingsCard() {
           <span className="font-medium text-foreground">
             Settings → Billing → Customer portal
           </span>
-          , ative o portal e permita cancelamento de assinaturas. Sem isso, o
-          comando /cancelar retorna erro para o assinante.
-        </p>
-
-        <p className="text-muted-foreground text-xs leading-relaxed">
-          O /help do bot já menciona este comando. Não é necessário ativar nada
-          extra no painel — o fluxo usa a integração Stripe conectada em{" "}
-          <Link
-            href="/integrations"
-            className="font-medium text-primary underline-offset-4 hover:underline"
-          >
-            Integrações
-          </Link>
-          .
+          , ative o portal e permita cancelamento de assinaturas.
         </p>
       </CardContent>
     </Card>

@@ -33,23 +33,34 @@ export function shouldRevokeStripeTelegramMemberLink(
 export function showsStripePayerBadge(
   subscription: StripeSubscriptionEntitlementSnapshot | null | undefined,
 ): boolean {
+  return isEntitledStripeSubscription(subscription);
+}
+
+export function isStripeSubscriptionCancelScheduled(
+  subscription: StripeSubscriptionEntitlementSnapshot | null | undefined,
+): boolean {
   return (
     isEntitledStripeSubscription(subscription) &&
-    subscription?.cancelAtPeriodEnd !== true
+    subscription?.cancelAtPeriodEnd === true
   );
 }
 
 export function shouldRevokeStripeTelegramMemberLinkForSubscription(
   subscription: StripeSubscriptionEntitlementSnapshot,
 ): boolean {
-  if (shouldRevokeStripeTelegramMemberLink(subscription.status)) {
-    return true;
-  }
+  return shouldRevokeStripeTelegramMemberLink(subscription.status);
+}
 
-  return (
-    subscription.cancelAtPeriodEnd === true &&
-    isEntitledStripeSubscription(subscription)
-  );
+export type LinkedStripePlanSummary = {
+  connectionId: string;
+  label: string;
+  cancelAtPeriodEnd: boolean;
+};
+
+export function memberHasStripeCancelScheduled(
+  plans: Pick<LinkedStripePlanSummary, 'cancelAtPeriodEnd'>[],
+): boolean {
+  return plans.some((plan) => plan.cancelAtPeriodEnd);
 }
 
 export type StripePayerSubscriptionSnapshot =

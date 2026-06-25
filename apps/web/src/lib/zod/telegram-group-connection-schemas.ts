@@ -45,6 +45,7 @@ export type TelegramGroupConnectionIntentStatusDto = z.infer<
 export const linkedStripePlanSummarySchema = z.object({
   connectionId: z.string(),
   label: z.string(),
+  cancelAtPeriodEnd: z.boolean().default(false),
 });
 
 export const telegramTrackedMemberStatusSchema = z.enum(["active", "left"]);

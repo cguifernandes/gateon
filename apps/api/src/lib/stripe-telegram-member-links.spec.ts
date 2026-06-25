@@ -2,6 +2,8 @@ import {
   canOpenStripeSubscriptionCancelPortal,
   isEntitledStripeSubscription,
   isManageableStripeSubscriptionForCancel,
+  isStripeSubscriptionCancelScheduled,
+  memberHasStripeCancelScheduled,
   pickStripeSubscriptionForCancel,
   resolveStripePayerSubscriptionForLink,
   shouldRevokeStripeTelegramMemberLink,
@@ -43,20 +45,51 @@ describe('stripe telegram member links', () => {
   });
 
   describe('showsStripePayerBadge', () => {
-    it('shows badge for active subscriptions without scheduled cancel', () => {
+    it('shows badge for active subscriptions', () => {
       expect(
         showsStripePayerBadge({ status: 'active', cancelAtPeriodEnd: false }),
       ).toBe(true);
     });
 
-    it('hides badge when cancel is scheduled at period end', () => {
+    it('shows badge when cancel is scheduled at period end', () => {
       expect(
         showsStripePayerBadge({ status: 'active', cancelAtPeriodEnd: true }),
-      ).toBe(false);
+      ).toBe(true);
     });
 
     it('hides badge for canceled subscriptions', () => {
       expect(showsStripePayerBadge({ status: 'canceled' })).toBe(false);
+    });
+  });
+
+  describe('isStripeSubscriptionCancelScheduled', () => {
+    it('detects active subscriptions scheduled to cancel', () => {
+      expect(
+        isStripeSubscriptionCancelScheduled({
+          status: 'active',
+          cancelAtPeriodEnd: true,
+        }),
+      ).toBe(true);
+    });
+
+    it('ignores active subscriptions without scheduled cancel', () => {
+      expect(
+        isStripeSubscriptionCancelScheduled({
+          status: 'active',
+          cancelAtPeriodEnd: false,
+        }),
+      ).toBe(false);
+    });
+  });
+
+  describe('memberHasStripeCancelScheduled', () => {
+    it('returns true when any linked plan is scheduled to cancel', () => {
+      expect(
+        memberHasStripeCancelScheduled([
+          { cancelAtPeriodEnd: false },
+          { cancelAtPeriodEnd: true },
+        ]),
+      ).toBe(true);
     });
   });
 
@@ -69,13 +102,13 @@ describe('stripe telegram member links', () => {
       ).toBe(true);
     });
 
-    it('revokes active subscriptions scheduled to cancel', () => {
+    it('keeps active subscriptions even when cancel is scheduled', () => {
       expect(
         shouldRevokeStripeTelegramMemberLinkForSubscription({
           status: 'active',
           cancelAtPeriodEnd: true,
         }),
-      ).toBe(true);
+      ).toBe(false);
     });
 
     it('keeps active subscriptions without scheduled cancel', () => {

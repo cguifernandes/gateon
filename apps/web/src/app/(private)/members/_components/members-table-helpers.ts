@@ -56,6 +56,10 @@ export function isStripePayer(member: MemberSummary) {
   return member.linkedStripePlans.length > 0;
 }
 
+export function isStripeCancelScheduled(member: MemberSummary) {
+  return member.linkedStripePlans.some((plan) => plan.cancelAtPeriodEnd);
+}
+
 export function isMemberRemovable(member: MemberSummary) {
   return member.status === "active" && !member.isOwner;
 }
