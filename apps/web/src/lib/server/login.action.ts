@@ -47,7 +47,7 @@ export async function loginAction(raw: unknown): Promise<LoginUserResult> {
 
   if (isSentryTestLoginEmail(email)) {
     const error = createSentryTestLoginError();
-    reportServerActionError({
+    await reportServerActionError({
       action: ACTION,
       upstreamPath: UPSTREAM_PATH,
       message: error.message,
@@ -63,7 +63,7 @@ export async function loginAction(raw: unknown): Promise<LoginUserResult> {
 
   const base = getServerApiBaseUrl();
   if (!base) {
-    reportServerActionError({
+    await reportServerActionError({
       action: ACTION,
       upstreamPath: UPSTREAM_PATH,
       message: "Upstream API not configured",
@@ -93,7 +93,7 @@ export async function loginAction(raw: unknown): Promise<LoginUserResult> {
       cache: "no-store",
     });
   } catch (error) {
-    reportServerActionError({
+    await reportServerActionError({
       action: ACTION,
       upstreamPath: UPSTREAM_PATH,
       message: "Upstream request failed",
@@ -113,7 +113,7 @@ export async function loginAction(raw: unknown): Promise<LoginUserResult> {
     try {
       json = await res.json();
     } catch (error) {
-      reportServerActionError({
+      await reportServerActionError({
         action: ACTION,
         upstreamPath: UPSTREAM_PATH,
         message: "Invalid upstream JSON response",
@@ -128,7 +128,7 @@ export async function loginAction(raw: unknown): Promise<LoginUserResult> {
 
     const bodyParsed = authSuccessBodySchema.safeParse(json);
     if (!bodyParsed.success) {
-      reportServerActionError({
+      await reportServerActionError({
         action: ACTION,
         upstreamPath: UPSTREAM_PATH,
         message: "Invalid upstream response shape",
@@ -179,7 +179,7 @@ export async function loginAction(raw: unknown): Promise<LoginUserResult> {
     };
   }
 
-  reportServerActionError({
+  await reportServerActionError({
     action: ACTION,
     upstreamPath: UPSTREAM_PATH,
     message: messageFromApi ?? "Unexpected upstream status",

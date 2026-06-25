@@ -9,8 +9,10 @@ type ReportServerActionErrorInput = {
   error?: unknown;
 };
 
-export function reportServerActionError(input: ReportServerActionErrorInput) {
-  reportBffError({
+export async function reportServerActionError(
+  input: ReportServerActionErrorInput,
+): Promise<void> {
+  await reportBffError({
     area: "server-action",
     route: input.action,
     method: input.method ?? "POST",

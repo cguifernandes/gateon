@@ -103,7 +103,7 @@ export function ProfileBottomSection({ profile }: ProfileBottomSectionProps) {
           </div>
         </div>
 
-        <section className="space-y-3 rounded-xl border border-primary/60 bg-primary/10 p-4">
+        <section className="space-y-3 rounded-xl border border-border bg-primary/10 p-4">
           <div className="flex items-center justify-between gap-3 text-sm">
             <p className="font-medium text-foreground">Uso de grupos</p>
             <p className="tabular-nums text-muted-foreground">

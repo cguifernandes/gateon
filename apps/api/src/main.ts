@@ -11,10 +11,6 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { AppModule } from './app.module';
-import {
-  isEnvDebugEnabled,
-  logEnvConfigSnapshot,
-} from './lib/env-config-snapshot';
 
 async function bootstrap() {
   if (
@@ -39,16 +35,7 @@ async function bootstrap() {
     credentials: true,
   });
   app.useGlobalPipes(new ZodValidationPipe());
-
-  const port = process.env.PORT ?? 4000;
-  await app.listen(port);
-
-  if (isEnvDebugEnabled()) {
-    logEnvConfigSnapshot('api');
-    console.warn(
-      `[api] Env debug endpoint: http://localhost:${port}/debug/env`,
-    );
-  }
+  await app.listen(process.env.PORT ?? 4000);
 }
 
 bootstrap();

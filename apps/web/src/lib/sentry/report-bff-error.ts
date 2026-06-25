@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
+import "../../../sentry.server.config";
 
 type ReportBffErrorInput = {
   route: string;
@@ -10,7 +11,11 @@ type ReportBffErrorInput = {
   area?: "bff" | "server-action";
 };
 
-export function reportBffError(input: ReportBffErrorInput) {
+const SENTRY_FLUSH_TIMEOUT_MS = 2_000;
+
+export async function reportBffError(
+  input: ReportBffErrorInput,
+): Promise<void> {
   if (!process.env.NEXT_PUBLIC_SENTRY_DSN?.trim()) {
     return;
   }
@@ -34,17 +39,18 @@ export function reportBffError(input: ReportBffErrorInput) {
       },
       extra: context,
     });
-    return;
+  } else {
+    Sentry.captureMessage(input.message, {
+      level: "error",
+      tags: {
+        area,
+        route: input.route,
+        method: input.method,
+        ...(input.status ? { upstream_status: String(input.status) } : {}),
+      },
+      extra: context,
+    });
   }
 
-  Sentry.captureMessage(input.message, {
-    level: "error",
-    tags: {
-      area,
-      route: input.route,
-      method: input.method,
-      ...(input.status ? { upstream_status: String(input.status) } : {}),
-    },
-    extra: context,
-  });
+  await Sentry.flush(SENTRY_FLUSH_TIMEOUT_MS);
 }
