@@ -1,7 +1,6 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -168,14 +167,15 @@ export class BotStartSettingsService {
       return;
     }
 
-    const subscription =
-      await this.prisma.stripeBillingSubscriptions.findFirst({
+    const subscription = await this.prisma.stripeBillingSubscriptions.findFirst(
+      {
         where: {
           connectionId: input.connectionId,
           stripeSubscriptionId: input.stripeSubscriptionId,
         },
         select: { status: true, cancelAtPeriodEnd: true },
-      });
+      },
+    );
 
     if (
       input.triggerType === AlertTriggerType.STRIPE_SUBSCRIPTION_CANCELED &&
@@ -211,6 +211,10 @@ export class BotStartSettingsService {
     }
 
     try {
+      this.logger.log(
+        `[auto-remove] Removing telegram user ${subscriber.telegramUserId} from group ${group.id} (${group.title ?? 'sem título'}) — trigger=${input.triggerType}, subscription=${input.stripeSubscriptionId}, connection=${input.connectionId}`,
+      );
+
       const result = await this.telegram.performGroupMemberActions(
         input.userId,
         group.id,
@@ -219,6 +223,12 @@ export class BotStartSettingsService {
           telegramUserIds: [subscriber.telegramUserId],
         },
       );
+
+      if (result.successCount > 0) {
+        this.logger.log(
+          `[auto-remove] Removed telegram user ${subscriber.telegramUserId} from group ${group.id} (${group.title ?? 'sem título'})`,
+        );
+      }
 
       if (result.failedCount > 0) {
         this.logger.warn(
