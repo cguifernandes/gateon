@@ -72,6 +72,7 @@ import {
   isPrismaUniqueConstraintError,
   shouldDispatchStripeAutomation,
 } from '../../lib/stripe-billing-automation-dedup';
+import { verifyStripeWebhookSignature } from 'src/lib/stripe-webhook-signature';
 
 const EXPIRING_WINDOW_DAYS = STRIPE_EXPIRING_WINDOW_DAYS;
 
@@ -681,7 +682,8 @@ export class StripeBillingSyncService {
         });
       }
 
-      if (shouldRevokeStripeTelegramMemberLinkForSubscription({
+      if (
+        shouldRevokeStripeTelegramMemberLinkForSubscription({
           status,
           cancelAtPeriodEnd: subscription.cancel_at_period_end === true,
         })
@@ -1168,10 +1170,7 @@ export class StripeBillingService {
     return this.getStatus(userId, requestHeaders);
   }
 
-  async syncAllProducts(
-    userId: string,
-    requestHeaders?: IncomingHttpHeaders,
-  ) {
+  async syncAllProducts(userId: string, requestHeaders?: IncomingHttpHeaders) {
     const connections = await this.prisma.stripeBillingConnections.findMany({
       where: {
         userId,
