@@ -3,7 +3,27 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+      "env": [
+        "API_PUBLIC_BASE_URL",
+        "API_URL",
+        "INTERNAL_API_URL",
+        "NEXT_PUBLIC_API_URL",
+        "NEXT_PUBLIC_SENTRY_DSN",
+        "NEXT_PUBLIC_SENTRY_ENVIRONMENT",
+        "NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE",
+        "NEXT_PUBLIC_TELEGRAM_BOT_USERNAME",
+        "UPSTREAM_FETCH_TIMEOUT_MS"
+      ],
+      "passThroughEnv": [
+        "CI",
+        "ENABLE_ENV_DEBUG",
+        "NODE_ENV",
+        "SENTRY_AUTH_TOKEN",
+        "SENTRY_ORG",
+        "SENTRY_PROJECT",
+        "VERCEL_ENV"
+      ]
     },
     "dev": {
       "cache": false,

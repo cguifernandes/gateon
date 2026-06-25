@@ -3,6 +3,10 @@
 import { cookies, headers } from "next/headers";
 import { reportServerActionError } from "@/lib/sentry/report-server-action-error";
 import {
+  createSentryTestLoginError,
+  isSentryTestLoginEmail,
+} from "@/lib/sentry/sentry-test-login";
+import {
   authSuccessBodySchema,
   createAuthSchema,
   type PublicUserDto,
@@ -40,6 +44,23 @@ export async function loginAction(raw: unknown): Promise<LoginUserResult> {
   }
 
   const { email, password } = parsedForm.data;
+
+  if (isSentryTestLoginEmail(email)) {
+    const error = createSentryTestLoginError();
+    reportServerActionError({
+      action: ACTION,
+      upstreamPath: UPSTREAM_PATH,
+      message: error.message,
+      error,
+    });
+    return {
+      ok: false,
+      code: "unknown",
+      message:
+        "Erro de teste do Sentry enviado. Confira o dashboard em alguns segundos.",
+    };
+  }
+
   const base = getServerApiBaseUrl();
   if (!base) {
     reportServerActionError({
