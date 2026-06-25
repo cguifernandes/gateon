@@ -22,7 +22,21 @@ import {
   hashSensitiveValue,
   toPublicUser,
 } from '../../utils/utils';
-import type { LoginInput, RegisterInput, UpdateProfileInput } from '../../lib/zod/auth-schemas';
+import {
+  PASSWORD_RESET_GENERIC_MESSAGE,
+  type LoginInput,
+  type PasswordResetConfirmInput,
+  type PasswordResetRequestInput,
+  type RegisterInput,
+  type UpdateProfileInput,
+} from '../../lib/zod/auth-schemas';
+import { sendPasswordResetEmail } from '../../lib/password-reset-mail';
+import {
+  buildPasswordResetUrl,
+  getPasswordResetMaxRequestsPerHour,
+  getPasswordResetTtlMs,
+  hashPasswordResetToken,
+} from '../../lib/password-reset';
 
 type GoogleUserProfile = {
   sub: string;
@@ -628,6 +642,144 @@ export class AuthService {
     });
 
     return { revokedCount: result.count };
+  }
+
+  async requestPasswordReset(
+    dto: PasswordResetRequestInput,
+  ): Promise<{ ok: true; message: string }> {
+    const email = dto.email.trim().toLowerCase();
+    const user = await this.prisma.users.findUnique({ where: { email } });
+
+    if (!user) {
+      return { ok: true, message: PASSWORD_RESET_GENERIC_MESSAGE };
+    }
+
+    const credentialsAccount = await this.prisma.accounts.findUnique({
+      where: {
+        providerId_accountId: {
+          providerId: PROVIDER_CREDENTIALS,
+          accountId: email,
+        },
+      },
+    });
+
+    if (!credentialsAccount?.password) {
+      return { ok: true, message: PASSWORD_RESET_GENERIC_MESSAGE };
+    }
+
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const recentRequests = await this.prisma.passwordResetTokens.count({
+      where: {
+        userId: user.id,
+        createdAt: { gte: oneHourAgo },
+      },
+    });
+
+    if (recentRequests >= getPasswordResetMaxRequestsPerHour()) {
+      return { ok: true, message: PASSWORD_RESET_GENERIC_MESSAGE };
+    }
+
+    const rawToken = this.newToken();
+    const tokenHash = hashPasswordResetToken(rawToken);
+    const expiresAt = new Date(Date.now() + getPasswordResetTtlMs());
+    const now = new Date();
+
+    await this.prisma.$transaction([
+      this.prisma.passwordResetTokens.updateMany({
+        where: { userId: user.id, usedAt: null },
+        data: { usedAt: now },
+      }),
+      this.prisma.passwordResetTokens.create({
+        data: {
+          userId: user.id,
+          tokenHash,
+          expiresAt,
+        },
+      }),
+    ]);
+
+    const resetUrl = buildPasswordResetUrl(this.getWebBaseUrl(), rawToken);
+
+    try {
+      await sendPasswordResetEmail({
+        to: email,
+        resetUrl,
+        expiresAt,
+      });
+    } catch {
+      await this.prisma.passwordResetTokens.updateMany({
+        where: { tokenHash, usedAt: null },
+        data: { usedAt: now },
+      });
+    }
+
+    return { ok: true, message: PASSWORD_RESET_GENERIC_MESSAGE };
+  }
+
+  async resetPassword(
+    dto: PasswordResetConfirmInput,
+  ): Promise<{ ok: true }> {
+    const tokenHash = hashPasswordResetToken(dto.token.trim());
+    const record = await this.prisma.passwordResetTokens.findUnique({
+      where: { tokenHash },
+      include: { user: true },
+    });
+
+    if (
+      !record ||
+      record.usedAt !== null ||
+      record.expiresAt.getTime() <= Date.now()
+    ) {
+      throw new BadRequestException(
+        'Link de redefinição inválido ou expirado.',
+      );
+    }
+
+    const email = record.user.email.trim().toLowerCase();
+    const passwordHash = await this.hashPassword(dto.password);
+    const now = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      const account = await tx.accounts.findUnique({
+        where: {
+          providerId_accountId: {
+            providerId: PROVIDER_CREDENTIALS,
+            accountId: email,
+          },
+        },
+      });
+
+      if (!account?.password) {
+        throw new BadRequestException(
+          'Link de redefinição inválido ou expirado.',
+        );
+      }
+
+      await tx.accounts.update({
+        where: { id: account.id },
+        data: { password: passwordHash },
+      });
+
+      await tx.passwordResetTokens.update({
+        where: { id: record.id },
+        data: { usedAt: now },
+      });
+
+      await tx.passwordResetTokens.updateMany({
+        where: {
+          userId: record.userId,
+          usedAt: null,
+          id: { not: record.id },
+        },
+        data: { usedAt: now },
+      });
+
+      await tx.sessions.deleteMany({
+        where: { userId: record.userId },
+      });
+    });
+
+    return { ok: true };
   }
 
   async signInWithGoogle(

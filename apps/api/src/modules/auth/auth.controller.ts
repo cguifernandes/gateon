@@ -16,11 +16,12 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { OAUTH_STATE_COOKIE_NAME, toPublicUser } from '../../utils/utils';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '../../lib/guards/auth.guard';
-import { loginSchema, registerSchema, deleteAccountSchema, updateProfileSchema } from '../../lib/zod/auth-schemas';
+import { loginSchema, registerSchema, deleteAccountSchema, updateProfileSchema, passwordResetRequestSchema, passwordResetConfirmSchema } from '../../lib/zod/auth-schemas';
 
 @Controller('auth')
 export class AuthController {
@@ -46,6 +47,20 @@ export class AuthController {
   ) {
     const input = loginSchema.parse(body);
     return this.auth.login(input, req, res);
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('password-reset/request')
+  async requestPasswordReset(@Body() body: unknown) {
+    const input = passwordResetRequestSchema.parse(body);
+    return this.auth.requestPasswordReset(input);
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('password-reset/confirm')
+  async confirmPasswordReset(@Body() body: unknown) {
+    const input = passwordResetConfirmSchema.parse(body);
+    return this.auth.resetPassword(input);
   }
 
   @Post('logout')

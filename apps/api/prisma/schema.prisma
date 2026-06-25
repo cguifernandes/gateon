@@ -41,6 +41,7 @@ model Users {
   telegramUserSettings           TelegramUserSettings?
   stripeTelegramMemberLinks      StripeTelegramMemberLinks[]
   stripeTelegramCheckoutSessions StripeTelegramCheckoutSessions[]
+  passwordResetTokens            PasswordResetTokens[]
 }
 
 model Accounts {
@@ -78,6 +79,20 @@ model Sessions {
 
   @@index([expiresAt])
   @@index([metadataExpiresAt])
+}
+
+model PasswordResetTokens {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
 }
 
 enum TelegramConnectionStatus {

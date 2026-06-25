@@ -2,7 +2,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
-import { deleteAccountSchema, updateProfileSchema } from '../../lib/zod/auth-schemas';
+import { deleteAccountSchema, updateProfileSchema, passwordResetRequestSchema, passwordResetConfirmSchema } from '../../lib/zod/auth-schemas';
 
 describe('deleteAccountSchema', () => {
   it('accepts explicit confirmation', () => {
@@ -35,6 +35,40 @@ describe('updateProfileSchema', () => {
   it('accepts clearing image', () => {
     const result = updateProfileSchema.safeParse({ image: '' });
     expect(result.success).toBe(true);
+  });
+});
+
+describe('passwordResetRequestSchema', () => {
+  it('accepts valid email', () => {
+    const result = passwordResetRequestSchema.safeParse({
+      email: 'user@example.com',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects invalid email', () => {
+    const result = passwordResetRequestSchema.safeParse({ email: 'invalid' });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('passwordResetConfirmSchema', () => {
+  it('accepts matching passwords', () => {
+    const result = passwordResetConfirmSchema.safeParse({
+      token: 'reset-token',
+      password: 'new-password',
+      confirmPassword: 'new-password',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects mismatched passwords', () => {
+    const result = passwordResetConfirmSchema.safeParse({
+      token: 'reset-token',
+      password: 'new-password',
+      confirmPassword: 'other-password',
+    });
+    expect(result.success).toBe(false);
   });
 });
 

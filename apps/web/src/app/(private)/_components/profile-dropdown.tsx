@@ -1,7 +1,10 @@
 "use client";
 
 import { useRef } from "react";
-import { AccountPlanCtaMenuItem } from "@/components/account-plan-cta-menu-item";
+import {
+  CreditCardIcon,
+  type CreditCardIconHandle,
+} from "@/components/icons/credit-card";
 import { LogoutIcon, type LogoutIconHandle } from "@/components/icons/logout";
 import {
   SettingsIcon,
@@ -30,6 +33,7 @@ export function ProfileDropdown({ user }: ProfileDropdownProps) {
   const settingsIconRef = useRef<SettingsIconHandle>(null);
   const logoutFormRef = useRef<HTMLFormElement>(null);
   const logoutIconRef = useRef<LogoutIconHandle>(null);
+  const creditCardIconRef = useRef<CreditCardIconHandle>(null);
   const label = user.name ?? user.email;
   const sublabel = user.name ? user.email : null;
 
@@ -118,7 +122,23 @@ export function ProfileDropdown({ user }: ProfileDropdownProps) {
             Configurações
           </DropdownMenuLinkItem>
 
-          <AccountPlanCtaMenuItem planId={user.planId} />
+          <DropdownMenuLinkItem
+            href="/profile"
+            closeOnClick
+            onMouseEnter={() => creditCardIconRef.current?.startAnimation()}
+            onMouseLeave={() => creditCardIconRef.current?.stopAnimation()}
+            className="cursor-pointer group hover:bg-accent hover:text-accent-foreground"
+          >
+            <CreditCardIcon
+              size={16}
+              className={cn(
+                "text-muted-foreground group-hover:text-foreground transition-colors duration-200 ease-in-out",
+              )}
+              ref={creditCardIconRef}
+              aria-hidden
+            />
+            Assinatura
+          </DropdownMenuLinkItem>
 
           <DropdownMenuSeparator />
 

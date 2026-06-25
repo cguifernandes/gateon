@@ -1,0 +1,2 @@
+-- RenameIndex
+ALTER INDEX "StripeBillingProcessedWebhookEvents_connectionId_stripeEventId_" RENAME TO "StripeBillingProcessedWebhookEvents_connectionId_stripeEven_key";

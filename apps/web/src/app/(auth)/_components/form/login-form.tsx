@@ -65,6 +65,13 @@ export function LoginForm() {
           autoComplete="current-password"
         />
 
+        <Link
+          className="text-primary text-sm w-fit font-medium hover:underline"
+          href="/forgot-password"
+        >
+          Esqueceu a senha?
+        </Link>
+
         <Button loading={isSubmitting} disabled={isSubmitting} type="submit">
           Entrar
         </Button>

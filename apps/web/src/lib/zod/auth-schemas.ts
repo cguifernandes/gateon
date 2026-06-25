@@ -38,6 +38,45 @@ export const updateProfileRequestSchema = z.object({
 
 export type UpdateProfileRequest = z.infer<typeof updateProfileRequestSchema>;
 
+export const PASSWORD_RESET_GENERIC_MESSAGE =
+  "Se o e-mail existir na nossa base, você receberá instruções para redefinir sua senha em instantes.";
+
+export const passwordResetRequestSchema = z.object({
+  email: z
+    .email("Informe um e-mail válido.")
+    .trim()
+    .min(1, "Este campo é obrigatório."),
+});
+
+export const passwordResetConfirmSchema = z
+  .object({
+    token: z.string().trim().min(1, "Link de redefinição inválido."),
+    password: z
+      .string()
+      .min(1, "Este campo é obrigatório.")
+      .min(8, "A senha deve ter pelo menos 8 caracteres."),
+    confirmPassword: z
+      .string()
+      .min(1, "Confirme sua nova senha.")
+      .min(8, "A senha deve ter pelo menos 8 caracteres."),
+  })
+  .superRefine((values, ctx) => {
+    if (values.password !== values.confirmPassword) {
+      ctx.addIssue({
+        code: "custom",
+        message: "As senhas não conferem.",
+        path: ["confirmPassword"],
+      });
+    }
+  });
+
+export type PasswordResetRequestValues = z.infer<
+  typeof passwordResetRequestSchema
+>;
+export type PasswordResetConfirmValues = z.infer<
+  typeof passwordResetConfirmSchema
+>;
+
 export const profileAccountDtoSchema = z.object({
   id: z.string(),
   providerId: z.string(),
