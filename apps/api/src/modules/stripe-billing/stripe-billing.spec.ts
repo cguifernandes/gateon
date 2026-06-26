@@ -15,6 +15,7 @@ import {
   StripeTelegramMemberLinkStatus,
   type StripeBillingAuditAction,
 } from '@prisma/client';
+import { resolvePrismaRuntimePoolConfig } from '../../lib/prisma/database-connection';
 import {
   buildInvoiceAutomationDedupeKey,
   buildSubscriptionAutomationDedupeKey,
@@ -72,7 +73,7 @@ const databaseUrl = process.env.DATABASE_URL?.trim();
 const describeWithDb = databaseUrl ? describe : describe.skip;
 
 function createPrismaClient() {
-  const adapter = new PrismaPg({ connectionString: databaseUrl! });
+  const adapter = new PrismaPg(resolvePrismaRuntimePoolConfig());
   return new PrismaClient({ adapter });
 }
 
@@ -327,9 +328,9 @@ describe('resolveInvoicePaymentTrigger', () => {
   });
 
   it('maps invoice.payment_failed webhook events to STRIPE_PAYMENT_FAILED', () => {
-    expect(
-      resolveInvoicePaymentTrigger('open', 'invoice.payment_failed'),
-    ).toBe(AlertTriggerType.STRIPE_PAYMENT_FAILED);
+    expect(resolveInvoicePaymentTrigger('open', 'invoice.payment_failed')).toBe(
+      AlertTriggerType.STRIPE_PAYMENT_FAILED,
+    );
   });
 });
 
@@ -747,9 +748,9 @@ describe('stripe telegram member links', () => {
 
   describe('isManageableStripeSubscriptionForCancel', () => {
     it('allows active and trialing subscriptions', () => {
-      expect(isManageableStripeSubscriptionForCancel({ status: 'active' })).toBe(
-        true,
-      );
+      expect(
+        isManageableStripeSubscriptionForCancel({ status: 'active' }),
+      ).toBe(true);
       expect(
         isManageableStripeSubscriptionForCancel({ status: 'trialing' }),
       ).toBe(true);
