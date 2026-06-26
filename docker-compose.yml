@@ -1,0 +1,28 @@
+# Local PostgreSQL for Gateon development (optional).
+# Start: docker compose up -d
+# Stop:  docker compose down
+# Data persists in volume gateon_pg_data
+#
+# pgAdmin: host localhost, port 5432, user gateon, password gateon, database gateon
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gateon-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gateon
+      POSTGRES_PASSWORD: gateon
+      POSTGRES_DB: gateon
+    ports:
+      - "5432:5432"
+    volumes:
+      - gateon_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gateon -d gateon"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  gateon_pg_data:

@@ -66,10 +66,12 @@ export function buildTelegramGroupsBaseWhere(
 
 export function buildTelegramGroupMembersWhere(
   query: TelegramGroupsListQueryInput,
+  options?: { groupMatchesQuery?: boolean },
 ): Prisma.TelegramGroupMembersWhereInput {
   const joinedRange = buildDateParamRange(query.joinedFrom, query.joinedTo);
   const leftRange = buildDateParamRange(query.leftFrom, query.leftTo);
   const memberStatus = query.memberStatus ?? 'all';
+  const q = query.q?.trim();
 
   const where: Prisma.TelegramGroupMembersWhereInput = {
     ...(joinedRange ? { joinedAt: joinedRange } : {}),
@@ -79,6 +81,14 @@ export function buildTelegramGroupMembersWhere(
 
   if (leftRange) {
     where.leftAt = leftRange;
+  }
+
+  if (q && !options?.groupMatchesQuery) {
+    where.OR = [
+      { firstName: { contains: q, mode: 'insensitive' } },
+      { lastName: { contains: q, mode: 'insensitive' } },
+      { telegramUserId: { contains: q, mode: 'insensitive' } },
+    ];
   }
 
   return where;

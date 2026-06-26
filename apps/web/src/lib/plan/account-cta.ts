@@ -10,14 +10,14 @@ export type AccountPlanCta = {
 export function resolveAccountPlanCta(planId: PlanId): AccountPlanCta {
   if (!isPaidPlan(planId)) {
     return {
-      href: "/#pricing",
+      href: "/subscription",
       label: "Melhorar seu plano",
       isUpgrade: true,
     };
   }
 
   return {
-    href: "/profile",
+    href: "/subscription",
     label: "Ver detalhes do meu plano",
     isUpgrade: false,
   };

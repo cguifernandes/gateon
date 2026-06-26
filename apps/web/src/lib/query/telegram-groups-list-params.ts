@@ -1,13 +1,18 @@
 import { formatUrlDateParam } from "@/lib/filters/date-params";
 import type { GroupsUrlFiltersState } from "@/lib/groups/url-filters";
 import type { MembersUrlFiltersState } from "@/lib/members/url-filters";
-import { DEFAULT_PAGE_SIZE } from "@/lib/zod/pagination-schemas";
+import {
+  DEFAULT_MEMBERS_PER_GROUP_PAGE_SIZE,
+  DEFAULT_PAGE_SIZE,
+} from "@/lib/zod/pagination-schemas";
 
 type BuildGroupsListParamsInput = {
   page?: number;
   pageSize?: number;
   all?: boolean;
   view?: "members";
+  membersPerGroupPageSize?: number;
+  membersPages?: Record<string, number>;
   includeMembersPreview?: boolean;
   includeTelegramMemberCount?: boolean;
   includeMemberStripePlans?: boolean;
@@ -46,6 +51,22 @@ export function buildTelegramGroupsListSearchParams(
 
   if (input.view === "members") {
     params.set("view", "members");
+    params.set(
+      "membersPerGroupPageSize",
+      String(
+        input.membersPerGroupPageSize ?? DEFAULT_MEMBERS_PER_GROUP_PAGE_SIZE,
+      ),
+    );
+
+    const membersPages = input.membersPages;
+    if (membersPages && Object.keys(membersPages).length > 0) {
+      params.set(
+        "membersPages",
+        Object.entries(membersPages)
+          .map(([groupId, page]) => `${groupId}:${page}`)
+          .join(","),
+      );
+    }
   }
   if (input.includeMembersPreview) {
     params.set("includeMembersPreview", "true");

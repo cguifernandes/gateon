@@ -10,9 +10,19 @@ import {
   STRIPE_PAYER_FILTER_OPTIONS,
   type StripePayerFilterValue,
 } from "@/lib/stripe/payer-filter";
+import {
+  MEMBERS_PER_GROUP_PAGE_SIZE_OPTIONS,
+  type MembersPerGroupPageSize,
+} from "@/lib/zod/pagination-schemas";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
 import type { MembersFiltersPopoverControl } from "../../_hooks/use-members-filters-url";
 import { MembersGroupFilterOptions } from "./members-group-filter-options";
+
+const MEMBERS_PER_GROUP_PAGE_SIZE_FILTER_OPTIONS =
+  MEMBERS_PER_GROUP_PAGE_SIZE_OPTIONS.map((size) => ({
+    value: String(size),
+    label: `${size} / grupo`,
+  }));
 
 type MembersFiltersPopoverProps = {
   groups: TelegramGroupSummaryDto[];
@@ -27,6 +37,17 @@ export function MembersFiltersPopover({
 
   const filters = useMemo<FilterParam[]>(
     () => [
+      {
+        type: "select",
+        field: "membersPerGroupPageSize",
+        label: "Membros visíveis por grupo",
+        value: String(control.draftMembersPerGroupPageSize),
+        options: MEMBERS_PER_GROUP_PAGE_SIZE_FILTER_OPTIONS,
+        onChange: (value) =>
+          control.setMembersPerGroupPageSize(
+            Number(value) as MembersPerGroupPageSize,
+          ),
+      },
       {
         type: "select",
         field: "memberStatus",

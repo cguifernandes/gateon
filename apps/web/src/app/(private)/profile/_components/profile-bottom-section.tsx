@@ -97,7 +97,7 @@ export function ProfileBottomSection({ profile }: ProfileBottomSectionProps) {
             </div>
             <p className="text-muted-foreground text-sm">
               {isFree
-                ? "Faça upgrade para liberar mais grupos, membros e integrações."
+                ? "Faça upgrade em Assinatura para liberar mais grupos, membros e integrações."
                 : "Seu plano está ativo com os limites abaixo."}
             </p>
           </div>

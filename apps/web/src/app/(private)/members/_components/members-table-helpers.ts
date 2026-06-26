@@ -100,15 +100,29 @@ export function getVisibleSelectionSummary(
   const targets: SelectedMemberTarget[] = [];
   let hasActiveMember = false;
   let hasRemovableMember = false;
+  let count = 0;
 
   for (const group of visibleGroups) {
-    const members = selectedGroupIds.has(group.id)
-      ? group.visibleMembers
-      : group.visibleMembers.filter((member) =>
-          selectedMemberKeys.has(getMemberKey(group.id, member.telegramUserId)),
-        );
+    if (selectedGroupIds.has(group.id)) {
+      const groupCount = getGroupMemberListCount(group);
+      count += groupCount;
+      targets.push({
+        groupId: group.id,
+        selectAllInGroup: true,
+      });
+      if (group.trackedMemberCount > 0) {
+        hasActiveMember = true;
+        hasRemovableMember = true;
+      }
+      continue;
+    }
+
+    const members = group.visibleMembers.filter((member) =>
+      selectedMemberKeys.has(getMemberKey(group.id, member.telegramUserId)),
+    );
 
     for (const member of members) {
+      count += 1;
       targets.push({
         groupId: group.id,
         telegramUserId: member.telegramUserId,
@@ -125,9 +139,11 @@ export function getVisibleSelectionSummary(
   }
 
   return {
-    count: targets.length,
+    count,
     targets,
-    telegramUserIds: targets.map((target) => target.telegramUserId),
+    telegramUserIds: targets
+      .map((target) => target.telegramUserId)
+      .filter((value): value is string => Boolean(value)),
     hasActiveMember,
     hasRemovableMember,
   };
@@ -137,15 +153,32 @@ function formatCountLabel(count: number, singular: string, plural: string) {
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
-export function formatGroupMemberStatusSummary(
-  members: TelegramGroupSummaryDto["members"],
-) {
-  const activeCount = members.filter(
-    (member) => member.status === "active",
-  ).length;
-  const inactiveCount = members.filter(
-    (member) => member.status === "left",
-  ).length;
+export function formatGroupMemberStatusSummary(group: {
+  trackedMemberCount: number;
+  leftMemberCount: number;
+}) {
+  return `${formatCountLabel(group.trackedMemberCount, "ativo", "ativos")} / ${formatCountLabel(group.leftMemberCount, "inativo", "inativos")}`;
+}
 
-  return `${formatCountLabel(activeCount, "ativo", "ativos")} / ${formatCountLabel(inactiveCount, "inativo", "inativos")}`;
+export function getGroupMemberSelectionFingerprint(
+  groupId: string,
+  selectedMemberKeys: ReadonlySet<string>,
+): string {
+  const prefix = `${groupId}:`;
+  const keys: string[] = [];
+
+  for (const key of selectedMemberKeys) {
+    if (key.startsWith(prefix)) {
+      keys.push(key);
+    }
+  }
+
+  return keys.sort().join(",");
+}
+
+export function getGroupMemberListCount(group: TelegramGroupSummaryDto) {
+  return (
+    group.membersPagination?.totalItems ??
+    group.trackedMemberCount + group.leftMemberCount
+  );
 }

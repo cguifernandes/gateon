@@ -7,6 +7,7 @@ import { useController, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { BotSettingSwitch } from "@/app/(private)/groups/[groupId]/bot/_components/bot-setting-switch";
 import { CopyToClipboardButton } from "@/components/copy-to-clipboard-button";
+import { PlanFeatureGate } from "@/components/plan-feature-gate";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -287,169 +288,173 @@ export function BotStartSettingsForm({
                 ) : null}
               </BotSettingSwitch>
 
-              <BotSettingSwitch
-                checked={showStripePlans.field.value}
-                onCheckedChange={showStripePlans.field.onChange}
-                title="Listar planos Stripe"
-                description="Mostra os planos monitorados nas integrações conectadas."
-                tooltip="Exibe os preços configurados em Integrações. Deixe todos desmarcados para listar todos os planos ativos."
-              >
-                {showStripePlans.field.value ? (
-                  availableConnections.length === 0 ? (
-                    <p className="text-muted-foreground py-2 text-center text-sm leading-relaxed">
-                      Nenhuma integração Stripe com plano monitorado. Conecte e
-                      configure um plano em{" "}
-                      <Link
-                        href="/integrations"
-                        className="font-medium text-primary underline-offset-4 hover:underline"
-                      >
-                        Integrações
-                      </Link>
-                      .
-                    </p>
-                  ) : (
-                    <>
-                      <p className="text-muted-foreground font-light text-sm">
-                        Selecione quais planos exibir. Nenhuma seleção = todos
-                        os planos monitorados.
-                      </p>
-                      <div className="space-y-2">
-                        {availableConnections.map((connection) => {
-                          const checked = selectedConnectionIds.has(
-                            connection.id,
-                          );
-                          return (
-                            <label
-                              key={connection.id}
-                              className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-background/70 p-3"
-                            >
-                              <Checkbox
-                                checked={checked}
-                                onCheckedChange={(value) =>
-                                  toggleStripeConnection(
-                                    connection.id,
-                                    value === true,
-                                  )
-                                }
-                                aria-label={`Plano ${connection.label}`}
-                              />
-                              <span className="min-w-0 space-y-1">
-                                <span className="block font-medium text-sm">
-                                  {connection.label}
-                                </span>
-                                <span className="block text-muted-foreground text-xs">
-                                  {connection.monitoredStripePriceId ??
-                                    "Sem price ID"}
-                                  {" · "}
-                                  Chave ····{connection.apiKeyLast4}
-                                </span>
-                              </span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )
-                ) : null}
-              </BotSettingSwitch>
-
-              <BotSettingSwitch
-                checked={showPaymentButtons.field.value}
-                onCheckedChange={showPaymentButtons.field.onChange}
-                title="Botões de pagamento Stripe"
-                description="Exibe botões no /start que abrem o checkout da Stripe para cada plano."
-                tooltip="O grupo de destino de cada plano é definido em Integrações, ao vincular o produto Stripe."
-              >
-                {showPaymentButtons.field.value ? (
-                  availableConnections.length === 0 ? (
-                    <p className="text-muted-foreground py-2 text-center text-sm leading-relaxed">
-                      Conecte um plano em{" "}
-                      <Link
-                        href="/integrations"
-                        className="font-medium text-primary underline-offset-4 hover:underline"
-                      >
-                        Integrações
-                      </Link>{" "}
-                      para habilitar os botões.
-                    </p>
-                  ) : (
-                    <>
-                      <p className="text-muted-foreground font-light text-sm">
-                        Marque os planos com botão de checkout. O grupo de
-                        destino de cada um é configurado em{" "}
-                        <Link
-                          href="/integrations"
-                          className="font-medium text-primary underline-offset-4 hover:underline"
-                        >
-                          Integrações
-                        </Link>
-                        .
-                      </p>
-                      <div className="space-y-2">
-                        {availableConnections.map((connection) => {
-                          const checked = selectedPaymentConnectionIds.has(
-                            connection.id,
-                          );
-                          const missingGroup = !connection.linkedGroup;
-
-                          return (
-                            <div
-                              key={`payment-${connection.id}`}
-                              className="space-y-2 rounded-lg border border-border bg-background/70 p-3"
-                            >
-                              <label className="flex cursor-pointer items-start gap-3">
-                                <Checkbox
-                                  checked={checked}
-                                  onCheckedChange={(value) =>
-                                    togglePaymentConnection(
-                                      connection.id,
-                                      value === true,
-                                    )
-                                  }
-                                  aria-label={`Pagamento ${connection.label}`}
-                                />
-                                <span className="min-w-0 space-y-1">
-                                  <span className="block font-medium text-sm">
-                                    {connection.label}
+              <PlanFeatureGate feature="botCheckout">
+                <div className="space-y-3">
+                  <BotSettingSwitch
+                    checked={showStripePlans.field.value}
+                    onCheckedChange={showStripePlans.field.onChange}
+                    title="Listar planos Stripe"
+                    description="Mostra os planos monitorados nas integrações conectadas."
+                    tooltip="Exibe os preços configurados em Integrações. Deixe todos desmarcados para listar todos os planos ativos."
+                  >
+                    {showStripePlans.field.value ? (
+                      availableConnections.length === 0 ? (
+                        <p className="text-muted-foreground py-2 text-center text-sm leading-relaxed">
+                          Nenhuma integração Stripe com plano monitorado.
+                          Conecte e configure um plano em{" "}
+                          <Link
+                            href="/integrations"
+                            className="font-medium text-primary underline-offset-4 hover:underline"
+                          >
+                            Integrações
+                          </Link>
+                          .
+                        </p>
+                      ) : (
+                        <>
+                          <p className="text-muted-foreground font-light text-sm">
+                            Selecione quais planos exibir. Nenhuma seleção =
+                            todos os planos monitorados.
+                          </p>
+                          <div className="space-y-2">
+                            {availableConnections.map((connection) => {
+                              const checked = selectedConnectionIds.has(
+                                connection.id,
+                              );
+                              return (
+                                <label
+                                  key={connection.id}
+                                  className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-background/70 p-3"
+                                >
+                                  <Checkbox
+                                    checked={checked}
+                                    onCheckedChange={(value) =>
+                                      toggleStripeConnection(
+                                        connection.id,
+                                        value === true,
+                                      )
+                                    }
+                                    aria-label={`Plano ${connection.label}`}
+                                  />
+                                  <span className="min-w-0 space-y-1">
+                                    <span className="block font-medium text-sm">
+                                      {connection.label}
+                                    </span>
+                                    <span className="block text-muted-foreground text-xs">
+                                      {connection.monitoredStripePriceId ??
+                                        "Sem price ID"}
+                                      {" · "}
+                                      Chave ····{connection.apiKeyLast4}
+                                    </span>
                                   </span>
-                                  <span className="block text-muted-foreground text-xs">
-                                    {connection.linkedGroup
-                                      ? `Grupo: ${connection.linkedGroup.title}`
-                                      : "Sem grupo vinculado em Integrações"}
-                                  </span>
-                                </span>
-                              </label>
-                              {checked && missingGroup ? (
-                                <p className="pl-7 text-amber-600 text-xs dark:text-amber-500">
-                                  Vincule um grupo a este plano em Integrações
-                                  antes de salvar.
-                                </p>
-                              ) : null}
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <BotSettingSwitch
-                        checked={paymentButtonsGroupFirst.field.value}
-                        onCheckedChange={
-                          paymentButtonsGroupFirst.field.onChange
-                        }
-                        title="Primeiro escolher o grupo"
-                        description="Na primeira etapa, o visitante vê os grupos conectados; ao tocar em um, aparecem os planos disponíveis para aquele grupo."
-                        tooltip="Útil quando você vende acesso a vários grupos com planos diferentes. O grupo de cada plano continua definido em Integrações."
-                      />
-                    </>
-                  )
-                ) : null}
-              </BotSettingSwitch>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )
+                    ) : null}
+                  </BotSettingSwitch>
 
-              <BotSettingSwitch
-                checked={showSubscribeSteps.field.value}
-                onCheckedChange={showSubscribeSteps.field.onChange}
-                title="Passo a passo para assinar"
-                description="Explica como o visitante assina pelo bot, paga na Stripe e recebe o acesso ao grupo."
-                tooltip="Recomendado com botões de pagamento ativos. Inclui aviso de privacidade (LGPD) para o visitante."
-              />
+                  <BotSettingSwitch
+                    checked={showPaymentButtons.field.value}
+                    onCheckedChange={showPaymentButtons.field.onChange}
+                    title="Botões de pagamento Stripe"
+                    description="Exibe botões no /start que abrem o checkout da Stripe para cada plano."
+                    tooltip="O grupo de destino de cada plano é definido em Integrações, ao vincular o produto Stripe."
+                  >
+                    {showPaymentButtons.field.value ? (
+                      availableConnections.length === 0 ? (
+                        <p className="text-muted-foreground py-2 text-center text-sm leading-relaxed">
+                          Conecte um plano em{" "}
+                          <Link
+                            href="/integrations"
+                            className="font-medium text-primary underline-offset-4 hover:underline"
+                          >
+                            Integrações
+                          </Link>{" "}
+                          para habilitar os botões.
+                        </p>
+                      ) : (
+                        <>
+                          <p className="text-muted-foreground font-light text-sm">
+                            Marque os planos com botão de checkout. O grupo de
+                            destino de cada um é configurado em{" "}
+                            <Link
+                              href="/integrations"
+                              className="font-medium text-primary underline-offset-4 hover:underline"
+                            >
+                              Integrações
+                            </Link>
+                            .
+                          </p>
+                          <div className="space-y-2">
+                            {availableConnections.map((connection) => {
+                              const checked = selectedPaymentConnectionIds.has(
+                                connection.id,
+                              );
+                              const missingGroup = !connection.linkedGroup;
+
+                              return (
+                                <div
+                                  key={`payment-${connection.id}`}
+                                  className="space-y-2 rounded-lg border border-border bg-background/70 p-3"
+                                >
+                                  <label className="flex cursor-pointer items-start gap-3">
+                                    <Checkbox
+                                      checked={checked}
+                                      onCheckedChange={(value) =>
+                                        togglePaymentConnection(
+                                          connection.id,
+                                          value === true,
+                                        )
+                                      }
+                                      aria-label={`Pagamento ${connection.label}`}
+                                    />
+                                    <span className="min-w-0 space-y-1">
+                                      <span className="block font-medium text-sm">
+                                        {connection.label}
+                                      </span>
+                                      <span className="block text-muted-foreground text-xs">
+                                        {connection.linkedGroup
+                                          ? `Grupo: ${connection.linkedGroup.title}`
+                                          : "Sem grupo vinculado em Integrações"}
+                                      </span>
+                                    </span>
+                                  </label>
+                                  {checked && missingGroup ? (
+                                    <p className="pl-7 text-amber-600 text-xs dark:text-amber-500">
+                                      Vincule um grupo a este plano em
+                                      Integrações antes de salvar.
+                                    </p>
+                                  ) : null}
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <BotSettingSwitch
+                            checked={paymentButtonsGroupFirst.field.value}
+                            onCheckedChange={
+                              paymentButtonsGroupFirst.field.onChange
+                            }
+                            title="Primeiro escolher o grupo"
+                            description="Na primeira etapa, o visitante vê os grupos conectados; ao tocar em um, aparecem os planos disponíveis para aquele grupo."
+                            tooltip="Útil quando você vende acesso a vários grupos com planos diferentes. O grupo de cada plano continua definido em Integrações."
+                          />
+                        </>
+                      )
+                    ) : null}
+                  </BotSettingSwitch>
+
+                  <BotSettingSwitch
+                    checked={showSubscribeSteps.field.value}
+                    onCheckedChange={showSubscribeSteps.field.onChange}
+                    title="Passo a passo para assinar"
+                    description="Explica como o visitante assina pelo bot, paga na Stripe e recebe o acesso ao grupo."
+                    tooltip="Recomendado com botões de pagamento ativos. Inclui aviso de privacidade (LGPD) para o visitante."
+                  />
+                </div>
+              </PlanFeatureGate>
 
               <BotSettingSwitch
                 checked={showSupportHint.field.value}

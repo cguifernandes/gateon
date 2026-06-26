@@ -6,6 +6,7 @@ import {
   DashboardConnectedBotsCard,
   DashboardGroupInsights,
   DashboardGroupMemberActivityTable,
+  DashboardPlanUpsellCard,
   DashboardRecentAlertsCard,
   DashboardStripeBillingTable,
 } from "./dashboard-widgets";
@@ -36,23 +37,25 @@ export function DashboardOverview({
   const deliveryRateRounded = Math.round(alertStats.deliveryRate);
 
   return (
-    <div className="min-w-0 space-y-6 sm:space-y-10 pb-10">
+    <div className="min-w-0 space-y-6 pb-10 sm:space-y-10">
       <DashboardFiltersProvider initialGroupId={groups[0]?.id ?? ""}>
-        <DashboardGroupInsights
-          groups={groups}
-          alerts={alerts}
-          globalDeliveryRate={deliveryRateRounded}
-        />
-
-        <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start xl:grid-cols-[minmax(0,1fr)_22.5rem]">
+        <div className="grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_17.5rem] lg:gap-4 xl:grid-cols-[minmax(0,1fr)_20rem] xl:gap-6">
           <section className="flex min-w-0 flex-col space-y-4 sm:space-y-6">
+            <DashboardGroupInsights
+              groups={groups}
+              alerts={alerts}
+              globalDeliveryRate={deliveryRateRounded}
+            />
+
             <div className="flex min-h-[min(16rem,42vh)] flex-col sm:min-h-0 sm:max-h-[min(26rem,60vh)]">
               <DashboardGroupMemberActivityTable groups={groups} />
             </div>
+
             <DashboardStripeBillingTable stripeBilling={stripeBilling} />
           </section>
 
           <section className="flex min-w-0 flex-col space-y-4 sm:space-y-6">
+            <DashboardPlanUpsellCard />
             <DashboardRecentAlertsCard groups={groups} alerts={alerts} />
             <DashboardConnectedBotsCard groups={groups} />
           </section>

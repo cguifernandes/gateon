@@ -3,13 +3,13 @@ import type { PlanId } from "@/lib/zod/plan-schemas";
 export const DEFAULT_PLAN_ID: PlanId = "free";
 
 export const PLAN_GROUP_LIMITS: Record<PlanId, number> = {
-  free: 5,
-  starter: 15,
-  pro: 100,
+  free: 1,
+  starter: 3,
+  pro: 20,
 };
 
 export const PLAN_GROUP_MEMBER_LIMITS: Record<PlanId, number> = {
-  free: 100,
+  free: 75,
   starter: 150,
   pro: 300,
 };
@@ -17,8 +17,8 @@ export const PLAN_GROUP_MEMBER_LIMITS: Record<PlanId, number> = {
 /** Distinct Telegram groups allowed as Stripe /start payment targets per Gateon plan. */
 export const PLAN_STRIPE_PAYMENT_GROUP_LIMITS: Record<PlanId, number> = {
   free: 1,
-  starter: 5,
-  pro: 100,
+  starter: 3,
+  pro: 15,
 };
 
 export const PLAN_LABELS: Record<PlanId, string> = {

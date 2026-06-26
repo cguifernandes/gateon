@@ -53,10 +53,26 @@ describe('GroupLimitService', () => {
 
   it('assertCanConnectNewGroup throws when group limit is reached', async () => {
     usersFindUnique.mockResolvedValue({ planId: 'free' });
-    telegramGroupsCount.mockResolvedValue(5);
+    telegramGroupsCount.mockResolvedValue(1);
 
-    await expect(service.assertCanConnectNewGroup('user-1')).rejects.toBeInstanceOf(
-      ForbiddenException,
-    );
+    await expect(
+      service.assertCanConnectNewGroup('user-1'),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('assertFeature throws when plan does not include feature', async () => {
+    usersFindUnique.mockResolvedValue({ planId: 'free' });
+
+    await expect(
+      service.assertFeature('user-1', 'stripeWebhook'),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('assertFeature passes for included feature', async () => {
+    usersFindUnique.mockResolvedValue({ planId: 'starter' });
+
+    await expect(
+      service.assertFeature('user-1', 'stripeWebhook'),
+    ).resolves.toBeUndefined();
   });
 });

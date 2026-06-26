@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PrivacyConsentBanner } from "@/components/privacy-consent-banner";
 import { getAlerts } from "@/lib/server/data/get-alerts";
 import { getSessionUser } from "@/lib/server/data/get-session";
 import { getStripeBillingStatus } from "@/lib/server/data/get-stripe-billing-status";
@@ -33,6 +34,7 @@ export default async function DashboardPage() {
         alerts={alertsData.alerts}
         stripeBilling={stripeBilling}
       />
+      <PrivacyConsentBanner />
     </div>
   );
 }

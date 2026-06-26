@@ -92,7 +92,7 @@ export function TableResultsEmptyState({
       aria-busy={isRefreshing}
     >
       <EmptyHeader>
-        <EmptyMedia className="size-14 rounded-lg bg-muted">
+        <EmptyMedia className="size-14 rounded-lg">
           <Icon className="text-primary" size={24} />
         </EmptyMedia>
         <EmptyTitle>{copy.title}</EmptyTitle>

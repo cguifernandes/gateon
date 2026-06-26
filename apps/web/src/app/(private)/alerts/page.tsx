@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
-import { LoaderPage } from "@/components/loader-page";
 import { getAlerts } from "@/lib/server/data/get-alerts";
 import { getStripeBillingConnectionOptions } from "@/lib/server/data/get-stripe-billing-connection-options";
 import { getTelegramGroupOptions } from "@/lib/server/data/get-telegram-group-options";
@@ -43,13 +41,11 @@ export default async function AlertsPage() {
         </div>
       ) : null}
 
-      <Suspense fallback={<LoaderPage />}>
-        <AlertsClient
-          initialData={data}
-          groups={groups}
-          stripeConnections={stripeConnections}
-        />
-      </Suspense>
+      <AlertsClient
+        initialData={data}
+        groups={groups}
+        stripeConnections={stripeConnections}
+      />
     </div>
   );
 }

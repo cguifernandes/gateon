@@ -1,5 +1,12 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import {
+  buildPlanFeatureRequiredMessage,
+  type PlanFeatureId,
+  PLAN_FEATURE_REQUIRED_CODE,
+  getMinPlanForFeature,
+  hasPlanFeature,
+} from '../../lib/plan/plan-features';
+import {
   DEFAULT_PLAN_ID,
   getMaxGroupsForPlan,
   getMaxManagedMembersPerGroupForPlan,
@@ -21,6 +28,26 @@ export class GroupLimitService {
     });
 
     return (user?.planId ?? DEFAULT_PLAN_ID) as PlanId;
+  }
+
+  async hasFeature(userId: string, feature: PlanFeatureId): Promise<boolean> {
+    const planId = await this.resolvePlanId(userId);
+    return hasPlanFeature(planId, feature);
+  }
+
+  async assertFeature(userId: string, feature: PlanFeatureId): Promise<void> {
+    const planId = await this.resolvePlanId(userId);
+    if (hasPlanFeature(planId, feature)) {
+      return;
+    }
+
+    throw new ForbiddenException({
+      error: PLAN_FEATURE_REQUIRED_CODE,
+      feature,
+      planId,
+      requiredPlanId: getMinPlanForFeature(feature),
+      message: buildPlanFeatureRequiredMessage(feature, planId),
+    });
   }
 
   async getConnectedGroupCount(userId: string): Promise<number> {

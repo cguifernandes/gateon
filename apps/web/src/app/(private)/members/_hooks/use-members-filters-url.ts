@@ -22,14 +22,17 @@ import {
   parseMembersUrlFiltersFromSearchParams,
 } from "@/lib/members/url-filters";
 import type { StripePayerFilterValue } from "@/lib/stripe/payer-filter";
+import type { MembersPerGroupPageSize } from "@/lib/zod/pagination-schemas";
 
 export type MembersFiltersPopoverControl = {
   draft: MembersUrlFiltersState;
+  draftMembersPerGroupPageSize: MembersPerGroupPageSize;
   setMemberStatus: (value: MemberStatusFilterValue) => void;
   setStripePayer: (value: StripePayerFilterValue) => void;
   setJoinedRange: (value: DateRangeValue) => void;
   setLeftRange: (value: DateRangeValue) => void;
   setTelegramChatIds: (value: string[]) => void;
+  setMembersPerGroupPageSize: (value: MembersPerGroupPageSize) => void;
   syncDraftFromUrl: () => void;
   apply: () => void;
   clear: () => void;
@@ -38,7 +41,15 @@ export type MembersFiltersPopoverControl = {
   appliedActiveCount: number;
 };
 
-export function useMembersFiltersUrl() {
+type UseMembersFiltersUrlOptions = {
+  membersPerGroupPageSize: MembersPerGroupPageSize;
+  onApplyMembersPerGroupPageSize: (value: MembersPerGroupPageSize) => void;
+};
+
+export function useMembersFiltersUrl({
+  membersPerGroupPageSize,
+  onApplyMembersPerGroupPageSize,
+}: UseMembersFiltersUrlOptions) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -51,6 +62,8 @@ export function useMembersFiltersUrl() {
 
   const [draftFilters, setDraftFilters] =
     useState<MembersUrlFiltersState>(urlFilters);
+  const [draftMembersPerGroupPageSize, setDraftMembersPerGroupPageSize] =
+    useState<MembersPerGroupPageSize>(membersPerGroupPageSize);
   const [search, setSearch] = useState("");
   const { isFiltersPending, markFiltersPending } = usePendingUrlFiltersApply(
     urlFilters,
@@ -60,6 +73,10 @@ export function useMembersFiltersUrl() {
   useEffect(() => {
     setDraftFilters(urlFilters);
   }, [urlFilters]);
+
+  useEffect(() => {
+    setDraftMembersPerGroupPageSize(membersPerGroupPageSize);
+  }, [membersPerGroupPageSize]);
 
   const pushUrlFilters = useCallback(
     (next: MembersUrlFiltersState) => {
@@ -75,7 +92,8 @@ export function useMembersFiltersUrl() {
 
   const syncDraftFromUrl = useCallback(() => {
     setDraftFilters(urlFilters);
-  }, [urlFilters]);
+    setDraftMembersPerGroupPageSize(membersPerGroupPageSize);
+  }, [membersPerGroupPageSize, urlFilters]);
 
   const setMemberStatus = useCallback(
     (memberStatus: MemberStatusFilterValue) => {
@@ -100,16 +118,35 @@ export function useMembersFiltersUrl() {
     setDraftFilters((current) => ({ ...current, telegramChatIds }));
   }, []);
 
+  const setMembersPerGroupPageSize = useCallback(
+    (next: MembersPerGroupPageSize) => {
+      setDraftMembersPerGroupPageSize(next);
+    },
+    [],
+  );
+
   const apply = useCallback(() => {
     markFiltersPending(draftFilters);
     pushUrlFilters(draftFilters);
-  }, [draftFilters, markFiltersPending, pushUrlFilters]);
+
+    if (draftMembersPerGroupPageSize !== membersPerGroupPageSize) {
+      onApplyMembersPerGroupPageSize(draftMembersPerGroupPageSize);
+    }
+  }, [
+    draftFilters,
+    draftMembersPerGroupPageSize,
+    markFiltersPending,
+    membersPerGroupPageSize,
+    onApplyMembersPerGroupPageSize,
+    pushUrlFilters,
+  ]);
 
   const clear = useCallback(() => {
     setDraftFilters(EMPTY_MEMBERS_URL_FILTERS);
+    setDraftMembersPerGroupPageSize(membersPerGroupPageSize);
     markFiltersPending(EMPTY_MEMBERS_URL_FILTERS);
     pushUrlFilters(EMPTY_MEMBERS_URL_FILTERS);
-  }, [markFiltersPending, pushUrlFilters]);
+  }, [markFiltersPending, membersPerGroupPageSize, pushUrlFilters]);
 
   const clearSearch = useCallback(() => {
     setSearch("");
@@ -117,15 +154,19 @@ export function useMembersFiltersUrl() {
 
   const filtersPopover: MembersFiltersPopoverControl = {
     draft: draftFilters,
+    draftMembersPerGroupPageSize,
     setMemberStatus,
     setStripePayer,
     setJoinedRange,
     setLeftRange,
     setTelegramChatIds,
+    setMembersPerGroupPageSize,
     syncDraftFromUrl,
     apply,
     clear,
-    hasPendingChanges: !areMembersUrlFiltersEqual(draftFilters, urlFilters),
+    hasPendingChanges:
+      !areMembersUrlFiltersEqual(draftFilters, urlFilters) ||
+      draftMembersPerGroupPageSize !== membersPerGroupPageSize,
     isFiltersPending,
     appliedActiveCount: countActiveMembersUrlFilters(urlFilters),
   };

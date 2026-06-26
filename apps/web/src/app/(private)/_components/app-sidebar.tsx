@@ -7,10 +7,6 @@ import { AccountPlanCtaButton } from "@/components/account-plan-cta-button";
 import { GateonLogo } from "@/components/gateon-logo";
 import { BellIcon, type BellIconHandle } from "@/components/icons/bell";
 import {
-  FileTextIcon,
-  type FileTextIconHandle,
-} from "@/components/icons/file-text";
-import {
   MonitorIcon,
   type MonitorIconHandle,
 } from "@/components/icons/monitor";
@@ -52,7 +48,6 @@ type AnimatedIconKey =
   | "groups"
   | "alerts"
   | "settings"
-  | "terms"
   | "members"
   | "plug"
   | "user";
@@ -106,16 +101,6 @@ const navSections: NavSection[] = [
         href: "/settings",
         label: "Configurações",
         iconKey: "settings",
-      },
-    ],
-  },
-  {
-    label: "Legal",
-    items: [
-      {
-        href: "/terms",
-        label: "Termos",
-        iconKey: "terms",
       },
     ],
   },
@@ -174,16 +159,6 @@ function SidebarAnimatedIcon({
           ref={iconRef as RefObject<SettingsIconHandle | null>}
           size={16}
           isAnimateOnView={false}
-          className={className}
-        />
-      );
-    case "terms":
-      return (
-        <FileTextIcon
-          ref={iconRef as RefObject<FileTextIconHandle | null>}
-          size={16}
-          isAnimateOnView={false}
-          animateOnHover={false}
           className={className}
         />
       );

@@ -32,6 +32,7 @@ export async function resolveTelegramGroupsList(
     membersView,
     Boolean(query.includeMembersPreview),
     memberWhere,
+    query,
   );
   const mappedGroups = await mapGroupsToResponse(
     deps,

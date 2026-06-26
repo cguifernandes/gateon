@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -9,17 +10,30 @@ import {
   AlertDestinationType,
   AlertRunStatus,
   AlertStatus,
+  AlertTriggerType,
   Prisma,
   StripeBillingConnectionStatus,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { GroupLimitService } from '../group-limits/group-limits.service';
 import { TelegramService } from '../telegram/telegram.service';
 import {
   ALERT_DELIVERY_NO_TARGETS_MESSAGE,
   getAlertGroupDeliveryBlockReason,
 } from '../../lib/alerts/delivery-messages';
 import { buildDateParamRange } from '../../lib/query/date-param-range';
-import { filterStripeAutomationAlerts, isStripeAutomationTriggerType } from '../../lib/stripe/automation-alerts';
+import {
+  filterStripeAutomationAlerts,
+  isStripeAutomationTriggerType,
+} from '../../lib/stripe/automation-alerts';
+import {
+  getMaxAlertTemplatesForPlan,
+  getMinPlanForFeature,
+  isAlertTriggerAllowedForPlan,
+  PLAN_FEATURE_REQUIRED_CODE,
+  buildPlanFeatureRequiredMessage,
+  type PlanFeatureId,
+} from '../../lib/plan/plan-features';
 import {
   alertInternalTriggerSchema,
   type AlertContentInput,
@@ -31,7 +45,10 @@ import {
   type AlertUpsertInput,
   toAlertTriggerTypeInput,
 } from '../../lib/zod/alert-schemas';
-import { buildPaginationMeta, resolvePagination } from '../../lib/query/pagination';
+import {
+  buildPaginationMeta,
+  resolvePagination,
+} from '../../lib/query/pagination';
 
 const DEFAULT_RATE_LIMIT_PER_MINUTE = 20;
 
@@ -57,6 +74,7 @@ export class AlertsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly telegram: TelegramService,
+    private readonly groupLimit: GroupLimitService,
   ) {}
 
   async listAlerts(userId: string, query: AlertListQueryInput) {
@@ -161,12 +179,7 @@ export class AlertsService {
         deliveryRate,
         draftCount,
       },
-      pagination: buildPaginationMeta(
-        page,
-        pageSize,
-        totalItems,
-        query.all,
-      ),
+      pagination: buildPaginationMeta(page, pageSize, totalItems, query.all),
     };
   }
 
@@ -193,6 +206,7 @@ export class AlertsService {
     const normalizedInput = this.normalizeStripeAutomationInput(
       this.normalizeQuickAlertInput(this.normalizeTopicSelection(input)),
     );
+    await this.assertAlertTriggerAllowed(userId, normalizedInput.triggerType);
     await this.assertGroupsAccess(
       userId,
       this.getAlertGroupIds(normalizedInput),
@@ -254,6 +268,7 @@ export class AlertsService {
     const normalizedInput = this.normalizeStripeAutomationInput(
       this.normalizeQuickAlertInput(this.normalizeTopicSelection(input)),
     );
+    await this.assertAlertTriggerAllowed(userId, normalizedInput.triggerType);
     await this.assertGroupsAccess(
       userId,
       this.getAlertGroupIds(normalizedInput),
@@ -383,6 +398,22 @@ export class AlertsService {
   }
 
   async createTemplate(userId: string, input: AlertTemplateCreateInput) {
+    const planId = await this.groupLimit.resolvePlanId(userId);
+    const maxTemplates = getMaxAlertTemplatesForPlan(planId);
+    if (maxTemplates !== null) {
+      const count = await this.prisma.telegramAlertTemplates.count({
+        where: { userId },
+      });
+      if (count >= maxTemplates) {
+        throw new ForbiddenException({
+          error: PLAN_FEATURE_REQUIRED_CODE,
+          feature: 'advancedTelegramAlerts',
+          planId,
+          message: `O plano gratuito permite até ${maxTemplates} modelos de alerta. Faça upgrade para criar mais.`,
+        });
+      }
+    }
+
     return this.prisma.telegramAlertTemplates.create({
       data: {
         userId,
@@ -910,6 +941,41 @@ export class AlertsService {
 
   private delay(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private resolveAlertTriggerFeature(
+    triggerType: AlertTriggerType,
+  ): PlanFeatureId {
+    if (triggerType.startsWith('STRIPE_')) {
+      return 'stripeAlerts';
+    }
+    if (triggerType === 'FORUM_TOPIC_CREATED') {
+      return 'forumTopicAlerts';
+    }
+    return 'advancedTelegramAlerts';
+  }
+
+  private async assertAlertTriggerAllowed(
+    userId: string,
+    triggerType: AlertTriggerType | null | undefined,
+  ) {
+    if (!triggerType) {
+      return;
+    }
+
+    const planId = await this.groupLimit.resolvePlanId(userId);
+    if (isAlertTriggerAllowedForPlan(planId, triggerType)) {
+      return;
+    }
+
+    const feature = this.resolveAlertTriggerFeature(triggerType);
+    throw new ForbiddenException({
+      error: PLAN_FEATURE_REQUIRED_CODE,
+      feature,
+      planId,
+      requiredPlanId: getMinPlanForFeature(feature),
+      message: buildPlanFeatureRequiredMessage(feature, planId),
+    });
   }
 
   private async assertAlertAccess(userId: string, alertId: string) {

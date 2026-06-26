@@ -1,14 +1,13 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { AlertDestinationType, AlertStatus } from '@prisma/client';
-import {
-  alertUpsertSchema,
-} from '../../lib/zod/alert-schemas';
+import { alertUpsertSchema } from '../../lib/zod/alert-schemas';
 import {
   filterStripeAutomationAlerts,
   isStripeAutomationTriggerType,
 } from '../../lib/stripe/automation-alerts';
 import { AlertsService } from './alerts.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { GroupLimitService } from '../group-limits/group-limits.service';
 import { TelegramService } from '../telegram/telegram.service';
 
 const stripeTriggers = [
@@ -116,6 +115,13 @@ describe('AlertsService.triggerAutomationAlertsForUser', () => {
         {
           provide: TelegramService,
           useValue: {},
+        },
+        {
+          provide: GroupLimitService,
+          useValue: {
+            resolvePlanId: jest.fn().mockResolvedValue('starter'),
+            assertFeature: jest.fn().mockResolvedValue(undefined),
+          },
         },
       ],
     }).compile();

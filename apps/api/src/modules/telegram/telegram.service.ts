@@ -34,6 +34,11 @@ import {
   isTelegramMemberGoneStatus,
   isTelegramMemberLookupGoneError,
 } from '../../lib/telegram/member-presence';
+import {
+  BULK_MEMBER_ACTION_BATCH_SIZE,
+  chunkValues,
+  resolveMemberBulkActionUserIds,
+} from '../../lib/telegram/member-bulk-action-targets';
 import type { TelegramGroupsListQueryInput } from '../../lib/zod/telegram-groups-list-query-schemas';
 import { resolveTelegramGroupsList } from '../../lib/telegram/groups-list/resolver';
 
@@ -577,18 +582,71 @@ export class TelegramService {
       throw new NotFoundException('Telegram group connection not found.');
     }
 
-    const uniqueTelegramUserIds = [
-      ...new Set(input.telegramUserIds.map((id) => id.trim()).filter(Boolean)),
-    ];
+    const uniqueTelegramUserIds = input.allMatching
+      ? [
+          ...new Set(
+            await resolveMemberBulkActionUserIds(
+              this.prisma,
+              groupId,
+              input.allMatching.scope,
+            ),
+          ),
+        ]
+      : [
+          ...new Set(
+            (input.telegramUserIds ?? [])
+              .map((id) => id.trim())
+              .filter(Boolean),
+          ),
+        ];
 
     if (uniqueTelegramUserIds.length === 0) {
       throw new BadRequestException('No member IDs provided.');
     }
 
+    if (uniqueTelegramUserIds.length > 1) {
+      await this.groupLimit.assertFeature(userId, 'bulkMemberActions');
+    }
+
+    const failures: TelegramMemberActionFailure[] = [];
+    let successCount = 0;
+
+    for (const batch of chunkValues(
+      uniqueTelegramUserIds,
+      BULK_MEMBER_ACTION_BATCH_SIZE,
+    )) {
+      const batchResult = await this.executeMemberActionBatch({
+        group,
+        groupId,
+        input,
+        telegramUserIds: batch,
+      });
+      successCount += batchResult.successCount;
+      failures.push(...batchResult.failures);
+    }
+
+    return {
+      successCount,
+      failedCount: failures.length,
+      failures,
+    };
+  }
+
+  private async executeMemberActionBatch(input: {
+    group: {
+      telegramChatId: string;
+      type: string;
+    };
+    groupId: string;
+    input: TelegramGroupMemberBulkActionInput;
+    telegramUserIds: string[];
+  }): Promise<TelegramMemberBulkActionResult> {
+    const { group, groupId, telegramUserIds } = input;
+
     const trackedMembers = await this.prisma.telegramGroupMembers.findMany({
       where: {
         telegramGroupId: groupId,
-        telegramUserId: { in: uniqueTelegramUserIds },
+        telegramUserId: { in: telegramUserIds },
       },
       select: {
         telegramUserId: true,
@@ -604,7 +662,7 @@ export class TelegramService {
     const failures: TelegramMemberActionFailure[] = [];
     const successIds: string[] = [];
 
-    for (const telegramUserId of uniqueTelegramUserIds) {
+    for (const telegramUserId of telegramUserIds) {
       const tracked = trackedByUserId.get(telegramUserId);
       if (!tracked) {
         failures.push({
@@ -614,7 +672,7 @@ export class TelegramService {
         continue;
       }
 
-      if (input.action !== 'notice' && tracked.isOwner) {
+      if (input.input.action !== 'notice' && tracked.isOwner) {
         failures.push({
           telegramUserId,
           reason:
@@ -623,7 +681,7 @@ export class TelegramService {
         continue;
       }
 
-      if (input.action !== 'notice' && tracked.leftAt !== null) {
+      if (input.input.action !== 'notice' && tracked.leftAt !== null) {
         failures.push({
           telegramUserId,
           reason: 'Membro já saiu do grupo.',
@@ -632,11 +690,11 @@ export class TelegramService {
       }
 
       const actionResult = await this.executeGroupMemberAction({
-        action: input.action,
+        action: input.input.action,
         telegramChatId: group.telegramChatId,
         chatType: group.type,
         telegramUserId,
-        text: input.text?.trim() || DEFAULT_MEMBER_NOTICE_TEXT,
+        text: input.input.text?.trim() || DEFAULT_MEMBER_NOTICE_TEXT,
       });
 
       if (!actionResult.ok) {
@@ -647,7 +705,7 @@ export class TelegramService {
         continue;
       }
 
-      if (input.action === 'remove' || input.action === 'ban') {
+      if (input.input.action === 'remove' || input.input.action === 'ban') {
         await this.prisma.telegramGroupMembers.updateMany({
           where: {
             telegramGroupId: groupId,
@@ -1924,7 +1982,6 @@ export class TelegramService {
       update: {
         title: chat.title,
         type: chat.type,
-        addedByTelegramUserId: actor.id,
         botStatus,
       },
       create: {
@@ -1932,7 +1989,6 @@ export class TelegramService {
         telegramChatId: chat.id,
         title: chat.title,
         type: chat.type,
-        addedByTelegramUserId: actor.id,
         botStatus,
       },
       select: {

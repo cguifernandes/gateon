@@ -74,6 +74,9 @@ export function useServerPaginationFetch<TResponse>({
   useEffect(() => {
     if (previousResetKeyRef.current === undefined) {
       previousResetKeyRef.current = resetKey;
+      if (initialData == null) {
+        void loadPage(initialPage, resetKey);
+      }
       return;
     }
 
@@ -81,7 +84,7 @@ export function useServerPaginationFetch<TResponse>({
       previousResetKeyRef.current = resetKey;
       void loadPage(1, resetKey);
     }
-  }, [resetKey, loadPage]);
+  }, [resetKey, loadPage, initialData, initialPage]);
 
   useEffect(
     () => () => {

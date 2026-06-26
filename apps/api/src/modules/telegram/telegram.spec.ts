@@ -1,4 +1,5 @@
 import { telegramGroupsListQuerySchema } from '../../lib/zod/telegram-groups-list-query-schemas';
+import { telegramGroupMemberBulkActionSchema } from '../../lib/zod/telegram-member-actions-schemas';
 import { telegramSubscriptionCancelPortalSchema } from '../../lib/zod/telegram-subscription-schemas';
 import {
   isTelegramMemberGoneStatus,
@@ -75,6 +76,53 @@ describe('telegramGroupsListQuerySchema', () => {
     if (result.success) {
       expect(result.data.stripePayer).toBe('all');
     }
+  });
+
+  it('parses members pagination query params', () => {
+    const result = telegramGroupsListQuerySchema.safeParse({
+      page: '1',
+      pageSize: '4',
+      view: 'members',
+      membersPerGroupPageSize: '75',
+      membersPages: 'group-1:2,group-2:1',
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.membersPerGroupPageSize).toBe(75);
+      expect(result.data.membersPages).toEqual({
+        'group-1': 2,
+        'group-2': 1,
+      });
+    }
+  });
+});
+
+describe('telegramGroupMemberBulkActionSchema', () => {
+  it('accepts explicit telegram user ids', () => {
+    const result = telegramGroupMemberBulkActionSchema.safeParse({
+      action: 'remove',
+      telegramUserIds: ['123', '456'],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts allMatching scope for whole-group actions', () => {
+    const result = telegramGroupMemberBulkActionSchema.safeParse({
+      action: 'remove',
+      allMatching: { scope: 'active_removable' },
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects payloads without ids or allMatching', () => {
+    const result = telegramGroupMemberBulkActionSchema.safeParse({
+      action: 'ban',
+    });
+
+    expect(result.success).toBe(false);
   });
 });
 

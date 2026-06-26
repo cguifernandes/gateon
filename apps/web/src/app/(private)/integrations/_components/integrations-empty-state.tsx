@@ -27,7 +27,7 @@ export function IntegrationsEmptyState({
   return (
     <Empty className="rounded-xl border border-border">
       <EmptyHeader>
-        <EmptyMedia className="size-14 rounded-lg bg-primary/15 ring-1 ring-primary/25">
+        <EmptyMedia className="size-14 rounded-lg">
           <PlugIcon className="text-primary" size={24} aria-hidden />
         </EmptyMedia>
         {canConnect ? (

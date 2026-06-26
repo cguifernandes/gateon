@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { CopyToClipboardButton } from "@/components/copy-to-clipboard-button";
+import { PlanFeatureGate } from "@/components/plan-feature-gate";
 import {
   Accordion,
   AccordionContent,
@@ -85,7 +86,7 @@ export function StripeWebhookSetup({
 
   return (
     <Accordion className="gap-2">
-      <AccordionItem className="bg-transparent!" value="realtime-alerts">
+      <AccordionItem value="realtime-alerts">
         <AccordionTrigger className="font-heading font-medium text-foreground text-sm hover:no-underline">
           <span className="flex flex-1 items-center justify-between gap-2 pr-2">
             <span className="text-base">Alertas em tempo real</span>
@@ -99,125 +100,131 @@ export function StripeWebhookSetup({
         </AccordionTrigger>
 
         <AccordionContent className="space-y-4 px-1.5 pt-0.5 pb-4">
-          {!connection.webhookConfigured ? (
-            guideExpanded ? (
-              <div className="space-y-3">
-                <StripeWebhookGuideContent />
-                <div className="flex w-full justify-center">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setGuideExpanded(false)}
-                  >
-                    Ver menos
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="relative">
-                <section
-                  className={cn(
-                    "space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-4",
-                  )}
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-heading font-medium text-foreground text-sm">
-                      Por que configurar o webhook?
-                    </p>
-                    <Badge variant="outline" className="text-[10px]">
-                      Recomendado
-                    </Badge>
+          <PlanFeatureGate feature="stripeWebhook">
+            <div className="space-y-4">
+              {!connection.webhookConfigured ? (
+                guideExpanded ? (
+                  <div className="space-y-3">
+                    <StripeWebhookGuideContent />
+                    <div className="flex w-full justify-center">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setGuideExpanded(false)}
+                      >
+                        Ver menos
+                      </Button>
+                    </div>
                   </div>
-                  <p className="text-muted-foreground text-xs leading-relaxed">
-                    A chave consulta dados na sincronização; o webhook avisa o
-                    Gateon na hora. Na Stripe, crie o endpoint com a URL abaixo
-                    e selecione os eventos de assinatura, fatura e checkout.
-                  </p>
-                  <p className="text-muted-foreground text-xs leading-relaxed">
-                    Sem webhook, alertas automáticos só disparam ao sincronizar.
-                    Com webhook ativo, chegam em tempo real ao Telegram.
-                  </p>
-                </section>
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-x-0 bottom-0 h-14 rounded-b-xl bg-linear-to-t from-background via-background/80 to-transparent backdrop-blur-[2px]"
-                />
-                <div className="absolute inset-x-0 bottom-0 flex justify-center pb-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setGuideExpanded(true)}
-                  >
-                    Ver mais
-                  </Button>
+                ) : (
+                  <div className="relative">
+                    <section
+                      className={cn(
+                        "space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-4",
+                      )}
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-heading font-medium text-foreground text-sm">
+                          Por que configurar o webhook?
+                        </p>
+                        <Badge variant="outline" className="text-[10px]">
+                          Recomendado
+                        </Badge>
+                      </div>
+                      <p className="text-muted-foreground text-xs leading-relaxed">
+                        A chave consulta dados na sincronização; o webhook avisa
+                        o Gateon na hora. Na Stripe, crie o endpoint com a URL
+                        abaixo e selecione os eventos de assinatura, fatura e
+                        checkout.
+                      </p>
+                      <p className="text-muted-foreground text-xs leading-relaxed">
+                        Sem webhook, alertas automáticos só disparam ao
+                        sincronizar. Com webhook ativo, chegam em tempo real ao
+                        Telegram.
+                      </p>
+                    </section>
+                    <div
+                      aria-hidden
+                      className="pointer-events-none absolute inset-x-0 bottom-0 h-14 rounded-b-xl bg-linear-to-t from-background via-background/80 to-transparent backdrop-blur-[2px]"
+                    />
+                    <div className="absolute inset-x-0 bottom-0 flex justify-center pb-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setGuideExpanded(true)}
+                      >
+                        Ver mais
+                      </Button>
+                    </div>
+                  </div>
+                )
+              ) : null}
+
+              <div className="space-y-1">
+                <Label className="text-muted-foreground text-xs">
+                  URL do endpoint (cole na Stripe)
+                </Label>
+                <div className="flex min-w-0 items-center gap-2">
+                  <Input
+                    readOnly
+                    value={connection.webhookEndpointUrl}
+                    className="min-w-0 font-mono"
+                  />
+                  <CopyToClipboardButton
+                    value={connection.webhookEndpointUrl}
+                    label="Copiar URL"
+                    successToast={{
+                      title: "URL copiada",
+                      description: "Cole no painel de webhooks da Stripe.",
+                    }}
+                    errorToast={{ title: "Não foi possível copiar a URL" }}
+                  />
                 </div>
               </div>
-            )
-          ) : null}
 
-          <div className="space-y-1">
-            <Label className="text-muted-foreground text-xs">
-              URL do endpoint (cole na Stripe)
-            </Label>
-            <div className="flex min-w-0 items-center gap-2">
-              <Input
-                readOnly
-                value={connection.webhookEndpointUrl}
-                className="min-w-0 font-mono"
-              />
-              <CopyToClipboardButton
-                value={connection.webhookEndpointUrl}
-                label="Copiar URL"
-                successToast={{
-                  title: "URL copiada",
-                  description: "Cole no painel de webhooks da Stripe.",
-                }}
-                errorToast={{ title: "Não foi possível copiar a URL" }}
-              />
+              {!connection.webhookConfigured ? (
+                <div className="space-y-2">
+                  <Label htmlFor={`webhook-secret-${connection.id}`}>
+                    Signing secret da Stripe (whsec_...)
+                  </Label>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Input
+                      id={`webhook-secret-${connection.id}`}
+                      type="text"
+                      inputMode="text"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
+                      data-1p-ignore
+                      data-lpignore="true"
+                      data-form-type="other"
+                      placeholder="whsec_..."
+                      value={secret}
+                      onChange={(event) => setSecret(event.target.value)}
+                      className="min-w-0 font-mono [-webkit-text-security:disc]"
+                    />
+                    <Button
+                      type="button"
+                      className="h-10 shrink-0 sm:w-40"
+                      loading={isSaving}
+                      onClick={saveWebhookSecret}
+                    >
+                      Ativar
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-xs leading-relaxed">
+                  Eventos de assinatura e fatura disparam alertas
+                  automaticamente. Use &quot;Sincronizar&quot; apenas para
+                  atualizar métricas ou recuperar eventos perdidos.
+                </p>
+              )}
             </div>
-          </div>
-
-          {!connection.webhookConfigured ? (
-            <div className="space-y-2">
-              <Label htmlFor={`webhook-secret-${connection.id}`}>
-                Signing secret da Stripe (whsec_...)
-              </Label>
-              <div className="flex min-w-0 items-center gap-2">
-                <Input
-                  id={`webhook-secret-${connection.id}`}
-                  type="text"
-                  inputMode="text"
-                  autoComplete="off"
-                  autoCorrect="off"
-                  autoCapitalize="off"
-                  spellCheck={false}
-                  data-1p-ignore
-                  data-lpignore="true"
-                  data-form-type="other"
-                  placeholder="whsec_..."
-                  value={secret}
-                  onChange={(event) => setSecret(event.target.value)}
-                  className="min-w-0 font-mono [-webkit-text-security:disc]"
-                />
-                <Button
-                  type="button"
-                  className="h-10 shrink-0 sm:w-40"
-                  loading={isSaving}
-                  onClick={saveWebhookSecret}
-                >
-                  Ativar
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <p className="text-muted-foreground text-xs leading-relaxed">
-              Eventos de assinatura e fatura disparam alertas automaticamente.
-              Use &quot;Sincronizar&quot; apenas para atualizar métricas ou
-              recuperar eventos perdidos.
-            </p>
-          )}
+          </PlanFeatureGate>
         </AccordionContent>
       </AccordionItem>
     </Accordion>

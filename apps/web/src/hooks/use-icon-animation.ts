@@ -22,9 +22,11 @@ interface UseIconAnimationProps {
   onMouseLeave?: (e: MouseEvent<HTMLDivElement>) => void;
 }
 
-function runAfterMount(run: () => void | Promise<void>) {
+function runAfterPaint(run: () => void | Promise<void>) {
   requestAnimationFrame(() => {
-    void run();
+    requestAnimationFrame(() => {
+      void run();
+    });
   });
 }
 
@@ -40,6 +42,7 @@ export function useIconAnimation<T extends IconAnimationHandle>(
   const controls = useAnimation();
   const isControlledRef = useRef(false);
   const isMountedRef = useRef(false);
+  const animationGenerationRef = useRef(0);
   const refElement = useRef<HTMLDivElement>(null);
   const shouldAnimateOnView = isAnimateOnView;
   const isInView = useInView(refElement, {
@@ -48,25 +51,46 @@ export function useIconAnimation<T extends IconAnimationHandle>(
     margin: shouldAnimateOnView ? "0px" : "-100000px 0px",
   });
 
+  const safeStart = useCallback(
+    async (variant: string, generation = animationGenerationRef.current) => {
+      if (
+        !isMountedRef.current ||
+        generation !== animationGenerationRef.current
+      ) {
+        return;
+      }
+
+      try {
+        await controls.start(variant);
+      } catch {
+        // Motion throws when controls run before mount or after unmount.
+      }
+    },
+    [controls],
+  );
+
   useEffect(() => {
     isMountedRef.current = true;
+
     return () => {
       isMountedRef.current = false;
+      animationGenerationRef.current += 1;
+      controls.stop();
     };
-  }, []);
+  }, [controls]);
 
   useImperativeHandle(ref, () => {
     return {
       startAnimation: () => {
         isControlledRef.current = true;
-        runAfterMount(() => controls.start("animate"));
+        runAfterPaint(() => safeStart("animate"));
       },
       stopAnimation: () => {
         isControlledRef.current = true;
-        runAfterMount(() => controls.start("normal"));
+        runAfterPaint(() => safeStart("normal"));
       },
     } as unknown as T;
-  }, [controls]);
+  }, [safeStart]);
 
   useEffect(() => {
     if (
@@ -78,19 +102,21 @@ export function useIconAnimation<T extends IconAnimationHandle>(
       return;
     }
 
+    const generation = animationGenerationRef.current;
     let cancelled = false;
 
-    runAfterMount(async () => {
-      if (cancelled || !isMountedRef.current) return;
-      await controls.start("animate");
-      if (cancelled || !isMountedRef.current) return;
-      await controls.start("normal");
+    runAfterPaint(async () => {
+      if (cancelled) return;
+      await safeStart("animate", generation);
+      if (cancelled) return;
+      await safeStart("normal", generation);
     });
 
     return () => {
       cancelled = true;
+      animationGenerationRef.current += 1;
     };
-  }, [controls, isInView, isAnimateOnView]);
+  }, [isInView, isAnimateOnView, safeStart]);
 
   const handleMouseEnter = useCallback(
     (e: MouseEvent<HTMLDivElement>) => {
@@ -99,12 +125,12 @@ export function useIconAnimation<T extends IconAnimationHandle>(
         return;
       }
       if (animateOnHover) {
-        runAfterMount(() => controls.start("animate"));
+        runAfterPaint(() => safeStart("animate"));
       } else {
         onMouseEnter?.(e);
       }
     },
-    [animateOnHover, controls, onMouseEnter],
+    [animateOnHover, onMouseEnter, safeStart],
   );
 
   const handleMouseLeave = useCallback(
@@ -114,12 +140,12 @@ export function useIconAnimation<T extends IconAnimationHandle>(
         return;
       }
       if (animateOnHover) {
-        runAfterMount(() => controls.start("normal"));
+        runAfterPaint(() => safeStart("normal"));
       } else {
         onMouseLeave?.(e);
       }
     },
-    [animateOnHover, controls, onMouseLeave],
+    [animateOnHover, onMouseLeave, safeStart],
   );
 
   return {

@@ -2,6 +2,8 @@ import type { Prisma, PrismaClient } from '@prisma/client';
 import type { LinkedStripePlanSummary } from '../../stripe/telegram-member-links';
 
 export const MEMBER_PREVIEW_LIMIT = 50;
+export const MEMBERS_PER_GROUP_PAGE_SIZE_DEFAULT = 25;
+export const MEMBERS_PER_GROUP_PAGE_SIZE_MAX = 75;
 
 export type TelegramGroupsListPrisma = Pick<
   PrismaClient,

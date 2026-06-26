@@ -3,13 +3,13 @@ import type { PlanId } from '../zod/plan-schemas';
 export const DEFAULT_PLAN_ID: PlanId = 'free';
 
 export const PLAN_GROUP_LIMITS: Record<PlanId, number> = {
-  free: 5,
-  starter: 15,
-  pro: 100,
+  free: 1,
+  starter: 3,
+  pro: 20,
 };
 
 export const PLAN_GROUP_MEMBER_LIMITS: Record<PlanId, number> = {
-  free: 100,
+  free: 75,
   starter: 150,
   pro: 300,
 };

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useId, useMemo } from "react";
-import { RocketIcon } from "@/components/icons/rocket";
 import { UsersIcon } from "@/components/icons/users";
 import { ImageComponent } from "@/components/image-component";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +14,6 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -28,15 +26,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useGroupLimit } from "@/contexts/group-limit-context";
-import {
-  getMaxGroupsForPlan,
-  getMaxManagedMembersPerGroupForPlan,
-  PLAN_LABELS,
-} from "@/lib/plan/limits";
 import { cn, withCacheBuster } from "@/lib/utils";
 import type { AlertSummaryDto } from "@/lib/zod/alert-schemas";
-import type { PlanId } from "@/lib/zod/plan-schemas";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
 import { useDashboardFilters } from "./dashboard-filters-context";
 import {
@@ -83,13 +74,6 @@ const INSIGHT_CARD_STYLES = {
     surface: "bg-linear-to-br from-card via-card to-violet-500/25",
   },
 } as const;
-
-const UPGRADE_PLAN_ID: PlanId = "starter";
-const MOCK_PLAN_PRICES: Record<PlanId, string> = {
-  free: "R$ 0",
-  starter: "R$ 49",
-  pro: "R$ 129",
-};
 
 type InsightSparklineProps = {
   data: number[];
@@ -216,125 +200,6 @@ function InsightSparkline({
   );
 }
 
-const PLAN_CARD_SHELL_CLASS =
-  "relative flex h-fit w-full flex-col gap-5 overflow-hidden rounded-xl p-5";
-
-function PlanUpsellCard() {
-  const { planId, planLabel, connectedCount, maxGroups, remaining, isAtLimit } =
-    useGroupLimit();
-  const isFree = planId === "free";
-  const upgradeLabel = PLAN_LABELS[UPGRADE_PLAN_ID];
-  const maxMembersPerGroup = getMaxManagedMembersPerGroupForPlan(planId);
-  const groupUsagePercent =
-    maxGroups > 0
-      ? Math.min(100, Math.round((connectedCount / maxGroups) * 100))
-      : 0;
-
-  if (!isFree) {
-    const upgradePlanId = planId === "starter" ? ("pro" as const) : null;
-
-    return (
-      <div
-        className={cn(PLAN_CARD_SHELL_CLASS, "border border-border bg-card")}
-      >
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1">
-            <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-              Seu plano
-            </p>
-            <p className="font-heading text-2xl font-bold text-foreground">
-              {planLabel}
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2 text-sm">
-              <span className="text-muted-foreground">Grupos conectados</span>
-              <span className="font-medium text-foreground tabular-nums">
-                {connectedCount}/{maxGroups}
-              </span>
-            </div>
-            <Progress value={groupUsagePercent} className="h-1.5" />
-            <p className="text-muted-foreground text-xs leading-relaxed">
-              {isAtLimit
-                ? "Limite de grupos do plano atingido."
-                : `${remaining} ${remaining === 1 ? "vaga disponível" : "vagas disponíveis"}.`}
-            </p>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-border bg-muted/50 px-3 py-2.5">
-          <p className="text-muted-foreground text-xs">Por grupo</p>
-          <p className="mt-0.5 font-medium text-foreground text-sm">
-            Até {maxMembersPerGroup.toLocaleString("pt-BR")} membros rastreados
-          </p>
-        </div>
-
-        {upgradePlanId ? (
-          <p className="text-muted-foreground text-xs leading-relaxed">
-            Precisa escalar? O plano {PLAN_LABELS[upgradePlanId]} inclui até{" "}
-            {getMaxGroupsForPlan(upgradePlanId)} grupos e{" "}
-            {getMaxManagedMembersPerGroupForPlan(upgradePlanId)} membros por
-            grupo.
-          </p>
-        ) : null}
-
-        <Link
-          href="/settings"
-          className={cn(buttonVariants({ variant: "outline" }), "w-full")}
-        >
-          Gerenciar assinatura
-        </Link>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className={cn(
-        PLAN_CARD_SHELL_CLASS,
-        "text-primary-foreground bg-linear-to-br from-primary via-primary to-primary/50",
-      )}
-    >
-      <div
-        className="pointer-events-none absolute -right-10 -top-10 size-40 rounded-full bg-white/10 blur-2xl"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute -bottom-12 -left-8 size-36 rounded-full bg-white/10 blur-2xl"
-        aria-hidden
-      />
-      <div className="relative">
-        <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur-sm">
-          <RocketIcon size={14} isAnimateOnView />
-          Plano {upgradeLabel}
-        </span>
-        <p className="mt-4 font-heading text-2xl font-bold leading-tight">
-          Escale sua operação com mais grupos e membros
-        </p>
-        <p className="mt-2 text-primary-foreground/85 text-sm leading-relaxed">
-          Até {getMaxGroupsForPlan(UPGRADE_PLAN_ID)} grupos e{" "}
-          {getMaxManagedMembersPerGroupForPlan(UPGRADE_PLAN_ID)} membros
-          rastreados por grupo.
-        </p>
-        <p className="mt-4 text-3xl font-bold tabular-nums">
-          {MOCK_PLAN_PRICES[UPGRADE_PLAN_ID]}
-          <span className="text-base font-medium opacity-80">/mês</span>
-        </p>
-      </div>
-      <Link
-        href="/#pricing"
-        className={cn(
-          buttonVariants({ variant: "secondary" }),
-          "relative w-full bg-white text-primary hover:bg-white/90",
-        )}
-      >
-        Assinar plano {upgradeLabel}
-      </Link>
-    </div>
-  );
-}
-
 type GroupInsightsProps = {
   groups: TelegramGroupSummaryDto[];
   alerts: AlertSummaryDto[];
@@ -388,20 +253,18 @@ export function DashboardGroupInsights({
   if (!selectedGroup || !insights) {
     return (
       <section className="space-y-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6 xl:gap-8">
-          <div className="flex min-w-0 flex-1 flex-col gap-4">
-            <div className="min-w-0">
-              <p className="text-muted-foreground text-sm text-pretty">
-                Indicadores aparecem após conectar um grupo.
-              </p>
-              <h2 className="mt-1 font-heading text-xl font-bold tracking-tight text-foreground whitespace-nowrap sm:text-2xl">
-                Visão do grupo
-              </h2>
-            </div>
+        <div className="min-w-0">
+          <p className="text-muted-foreground text-sm text-pretty">
+            Indicadores aparecem após conectar um grupo.
+          </p>
+          <h2 className="mt-1 font-heading text-xl font-bold tracking-tight text-foreground whitespace-nowrap sm:text-2xl">
+            Visão do grupo
+          </h2>
+        </div>
 
-            <Empty className="min-h-[240px] w-full flex-1">
+        <Empty className="min-h-[240px] w-full">
               <EmptyHeader>
-                <EmptyMedia className="size-14 rounded-lg bg-primary/15 ring-1 ring-primary/25">
+                <EmptyMedia className="size-14 rounded-lg">
                   <UsersIcon className="text-primary" size={24} />
                 </EmptyMedia>
                 <EmptyTitle>
@@ -421,12 +284,6 @@ export function DashboardGroupInsights({
                 </Link>
               </EmptyContent>
             </Empty>
-          </div>
-
-          <aside className="flex w-full flex-col lg:w-80 lg:shrink-0 lg:self-start xl:w-[360px]">
-            <PlanUpsellCard />
-          </aside>
-        </div>
       </section>
     );
   }
@@ -481,9 +338,7 @@ export function DashboardGroupInsights({
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6 xl:gap-8">
-        <div className="flex min-w-0 flex-1 flex-col gap-4">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div className="min-w-0">
               <p className="text-muted-foreground text-sm text-pretty xl:truncate">
                 Indicadores de {groupTitle} no período selecionado.
@@ -525,9 +380,9 @@ export function DashboardGroupInsights({
                 </SelectContent>
               </Select>
             </div>
-          </div>
+      </div>
 
-          <div className="grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
+      <div className="grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
             {cards.map((card) => {
               const positive = card.trendInverted
                 ? card.trend <= 0
@@ -605,12 +460,6 @@ export function DashboardGroupInsights({
                 </div>
               );
             })}
-          </div>
-        </div>
-
-        <aside className="flex w-full flex-col lg:w-80 lg:shrink-0 lg:self-start xl:w-[360px]">
-          <PlanUpsellCard />
-        </aside>
       </div>
     </section>
   );

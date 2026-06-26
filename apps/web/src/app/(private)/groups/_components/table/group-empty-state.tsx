@@ -43,14 +43,7 @@ export function GroupsEmptyState({
       }
     >
       <EmptyHeader>
-        <EmptyMedia
-          className={cn(
-            "size-14 rounded-lg",
-            isNoGroupsFullPage
-              ? "bg-primary/15 ring-1 ring-primary/25"
-              : "bg-muted",
-          )}
-        >
+        <EmptyMedia className={cn("size-14 rounded-lg")}>
           <UsersIcon className="text-primary" size={24} />
         </EmptyMedia>
         {hasNoGroups ? (

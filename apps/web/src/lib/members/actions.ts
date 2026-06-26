@@ -14,10 +14,21 @@ export type MemberBulkAction = "notice" | "remove" | "ban";
 
 export type MemberActionTarget = {
   groupId: string;
-  telegramUserId: string;
-  status: "active" | "left";
-  isOwner: boolean;
+  telegramUserId?: string;
+  selectAllInGroup?: boolean;
+  status?: "active" | "left";
+  isOwner?: boolean;
 };
+
+const BULK_ACTION_REQUEST_CHUNK_SIZE = 100;
+
+function chunkValues<T>(values: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < values.length; index += size) {
+    chunks.push(values.slice(index, index + size));
+  }
+  return chunks;
+}
 
 export type MemberActionAggregate = {
   successCount: number;
@@ -43,7 +54,8 @@ export async function postGroupMemberBulkAction(
   groupId: string,
   payload: {
     action: MemberBulkAction;
-    telegramUserIds: string[];
+    telegramUserIds?: string[];
+    allMatching?: { scope: "active_removable" | "active" | "all_tracked" };
     text?: string;
   },
 ): Promise<TelegramGroupMemberBulkActionResultDto> {
@@ -78,15 +90,21 @@ export async function postGroupMemberBulkAction(
 }
 
 export function groupActionTargetsByGroup(targets: MemberActionTarget[]) {
-  const grouped = new Map<string, string[]>();
+  const grouped = new Map<string, MemberActionTarget[]>();
 
   for (const target of targets) {
     const current = grouped.get(target.groupId) ?? [];
-    current.push(target.telegramUserId);
+    current.push(target);
     grouped.set(target.groupId, current);
   }
 
   return grouped;
+}
+
+function resolveAllMatchingScope(
+  action: MemberBulkAction,
+): "active_removable" | "active" {
+  return action === "notice" ? "active" : "active_removable";
 }
 
 export async function runMemberActions(params: {
@@ -97,7 +115,9 @@ export async function runMemberActions(params: {
 }): Promise<MemberActionAggregate> {
   const filteredTargets = params.onlyActive
     ? params.targets.filter(
-        (target) => target.status === "active" && !target.isOwner,
+        (target) =>
+          target.selectAllInGroup ||
+          (target.status === "active" && !target.isOwner),
       )
     : params.targets;
 
@@ -116,18 +136,46 @@ export async function runMemberActions(params: {
     failures: [],
   };
 
-  for (const [groupId, telegramUserIds] of grouped) {
-    const result = await postGroupMemberBulkAction(groupId, {
-      action: params.action,
-      telegramUserIds,
-      ...(params.action === "notice"
-        ? { text: params.text ?? DEFAULT_MEMBER_NOTICE_TEXT }
-        : {}),
-    });
+  for (const [groupId, groupTargets] of grouped) {
+    const selectAllTarget = groupTargets.find(
+      (target) => target.selectAllInGroup,
+    );
 
-    aggregate.successCount += result.successCount;
-    aggregate.failedCount += result.failedCount;
-    aggregate.failures.push(...result.failures);
+    if (selectAllTarget) {
+      const result = await postGroupMemberBulkAction(groupId, {
+        action: params.action,
+        allMatching: { scope: resolveAllMatchingScope(params.action) },
+        ...(params.action === "notice"
+          ? { text: params.text ?? DEFAULT_MEMBER_NOTICE_TEXT }
+          : {}),
+      });
+
+      aggregate.successCount += result.successCount;
+      aggregate.failedCount += result.failedCount;
+      aggregate.failures.push(...result.failures);
+      continue;
+    }
+
+    const telegramUserIds = groupTargets
+      .map((target) => target.telegramUserId)
+      .filter((value): value is string => Boolean(value));
+
+    for (const chunk of chunkValues(
+      telegramUserIds,
+      BULK_ACTION_REQUEST_CHUNK_SIZE,
+    )) {
+      const result = await postGroupMemberBulkAction(groupId, {
+        action: params.action,
+        telegramUserIds: chunk,
+        ...(params.action === "notice"
+          ? { text: params.text ?? DEFAULT_MEMBER_NOTICE_TEXT }
+          : {}),
+      });
+
+      aggregate.successCount += result.successCount;
+      aggregate.failedCount += result.failedCount;
+      aggregate.failures.push(...result.failures);
+    }
   }
 
   return aggregate;
@@ -256,9 +304,10 @@ export async function runMemberActionsWithToasts(params: {
 
 export function createMemberActionTarget(params: {
   groupId: string;
-  telegramUserId: string;
-  status: "active" | "left";
-  isOwner: boolean;
+  telegramUserId?: string;
+  selectAllInGroup?: boolean;
+  status?: "active" | "left";
+  isOwner?: boolean;
 }): MemberActionTarget {
   return params;
 }

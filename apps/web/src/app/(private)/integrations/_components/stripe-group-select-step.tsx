@@ -51,7 +51,7 @@ export function StripeGroupSelectStep({
     return (
       <Empty className="h-full border-0 bg-transparent">
         <EmptyHeader>
-          <EmptyMedia className="size-14 rounded-lg bg-muted">
+          <EmptyMedia className="size-14 rounded-lg">
             <UsersIcon className="text-primary" size={24} />
           </EmptyMedia>
           <EmptyTitle>Nenhum grupo conectado</EmptyTitle>
@@ -115,7 +115,7 @@ export function StripeGroupSelectStep({
       ) : (
         <Empty className="border border-border bg-background/70 h-full py-8">
           <EmptyHeader>
-            <EmptyMedia className="size-14 rounded-lg bg-primary/15 ring-1 ring-primary/25">
+            <EmptyMedia className="size-14 rounded-lg">
               <BadgeAlertIcon
                 className="text-primary"
                 size={24}

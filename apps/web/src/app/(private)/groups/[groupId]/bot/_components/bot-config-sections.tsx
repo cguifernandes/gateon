@@ -5,6 +5,7 @@ import type { ControllerRenderProps } from "react-hook-form";
 import { BadgeAlertIcon } from "@/components/icons/badge-alert";
 import { CircleCheckIcon } from "@/components/icons/circle-check";
 import { CircleErrorIcon } from "@/components/icons/circle-error";
+import { PlanFeatureGate } from "@/components/plan-feature-gate";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -106,10 +107,12 @@ export function BotConfigGeneralSection({
           description="Mostra um alerta no grupo quando permissões obrigatórias forem removidas."
           tooltip="Ajuda o administrador a corrigir permissões antes da automação parar."
         />
-        <BotAccessAutomationSwitch
-          value={automationValue}
-          onChange={onAutomationChange}
-        />
+        <PlanFeatureGate feature="autoRemoveExpiredSubscribers">
+          <BotAccessAutomationSwitch
+            value={automationValue}
+            onChange={onAutomationChange}
+          />
+        </PlanFeatureGate>
       </CardContent>
     </Card>
   );

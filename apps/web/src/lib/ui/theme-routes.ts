@@ -7,6 +7,7 @@ export const PRIVATE_THEME_ROUTE_PREFIXES = [
   "/settings",
   "/integrations",
   "/profile",
+  "/subscription",
 ] as const;
 
 export function isPrivateThemeRoute(pathname: string | null): boolean {

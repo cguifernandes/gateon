@@ -47,6 +47,7 @@ export const telegramBotStartSettingsResponseSchema =
     publicStartUrl: z.string(),
     botUsername: z.string(),
     canUsePaidAutomation: z.boolean(),
+    canUseBotCheckout: z.boolean(),
     planId: planIdSchema,
     planLabel: z.string(),
     availableStripeConnections: z.array(

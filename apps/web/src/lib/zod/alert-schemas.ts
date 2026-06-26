@@ -455,7 +455,6 @@ export const alertRunRecordSchema = z.object({
   failCount: z.number(),
   startedAt: z.string().nullable().or(z.date().nullable()),
   finishedAt: z.string().nullable().or(z.date().nullable()),
-  error: z.string().nullable().optional(),
   createdAt: z.string().or(z.date()),
 });
 

@@ -358,12 +358,3 @@ export function getStripeSubscriptionId(
     ? subscription
     : (subscription.id ?? null);
 }
-
-export function getStripePaymentIntentId(
-  paymentIntent: string | { id?: string } | null | undefined,
-): string | null {
-  if (!paymentIntent) return null;
-  return typeof paymentIntent === 'string'
-    ? paymentIntent
-    : (paymentIntent.id ?? null);
-}

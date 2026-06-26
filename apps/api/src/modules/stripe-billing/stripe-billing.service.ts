@@ -53,7 +53,6 @@ import {
   type StripeSubscriptionRecord,
   subscriptionIncludesPrice,
   getStripeCustomerSnapshot,
-  getStripePaymentIntentId,
 } from '../../lib/stripe/billing-stripe-client';
 import { AlertsService } from '../alerts/alerts.service';
 import { BotStartSettingsService } from '../bot-start-settings/bot-start-settings.service';
@@ -642,7 +641,6 @@ export class StripeBillingSyncService {
             monitoredPlanLabel ?? this.getPlanName(subscription, productNames),
           currentPeriodEnd,
           cancelAtPeriodEnd,
-          canceledAt: this.fromUnix(subscription.canceled_at),
           ...(eventType ? { lastEventType: eventType } : {}),
           ...(shouldDispatchAutomation && automationDedupeKey
             ? { lastAutomationDedupeKey: automationDedupeKey }
@@ -658,7 +656,6 @@ export class StripeBillingSyncService {
             monitoredPlanLabel ?? this.getPlanName(subscription, productNames),
           currentPeriodEnd,
           cancelAtPeriodEnd,
-          canceledAt: this.fromUnix(subscription.canceled_at),
           ...(eventType ? { lastEventType: eventType } : {}),
           ...(shouldDispatchAutomation && automationDedupeKey
             ? { lastAutomationDedupeKey: automationDedupeKey }
@@ -855,7 +852,6 @@ export class StripeBillingSyncService {
         ? customersByStripeId.get(stripeCustomerId)
         : undefined,
       stripeInvoiceId: invoice.id,
-      stripePaymentIntentId: getStripePaymentIntentId(invoice.payment_intent),
       stripeCustomerId,
       status,
       amountCents: invoice.amount_paid ?? invoice.amount_due ?? 0,
@@ -1070,6 +1066,10 @@ export class StripeBillingService {
     await this.assertOwnedGroup(userId, input.telegramGroupId);
     await this.assertCanLinkGroup(userId, input.telegramGroupId);
 
+    if (input.webhookSigningSecret?.trim()) {
+      await this.groupLimit.assertFeature(userId, 'stripeWebhook');
+    }
+
     const consentAcceptedAt = new Date();
     const connectionData = {
       stripeAccountId: account.id,
@@ -1152,6 +1152,7 @@ export class StripeBillingService {
     input: StripeBillingUpdateWebhookSecretInput,
     requestHeaders?: IncomingHttpHeaders,
   ) {
+    await this.groupLimit.assertFeature(userId, 'stripeWebhook');
     await this.getOwnedConnection(userId, connectionId);
 
     await this.prisma.stripeBillingConnections.update({
@@ -1781,7 +1782,6 @@ export class StripeBillingService {
             status: 'active',
             planName: connection?.monitoredPlanLabel ?? null,
             cancelAtPeriodEnd: false,
-            canceledAt: null,
           },
         });
       }
@@ -2280,7 +2280,6 @@ export class StripeBillingWebhookService {
       const claimed = await this.claimStripeWebhookEvent(
         connectionId,
         stripeEventId,
-        type,
       );
       if (!claimed) {
         this.logger.debug(
@@ -2342,14 +2341,12 @@ export class StripeBillingWebhookService {
   private async claimStripeWebhookEvent(
     connectionId: string,
     stripeEventId: string,
-    stripeEventType: string,
   ): Promise<boolean> {
     try {
       await this.prisma.stripeBillingProcessedWebhookEvents.create({
         data: {
           connectionId,
           stripeEventId,
-          stripeEventType,
         },
       });
       return true;

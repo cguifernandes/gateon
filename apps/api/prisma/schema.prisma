@@ -45,19 +45,13 @@ model Users {
 }
 
 model Accounts {
-  id                    String    @id @default(cuid())
-  userId                String
-  accountId             String
-  providerId            String
-  accessToken           String?   @db.Text
-  refreshToken          String?   @db.Text
-  idToken               String?   @db.Text
-  accessTokenExpiresAt  DateTime?
-  refreshTokenExpiresAt DateTime?
-  scope                 String?
-  password              String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  id         String   @id @default(cuid())
+  userId     String
+  accountId  String
+  providerId String
+  password   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -133,7 +127,6 @@ model TelegramGroups {
   chatPhotoFileId           String?
   type                      String
   isForum                   Boolean  @default(false)
-  addedByTelegramUserId     String
   botStatus                 String
   connectedAt               DateTime @default(now())
   createdAt                 DateTime @default(now())
@@ -149,7 +142,6 @@ model TelegramGroups {
   stripeBillingConnections       StripeBillingConnections[]
 
   @@index([userId])
-  @@index([addedByTelegramUserId])
 }
 
 model TelegramForumTopics {
@@ -310,7 +302,6 @@ model TelegramAlertRuns {
   failCount      Int            @default(0)
   startedAt      DateTime?
   finishedAt     DateTime?
-  error          String?        @db.Text
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
@@ -439,7 +430,6 @@ model StripeBillingSubscriptions {
   planName             String?
   currentPeriodEnd     DateTime?
   cancelAtPeriodEnd    Boolean   @default(false)
-  canceledAt           DateTime?
   lastEventType            String?
   lastAutomationDedupeKey  String?
   createdAt                DateTime  @default(now())
@@ -459,7 +449,6 @@ model StripeBillingPayments {
   userId                String
   connectionId          String
   customerId            String?
-  stripePaymentIntentId String?
   stripeInvoiceId       String?
   stripeCustomerId      String?
   status                String
@@ -495,11 +484,10 @@ model StripeBillingAuditLogs {
 }
 
 model StripeBillingProcessedWebhookEvents {
-  id              String   @id @default(cuid())
-  connectionId    String
-  stripeEventId   String
-  stripeEventType String
-  createdAt       DateTime @default(now())
+  id            String   @id @default(cuid())
+  connectionId  String
+  stripeEventId String
+  createdAt     DateTime @default(now())
 
   connection StripeBillingConnections @relation(fields: [connectionId], references: [id], onDelete: Cascade)
 

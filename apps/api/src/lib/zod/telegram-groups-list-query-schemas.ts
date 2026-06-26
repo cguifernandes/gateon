@@ -23,8 +23,40 @@ export const stripePayerFilterSchema = z.enum([
   'cancel_scheduled',
 ]);
 
+function parseMembersPagesMap(raw?: string): Record<string, number> {
+  if (!raw?.trim()) {
+    return {};
+  }
+
+  const pages: Record<string, number> = {};
+  for (const part of raw.split(',')) {
+    const [groupId, pageValue] = part.split(':');
+    if (!groupId?.trim() || !pageValue?.trim()) {
+      continue;
+    }
+
+    const page = Number.parseInt(pageValue, 10);
+    if (Number.isFinite(page) && page >= 1) {
+      pages[groupId.trim()] = page;
+    }
+  }
+
+  return pages;
+}
+
 export const telegramGroupsListQuerySchema = paginationQuerySchema.extend({
   view: z.enum(['members']).optional(),
+  membersPerGroupPageSize: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(75)
+    .default(25),
+  membersPages: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => parseMembersPagesMap(value)),
   includeMembersPreview: z
     .enum(['true', 'false'])
     .optional()

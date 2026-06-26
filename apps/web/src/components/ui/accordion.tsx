@@ -27,11 +27,11 @@ function AccordionItem({ className, ...props }: AccordionPrimitive.Item.Props) {
     <AccordionPrimitive.Item
       data-slot="accordion-item"
       className={cn(
-        "not-last:border-b rounded-xl px-3 cursor-pointer border border-border bg-background transition-all",
+        "not-last:border-b rounded-xl px-3 cursor-pointer border border-border transition-all",
         "hover:bg-muted/50 hover:text-foreground",
-        "dark:border-border dark:bg-input/30 dark:hover:bg-input/50",
+        "dark:border-border dark:hover:bg-input/20",
         "has-[[data-slot=accordion-trigger][aria-expanded=true]]:bg-muted has-[[data-slot=accordion-trigger][aria-expanded=true]]:text-foreground",
-        "dark:has-[[data-slot=accordion-trigger][aria-expanded=true]]:bg-input/50",
+        "dark:has-[[data-slot=accordion-trigger][aria-expanded=true]]:bg-input/20",
         className,
       )}
       {...props}

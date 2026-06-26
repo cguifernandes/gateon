@@ -67,6 +67,7 @@ import {
 import { SelectableOptionCard } from "@/components/selectable-option-card";
 import { StripePrivateMessageBadge } from "@/components/stripe-private-message-badge";
 import { TruncatedTextTooltip } from "@/components/truncated-text-tooltip";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -88,12 +89,19 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useGroupLimit } from "@/contexts/group-limit-context";
 import type { IconAnimationHandle } from "@/hooks/use-icon-animation";
 import {
   DEFAULT_ALERT_FORM_VALUES,
   mapAlertSummaryToFormValues,
 } from "@/lib/alerts/form-values";
 import { getMemberDisplayName, getMemberInitials } from "@/lib/members/display";
+import {
+  getMinPlanForFeature,
+  isAlertTriggerAllowedForPlan,
+  isStripeAlertTrigger,
+} from "@/lib/plan/features";
+import { PLAN_LABELS } from "@/lib/plan/limits";
 import { cn, withCacheBuster } from "@/lib/utils";
 import {
   type AlertDestinationType,
@@ -944,6 +952,7 @@ function AutomationEventSelectField({
   selectedGroupIds,
   error,
 }: AutomationEventSelectFieldProps) {
+  const { planId } = useGroupLimit();
   const triggerType = useWatch({ control: form.control, name: "triggerType" });
   const iconRefs = useRef<AutomationTriggerIconRefsMap>({});
   const legendId = `${fieldIds}-automation-event-legend`;
@@ -966,6 +975,15 @@ function AutomationEventSelectField({
       });
     }
   }, [form, showForumTopicEvent, triggerType]);
+
+  useEffect(() => {
+    if (triggerType && !isAlertTriggerAllowedForPlan(planId, triggerType)) {
+      form.setValue("triggerType", undefined, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+  }, [form, planId, triggerType]);
 
   function playEventIconAnimation(value: AlertTriggerType) {
     iconRefs.current[value]?.startAnimation();
@@ -1000,31 +1018,45 @@ function AutomationEventSelectField({
           ({ value, title, description, icon: Icon, logo }, index) => {
             const checkboxId = `${fieldIds}-automation-event-${value}`;
             const isSelected = triggerType === value;
+            const isAllowed = isAlertTriggerAllowedForPlan(planId, value);
+            const requiredPlanId = isAllowed
+              ? null
+              : isStripeAlertTrigger(value)
+                ? getMinPlanForFeature("stripeAlerts")
+                : value === "FORUM_TOPIC_CREATED"
+                  ? getMinPlanForFeature("forumTopicAlerts")
+                  : getMinPlanForFeature("advancedTelegramAlerts");
 
             return (
               <li
                 key={value}
                 className={cn(index > 0 && "border-border border-t")}
                 onMouseEnter={() => {
-                  if (Icon) playEventIconAnimation(value);
+                  if (Icon && isAllowed) playEventIconAnimation(value);
                 }}
                 onMouseLeave={() => {
-                  if (Icon) stopEventIconAnimation(value);
+                  if (Icon && isAllowed) stopEventIconAnimation(value);
                 }}
               >
                 <label
                   htmlFor={checkboxId}
                   className={cn(
                     "flex w-full items-center gap-3 px-3 py-2.5",
-                    "cursor-pointer hover:bg-muted/50",
-                    isSelected && "bg-primary/5",
+                    isAllowed
+                      ? "cursor-pointer hover:bg-muted/50"
+                      : "cursor-not-allowed opacity-70",
+                    isSelected && isAllowed && "bg-primary/5",
                   )}
                 >
                   <Checkbox
                     id={checkboxId}
                     className="group-has-disabled/field:opacity-100"
-                    checked={isSelected}
+                    checked={isSelected && isAllowed}
+                    disabled={!isAllowed}
                     onCheckedChange={(checked) => {
+                      if (!isAllowed) {
+                        return;
+                      }
                       if (checked === true) {
                         form.setValue("triggerType", value, {
                           shouldDirty: true,
@@ -1069,6 +1101,14 @@ function AutomationEventSelectField({
                         className="min-w-0 font-medium text-foreground! text-sm"
                       />
                       {logo ? <StripePrivateMessageBadge /> : null}
+                      {!isAllowed && requiredPlanId ? (
+                        <Badge
+                          variant="outline"
+                          className="shrink-0 text-[10px]"
+                        >
+                          {PLAN_LABELS[requiredPlanId]}
+                        </Badge>
+                      ) : null}
                     </div>
                     <TruncatedTextTooltip
                       text={description}

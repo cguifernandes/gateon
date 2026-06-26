@@ -81,7 +81,7 @@ export function StripeTelegramLinkingGuide() {
 
       <CardContent className="py-4">
         <Accordion className="gap-2">
-          <AccordionItem className="bg-transparent!" value="creator">
+          <AccordionItem value="creator">
             <AccordionTrigger className={accordionTriggerClassName}>
               Para você (criador)
             </AccordionTrigger>
@@ -108,7 +108,7 @@ export function StripeTelegramLinkingGuide() {
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem className="bg-transparent!" value="customer">
+          <AccordionItem value="customer">
             <AccordionTrigger className={accordionTriggerClassName}>
               Para quem assina (seu cliente)
             </AccordionTrigger>
@@ -121,7 +121,7 @@ export function StripeTelegramLinkingGuide() {
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem className="bg-transparent!" value="bot-actions">
+          <AccordionItem value="bot-actions">
             <AccordionTrigger className={accordionTriggerClassName}>
               O que o bot faz (e o que não faz)
             </AccordionTrigger>
@@ -141,7 +141,7 @@ export function StripeTelegramLinkingGuide() {
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem className="bg-transparent!" value="privacy">
+          <AccordionItem value="privacy">
             <AccordionTrigger className={accordionTriggerClassName}>
               Privacidade e uso dos dados
             </AccordionTrigger>

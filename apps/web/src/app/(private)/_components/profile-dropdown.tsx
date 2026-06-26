@@ -123,7 +123,7 @@ export function ProfileDropdown({ user }: ProfileDropdownProps) {
           </DropdownMenuLinkItem>
 
           <DropdownMenuLinkItem
-            href="/profile"
+            href="/subscription"
             closeOnClick
             onMouseEnter={() => creditCardIconRef.current?.startAnimation()}
             onMouseLeave={() => creditCardIconRef.current?.stopAnimation()}

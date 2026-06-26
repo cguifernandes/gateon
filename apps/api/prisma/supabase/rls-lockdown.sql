@@ -29,7 +29,7 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
 GRANT ALL ON ALL ROUTINES IN SCHEMA public TO service_role;
 
 -- -----------------------------------------------------------------------------
--- 2) Enable RLS on all public application tables
+-- 2) Enable RLS on application tables (Prisma migration history stays without RLS)
 -- -----------------------------------------------------------------------------
 DO $$
 DECLARE
@@ -107,6 +107,9 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
 
 -- If prisma should run migrations, also grant (uncomment after setting a strong password):
 -- ALTER ROLE prisma WITH PASSWORD 'replace-with-strong-password';
+
+-- Prisma migration history — not app data; avoid "RLS enabled, no policy" advisor noise
+ALTER TABLE public."_prisma_migrations" DISABLE ROW LEVEL SECURITY;
 
 COMMIT;
 

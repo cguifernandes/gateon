@@ -4,8 +4,8 @@ import type { PlanId } from '../zod/plan-schemas';
 /** Distinct Telegram groups allowed as Stripe product targets per Gateon plan. */
 export const PLAN_STRIPE_PAYMENT_GROUP_LIMITS: Record<PlanId, number> = {
   free: 1,
-  starter: 5,
-  pro: 100,
+  starter: 3,
+  pro: 15,
 };
 
 export const STRIPE_PAYMENT_GROUP_LIMIT_REACHED_CODE =
@@ -47,9 +47,7 @@ export function wouldExceedStripePaymentGroupLimitForLink(input: {
         : connection.telegramGroupId,
   }));
 
-  return (
-    countDistinctLinkedStripeGroups(simulated) > input.maxDistinctGroups
-  );
+  return countDistinctLinkedStripeGroups(simulated) > input.maxDistinctGroups;
 }
 
 export function getSelectableStripeLinkGroupIds(input: {

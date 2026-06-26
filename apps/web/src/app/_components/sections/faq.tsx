@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useId } from "react";
 import { Container } from "@/components/container";
 import {
   Accordion,
@@ -28,7 +29,7 @@ const faqs = [
 
 export function FaqSection() {
   return (
-    <section className="py-16 md:py-20" id="documentation">
+    <section className="py-16 md:py-20" id={useId()}>
       <Container>
         <div className="mx-auto max-w-2xl">
           <div className="mb-8 text-center">

@@ -38,7 +38,7 @@ export function MembersEmptyState({
       }
     >
       <EmptyHeader>
-        <EmptyMedia className="bg-muted size-14 rounded-lg">
+        <EmptyMedia className="size-14 rounded-lg">
           <UsersIcon className="text-primary" size={24} />
         </EmptyMedia>
 

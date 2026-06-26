@@ -17,6 +17,7 @@ const emptyBotStartSettings: TelegramBotStartSettingsResponseDto = {
   showSubscribeSteps: true,
   autoRemoveExpiredSubscribers: false,
   canUsePaidAutomation: false,
+  canUseBotCheckout: false,
   planId: "free",
   planLabel: "Gratuito",
   publicStartToken: "",

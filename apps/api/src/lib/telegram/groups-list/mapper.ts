@@ -1,11 +1,16 @@
 import { StripeBillingConnectionStatus } from '@prisma/client';
-import { buildTelegramGroupMembersWhere, groupMatchesSearch } from '../groups-list-filter';
+import { groupMatchesSearch } from '../groups-list-filter';
 import type { LinkedStripePlanSummary } from '../../stripe/telegram-member-links';
 import type { TelegramGroupsListQueryInput } from '../../zod/telegram-groups-list-query-schemas';
 import {
   filterMembersForMembersView,
   hasMembersViewFilters,
 } from './members';
+import {
+  buildMembersPaginationMeta,
+  countFilteredMembersForGroup,
+  resolveMemberWhereForGroup,
+} from './query';
 import type { GroupRow, GroupsListDeps } from './types';
 
 export async function mapGroupsToResponse(
@@ -71,12 +76,18 @@ export async function mapGroupsToResponse(
       : new Map<string, LinkedStripePlanSummary[]>()
     : new Map<string, LinkedStripePlanSummary[]>();
 
-  const memberWhere = buildTelegramGroupMembersWhere(query);
+  const stripePayerFilterActive = Boolean(
+    query.stripePayer && query.stripePayer !== 'all',
+  );
   const mappedGroups = [];
 
   for (const group of groups) {
     const telegramChatId = group.telegramChatId.trim();
-    const members = membersView
+    const { memberWhere } = resolveMemberWhereForGroup(query, group);
+    const membersPage = query.membersPages?.[group.id] ?? 1;
+    const membersPageSize = query.membersPerGroupPageSize ?? 25;
+
+    let members = membersView
       ? filterMembersForMembersView(
           group,
           query,
@@ -93,6 +104,10 @@ export async function mapGroupsToResponse(
           deps.mapTrackedMemberToDto(group.id, member),
         );
 
+    if (membersView && members.length > membersPageSize) {
+      members = members.slice(0, membersPageSize);
+    }
+
     if (
       membersView &&
       hasMembersViewFilters(query) &&
@@ -100,6 +115,23 @@ export async function mapGroupsToResponse(
       !groupMatchesSearch(group, query.q ?? '')
     ) {
       continue;
+    }
+
+    let membersPagination:
+      | ReturnType<typeof buildMembersPaginationMeta>
+      | undefined;
+
+    if (membersView && !stripePayerFilterActive) {
+      const totalItems = await countFilteredMembersForGroup(
+        deps.prisma,
+        group.id,
+        memberWhere,
+      );
+      membersPagination = buildMembersPaginationMeta({
+        page: membersPage,
+        pageSize: membersPageSize,
+        totalItems,
+      });
     }
 
     mappedGroups.push({
@@ -123,6 +155,7 @@ export async function mapGroupsToResponse(
       trackedMemberLimitReached:
         group._count.members >= deps.trackedMemberLimitPerGroup,
       members,
+      ...(membersPagination ? { membersPagination } : {}),
       linkedStripePlans: membersView
         ? []
         : (stripePlansByGroupId.get(group.id) ?? []),

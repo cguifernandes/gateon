@@ -6,6 +6,7 @@ import { Hero } from "./_components/sections/hero";
 import { IntegrationsSection } from "./_components/sections/integrations";
 import { ManagementSection } from "./_components/sections/management";
 import { MetricsSection } from "./_components/sections/metrics";
+import { PricingSection } from "./_components/sections/pricing";
 import { StepsSection } from "./_components/sections/steps";
 import { TestimonialsSection } from "./_components/sections/testimonials";
 
@@ -17,6 +18,7 @@ export default function Home() {
         <Hero />
         <FeaturesSection />
         <IntegrationsSection />
+        <PricingSection />
         {/* <ManagementSection />
         <MetricsSection />
         <TestimonialsSection />

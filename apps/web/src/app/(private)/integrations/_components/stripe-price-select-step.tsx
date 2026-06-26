@@ -51,7 +51,7 @@ export function StripePriceSelectStep({
     return (
       <Empty className="h-full border border-border">
         <EmptyHeader>
-          <EmptyMedia className="size-14 rounded-lg bg-primary/15 ring-1 ring-primary/25">
+          <EmptyMedia className="size-14 rounded-lg">
             <TrendingUpIcon
               className="text-primary"
               size={24}

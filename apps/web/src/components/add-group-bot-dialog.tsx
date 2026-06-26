@@ -263,7 +263,7 @@ function ConnectStep({
   return (
     <Empty className="w-full flex-none p-4">
       <EmptyHeader className="max-w-xl">
-        <EmptyMedia className="size-16 rounded-xl bg-muted">
+        <EmptyMedia className="size-16 rounded-xl">
           <Image src={TelegramIcon} alt="Telegram" width={44} height={44} />
         </EmptyMedia>
         <EmptyTitle>Confirmar sua identidade no Telegram</EmptyTitle>

@@ -1,6 +1,7 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -12,7 +13,11 @@ import {
   StripeBillingConnectionStatus,
 } from '@prisma/client';
 import { GroupLimitService } from '../group-limits/group-limits.service';
-import { isPaidPlan, PLAN_LABELS } from '../../lib/plan/plan-limits';
+import {
+  hasPlanFeature,
+  buildPlanFeatureRequiredMessage,
+} from '../../lib/plan/plan-features';
+import { PLAN_LABELS } from '../../lib/plan/plan-limits';
 import { resolveStripeLinkedTelegramSubscriber } from '../../lib/stripe/telegram-subscriber';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
@@ -98,10 +103,49 @@ export class BotStartSettingsService {
     }
 
     const current = await this.ensureForUser(userId);
+    const planId = await this.groupLimit.resolvePlanId(userId);
     const nextPaymentButtonConnectionIds =
       input.paymentButtonConnectionIds ?? current.paymentButtonConnectionIds;
     const nextShowPaymentButtons =
       input.showPaymentButtons ?? current.showPaymentButtons;
+    const nextShowStripePlans =
+      input.showStripePlans ?? current.showStripePlans;
+    const nextAutoRemove =
+      input.autoRemoveExpiredSubscribers ??
+      current.autoRemoveExpiredSubscribers;
+
+    if (nextShowPaymentButtons && !hasPlanFeature(planId, 'botCheckout')) {
+      throw new ForbiddenException({
+        error: PAID_PLAN_REQUIRED_CODE,
+        feature: 'botCheckout',
+        planId,
+        message: buildPlanFeatureRequiredMessage('botCheckout', planId),
+      });
+    }
+
+    if (nextShowStripePlans && !hasPlanFeature(planId, 'botCheckout')) {
+      throw new ForbiddenException({
+        error: PAID_PLAN_REQUIRED_CODE,
+        feature: 'botCheckout',
+        planId,
+        message: buildPlanFeatureRequiredMessage('botCheckout', planId),
+      });
+    }
+
+    if (
+      nextAutoRemove &&
+      !hasPlanFeature(planId, 'autoRemoveExpiredSubscribers')
+    ) {
+      throw new ForbiddenException({
+        error: PAID_PLAN_REQUIRED_CODE,
+        feature: 'autoRemoveExpiredSubscribers',
+        planId,
+        message: buildPlanFeatureRequiredMessage(
+          'autoRemoveExpiredSubscribers',
+          planId,
+        ),
+      });
+    }
 
     if (input.paymentButtonConnectionIds) {
       await this.assertOwnedStripeConnections(
@@ -412,21 +456,34 @@ export class BotStartSettingsService {
   ): Promise<TelegramBotStartSettingsResponseDto> {
     const botUsername = this.getBotUsername();
     const planId = await this.groupLimit.resolvePlanId(userId);
-    const canUsePaidAutomation = isPaidPlan(planId);
+    const canUsePaidAutomation = hasPlanFeature(
+      planId,
+      'autoRemoveExpiredSubscribers',
+    );
+    const canUseBotCheckout = hasPlanFeature(planId, 'botCheckout');
 
     return {
       welcomeMessageEnabled: settings.welcomeMessageEnabled,
       welcomeMessage: settings.welcomeMessage ?? '',
-      showStripePlans: settings.showStripePlans,
-      stripeConnectionIds: settings.stripeConnectionIds,
-      showPaymentButtons: settings.showPaymentButtons,
-      paymentButtonConnectionIds: settings.paymentButtonConnectionIds,
+      showStripePlans: canUseBotCheckout ? settings.showStripePlans : false,
+      stripeConnectionIds: canUseBotCheckout
+        ? settings.stripeConnectionIds
+        : [],
+      showPaymentButtons: canUseBotCheckout
+        ? settings.showPaymentButtons
+        : false,
+      paymentButtonConnectionIds: canUseBotCheckout
+        ? settings.paymentButtonConnectionIds
+        : [],
       paymentButtonsGroupFirst: settings.paymentButtonsGroupFirst,
       showSupportHint: settings.showSupportHint,
       supportHintText: settings.supportHintText ?? '',
       showSubscribeSteps: settings.showSubscribeSteps,
-      autoRemoveExpiredSubscribers: settings.autoRemoveExpiredSubscribers,
+      autoRemoveExpiredSubscribers: canUsePaidAutomation
+        ? settings.autoRemoveExpiredSubscribers
+        : false,
       canUsePaidAutomation,
+      canUseBotCheckout,
       planId,
       planLabel: PLAN_LABELS[planId],
       publicStartToken: settings.publicStartToken,

@@ -23,7 +23,15 @@
     "test:cov": "jest --coverage",
     "test:stripe": "jest --testPathPatterns stripe",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "plan:users": "node -r ./scripts/load-env.cjs ./node_modules/ts-node/dist/bin.js --transpile-only scripts/plan-limits/list-users.ts",
+    "plan:free:status": "node -r ./scripts/load-env.cjs ./node_modules/ts-node/dist/bin.js --transpile-only scripts/plan-limits/status.ts --plan=free",
+    "plan:free:fill": "node -r ./scripts/load-env.cjs ./node_modules/ts-node/dist/bin.js --transpile-only scripts/plan-limits/fill.ts --plan=free",
+    "plan:free:reset": "node -r ./scripts/load-env.cjs ./node_modules/ts-node/dist/bin.js --transpile-only scripts/plan-limits/reset.ts --plan=free",
+    "plan:starter:status": "node -r ./scripts/load-env.cjs ./node_modules/ts-node/dist/bin.js --transpile-only scripts/plan-limits/status.ts --plan=starter",
+    "plan:starter:fill": "node -r ./scripts/load-env.cjs ./node_modules/ts-node/dist/bin.js --transpile-only scripts/plan-limits/fill.ts --plan=starter",
+    "plan:starter:reset": "node -r ./scripts/load-env.cjs ./node_modules/ts-node/dist/bin.js --transpile-only scripts/plan-limits/reset.ts --plan=starter",
+    "plan:free:users": "npm run plan:users"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

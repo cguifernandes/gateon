@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { paginationMetaSchema } from "./pagination-schemas";
+import {
+  membersPaginationMetaSchema,
+  paginationMetaSchema,
+} from "./pagination-schemas";
 import { telegramGroupBotSettingsSchema } from "./telegram-group-bot-settings-schemas";
 
 /** Matches Prisma `TelegramConnectionStatus` from the Nest API */
@@ -103,6 +106,7 @@ export const telegramGroupSummarySchema = z.object({
   trackedMemberLimitPerGroup: z.number().int().positive(),
   trackedMemberLimitReached: z.boolean(),
   members: z.array(telegramGroupChatMemberSchema),
+  membersPagination: membersPaginationMetaSchema.optional(),
   linkedStripePlans: z.array(linkedStripePlanSummarySchema).default([]),
 });
 
@@ -222,11 +226,35 @@ export const telegramGroupMemberActionSchema = z.enum([
   "ban",
 ]);
 
-export const telegramGroupMemberBulkActionRequestSchema = z.object({
-  action: telegramGroupMemberActionSchema,
-  telegramUserIds: z.array(z.string().trim().min(1)).min(1).max(100),
-  text: z.string().trim().min(1).max(4096).optional(),
-});
+export const memberBulkSelectionScopeSchema = z.enum([
+  "active_removable",
+  "active",
+  "all_tracked",
+]);
+
+export const telegramGroupMemberBulkActionRequestSchema = z
+  .object({
+    action: telegramGroupMemberActionSchema,
+    telegramUserIds: z.array(z.string().trim().min(1)).max(100).optional(),
+    allMatching: z
+      .object({
+        scope: memberBulkSelectionScopeSchema,
+      })
+      .optional(),
+    text: z.string().trim().min(1).max(4096).optional(),
+  })
+  .superRefine((data, ctx) => {
+    const hasIds = (data.telegramUserIds?.length ?? 0) > 0;
+    const hasAllMatching = Boolean(data.allMatching);
+
+    if (hasIds === hasAllMatching) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Provide telegramUserIds or allMatching.",
+        path: ["telegramUserIds"],
+      });
+    }
+  });
 
 export const telegramGroupMemberBulkActionResultSchema = z.object({
   successCount: z.number().int().nonnegative(),

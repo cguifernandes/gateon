@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
-import { LoaderPage } from "@/components/loader-page";
 import { DEFAULT_PLAN_ID, getMaxGroupsForPlan } from "@/lib/plan/limits";
 import { getSessionUser } from "@/lib/server/data/get-session";
 import { getStripeBillingConnectionOptions } from "@/lib/server/data/get-stripe-billing-connection-options";
@@ -47,14 +45,12 @@ export default async function GroupsPage() {
           {error}
         </div>
       ) : (
-        <Suspense fallback={<LoaderPage />}>
-          <GroupsTable
-            initialGroups={groups}
-            initialPagination={pagination}
-            initialSummary={summary}
-            stripeConnections={connections}
-          />
-        </Suspense>
+        <GroupsTable
+          initialGroups={groups}
+          initialPagination={pagination}
+          initialSummary={summary}
+          stripeConnections={connections}
+        />
       )}
     </div>
   );
