@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { logoutAction } from "@/lib/server/logout.action";
+import { logoutAction } from "@/lib/server/actions/logout.action";
 
 export function LogoutForm() {
   return (

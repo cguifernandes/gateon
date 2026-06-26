@@ -23,6 +23,7 @@ import {
 } from "@/components/icons/settings";
 import { XIcon, type XIconHandle } from "@/components/icons/x";
 import { ImageComponent } from "@/components/image-component";
+import type { QuickNoticePayload } from "@/components/quick-notice-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -33,8 +34,7 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
-import type { QuickNoticePayload } from "@/components/quick-notice-dialog";
-import { getBotStatusDisplay } from "@/lib/telegram-bot-status";
+import { getBotStatusDisplay } from "@/lib/telegram/bot-status";
 import { cn, withCacheBuster } from "@/lib/utils";
 import {
   type TelegramGroupMembersListResponseDto,

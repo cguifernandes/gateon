@@ -9,7 +9,7 @@ import type { IconAnimationHandle } from "@/hooks/use-icon-animation";
 import {
   type BotStatusDisplay,
   getBotStatusDisplayKind,
-} from "@/lib/telegram-bot-status";
+} from "@/lib/telegram/bot-status";
 import { cn } from "@/lib/utils";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
 

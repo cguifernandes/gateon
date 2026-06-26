@@ -20,7 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { logoutAction } from "@/lib/server/logout.action";
+import { logoutAction } from "@/lib/server/actions/logout.action";
 import { cn, getUserInitials } from "@/lib/utils";
 import type { PublicUserDto } from "@/lib/zod/auth-schemas";
 

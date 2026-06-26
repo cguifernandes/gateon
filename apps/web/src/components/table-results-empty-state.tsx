@@ -11,7 +11,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import type { TableResultsEmptyKind } from "@/lib/resolve-table-empty-state";
+import type { TableResultsEmptyKind } from "@/lib/filters/table-empty-state";
 import { cn } from "@/lib/utils";
 
 type TableResultsResource = "groups" | "members" | "alerts";

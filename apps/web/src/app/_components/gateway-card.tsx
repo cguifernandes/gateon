@@ -1,6 +1,6 @@
-import { Check } from "lucide-react";
 import type { StaticImageData } from "next/image";
 import Image from "next/image";
+import { CheckIcon } from "@/components/icons/check";
 import { Card } from "@/components/ui/card";
 import type { Gateway } from "@/lib/utils";
 
@@ -38,7 +38,7 @@ export function GatewayCard({ gateway, logo }: GatewayCardProps) {
               className="flex items-start gap-2 text-sm text-foreground"
             >
               <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                <Check className="h-2.5 w-2.5 text-primary" aria-hidden />
+                <CheckIcon className="text-primary" size={10} aria-hidden />
               </span>
               {point}
             </li>

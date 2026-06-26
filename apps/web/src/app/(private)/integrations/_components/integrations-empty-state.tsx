@@ -1,7 +1,7 @@
 "use client";
 
-import { PlugIcon } from "lucide-react";
 import { useRef } from "react";
+import { PlugIcon } from "@/components/icons/plug";
 import { PlusIcon, type PlusIconHandle } from "@/components/icons/plus";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +28,7 @@ export function IntegrationsEmptyState({
     <Empty className="rounded-xl border border-border">
       <EmptyHeader>
         <EmptyMedia className="size-14 rounded-lg bg-primary/15 ring-1 ring-primary/25">
-          <PlugIcon className="size-6 text-primary" aria-hidden />
+          <PlugIcon className="text-primary" size={24} aria-hidden />
         </EmptyMedia>
         {canConnect ? (
           <>

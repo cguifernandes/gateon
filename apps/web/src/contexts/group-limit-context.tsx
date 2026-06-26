@@ -15,7 +15,7 @@ import {
   type GroupLimitSnapshot,
   getMaxGroupsForPlan,
   PLAN_LABELS,
-} from "@/lib/plan-limits";
+} from "@/lib/plan/limits";
 import type { PlanId } from "@/lib/zod/plan-schemas";
 
 type GroupLimitContextValue = GroupLimitSnapshot & {

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, type RefObject, useRef } from "react";
+import { GateonLogo } from "@/components/gateon-logo";
 import {
   ArrowLeftIcon,
   type ArrowLeftIconHandle,
@@ -15,7 +16,6 @@ import {
   ShieldCheckIcon,
   type ShieldCheckIconHandle,
 } from "@/components/icons/shield-check";
-import { GateonLogo } from "@/components/gateon-logo";
 import {
   Sidebar,
   SidebarContent,

@@ -59,7 +59,9 @@ function normalizeSelectedIds(ids: string[]) {
   return [...new Set(ids.map((id) => id.trim()).filter(Boolean))];
 }
 
-function toComboboxItems(groups: TelegramGroupSummaryDto[]): GroupComboboxItem[] {
+function toComboboxItems(
+  groups: TelegramGroupSummaryDto[],
+): GroupComboboxItem[] {
   return groups.map((group) => {
     const chatId = group.telegramChatId.trim();
     return {
@@ -113,9 +115,7 @@ export function MembersGroupFilterOptions({
                 return (
                   <>
                     {visibleItems.map((item) => (
-                      <ComboboxChip key={item.value}>
-                        {item.label}
-                      </ComboboxChip>
+                      <ComboboxChip key={item.value}>{item.label}</ComboboxChip>
                     ))}
                     {hiddenCount > 0 ? (
                       <span className="px-1 text-muted-foreground text-xs">
@@ -123,9 +123,7 @@ export function MembersGroupFilterOptions({
                       </span>
                     ) : null}
                     <ComboboxChipsInput
-                      placeholder={
-                        items.length > 0 ? "" : "Selecionar grupos"
-                      }
+                      placeholder={items.length > 0 ? "" : "Selecionar grupos"}
                       className="min-w-12"
                     />
                   </>

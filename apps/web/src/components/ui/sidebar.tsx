@@ -13,7 +13,7 @@ import {
   persistSidebarOpen,
   subscribeSidebarOpen,
   syncSidebarOpenCookieFromStorage,
-} from "@/lib/sidebar-storage";
+} from "@/lib/ui/sidebar-storage";
 import { cn } from "@/lib/utils";
 import {
   PanelLeftCloseIcon,

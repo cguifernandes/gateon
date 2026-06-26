@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { readErrorBody } from "@/lib/http/read-error-body";
 import { cn } from "@/lib/utils";
 import {
   type StripeBillingConnectionDto,
@@ -25,26 +26,6 @@ type StripeWebhookSetupProps = {
   connection: StripeBillingConnectionDto;
   onStatusChange: (status: StripeBillingStatusDto) => void;
 };
-
-function getErrorMessage(body: unknown, fallback: string) {
-  if (
-    body &&
-    typeof body === "object" &&
-    "error" in body &&
-    typeof (body as { error?: unknown }).error === "string"
-  ) {
-    return (body as { error: string }).error;
-  }
-  if (
-    body &&
-    typeof body === "object" &&
-    "message" in body &&
-    typeof (body as { message?: unknown }).message === "string"
-  ) {
-    return (body as { message: string }).message;
-  }
-  return fallback;
-}
 
 export function StripeWebhookSetup({
   connection,
@@ -76,7 +57,7 @@ export function StripeWebhookSetup({
       const body: unknown = await response.json().catch(() => null);
       if (!response.ok) {
         throw new Error(
-          getErrorMessage(body, "Não foi possível salvar o webhook."),
+          readErrorBody(body, "Não foi possível salvar o webhook."),
         );
       }
 
@@ -154,9 +135,8 @@ export function StripeWebhookSetup({
                     e selecione os eventos de assinatura, fatura e checkout.
                   </p>
                   <p className="text-muted-foreground text-xs leading-relaxed">
-                    Sem webhook, alertas automáticos só disparam ao
-                    sincronizar. Com webhook ativo, chegam em tempo real ao
-                    Telegram.
+                    Sem webhook, alertas automáticos só disparam ao sincronizar.
+                    Com webhook ativo, chegam em tempo real ao Telegram.
                   </p>
                 </section>
                 <div

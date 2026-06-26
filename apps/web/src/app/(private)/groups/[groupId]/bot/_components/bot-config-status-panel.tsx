@@ -9,7 +9,7 @@ import {
 import {
   getBotConfigStatusDisplay,
   getBotPermissionsHealthDisplay,
-} from "@/lib/telegram-bot-status";
+} from "@/lib/telegram/bot-status";
 import { cn } from "@/lib/utils";
 import type { TelegramGroupDetailDto } from "@/lib/zod/telegram-group-connection-schemas";
 import { formatDate, formatTelegramGroupType } from "./bot-config-utils";

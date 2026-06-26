@@ -1,5 +1,5 @@
-import { Card, CardContent } from "@/components/ui/card";
 import { Container } from "@/components/container";
+import { Card, CardContent } from "@/components/ui/card";
 
 const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun"];
 const barHeights = [40, 55, 45, 70, 60, 75];

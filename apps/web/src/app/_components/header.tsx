@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { Container } from "@/components/container";
 import { GateonLogo } from "@/components/gateon-logo";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const navLinks = [
   { href: "#pricing", label: "Preços" },

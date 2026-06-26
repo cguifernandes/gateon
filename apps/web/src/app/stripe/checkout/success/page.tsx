@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { getPublicTelegramBotUrlFromEnv } from "@/lib/telegram-bot-url";
+import { getPublicTelegramBotUrlFromEnv } from "@/lib/telegram/bot-url";
 
 const REDIRECT_DELAY_MS = 1_500;
 

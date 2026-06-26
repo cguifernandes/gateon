@@ -38,10 +38,11 @@ import {
 import { SelectableOptionCard } from "@/components/selectable-option-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { readErrorBody } from "@/lib/http/read-error-body";
 import {
   getIntegrationProvider,
   INTEGRATION_PROVIDERS,
-} from "@/lib/integrations-config";
+} from "@/lib/integrations/config";
 import type { GatewayId } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import {
@@ -91,26 +92,6 @@ const dialogProgressSteps = [
   { id: "webhook", label: "Webhook" },
   { id: "confirm", label: "Confirmar" },
 ] as const;
-
-function getErrorMessage(body: unknown, fallback: string) {
-  if (
-    body &&
-    typeof body === "object" &&
-    "error" in body &&
-    typeof (body as { error?: unknown }).error === "string"
-  ) {
-    return (body as { error: string }).error;
-  }
-  if (
-    body &&
-    typeof body === "object" &&
-    "message" in body &&
-    typeof (body as { message?: unknown }).message === "string"
-  ) {
-    return (body as { message: string }).message;
-  }
-  return fallback;
-}
 
 type GatewaySelectStepProps = {
   selectedGatewayId: GatewayId | null;
@@ -198,7 +179,7 @@ function CatalogNextButton({
       const body: unknown = await response.json().catch(() => null);
       if (!response.ok) {
         throw new Error(
-          getErrorMessage(body, "Não foi possível listar os planos da Stripe."),
+          readErrorBody(body, "Não foi possível listar os planos da Stripe."),
         );
       }
 
@@ -373,7 +354,7 @@ export function ConnectIntegrationDialog({
         const body: unknown = await response.json().catch(() => null);
         if (!response.ok) {
           throw new Error(
-            getErrorMessage(body, "Não foi possível conectar a integração."),
+            readErrorBody(body, "Não foi possível conectar a integração."),
           );
         }
         const parsed = stripeBillingStatusSchema.safeParse(body);

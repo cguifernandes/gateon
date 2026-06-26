@@ -212,10 +212,8 @@ export function StripeConsentStep({
         <p className="mt-2 text-muted-foreground text-xs leading-relaxed">
           Após conectar, configure o webhook no card da integração para que
           alertas de pagamento, cancelamento e vencimento disparem{" "}
-          <span className="font-medium text-foreground">
-            automaticamente
-          </span>
-          , sem depender da sincronização manual.
+          <span className="font-medium text-foreground">automaticamente</span>,
+          sem depender da sincronização manual.
         </p>
       </section>
 

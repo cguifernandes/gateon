@@ -16,7 +16,7 @@ import {
   MEMBER_ACTION_UI_LABELS,
   type MemberBulkAction,
   useMemberActionHandler,
-} from "@/lib/member-actions";
+} from "@/lib/members/actions";
 import { cn } from "@/lib/utils";
 import type { SelectedMemberTarget } from "../members-table-helpers";
 

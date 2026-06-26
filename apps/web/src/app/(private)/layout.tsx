@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { getSessionUser } from "@/lib/server/get-session";
-import { readSidebarOpenFromCookies } from "@/lib/sidebar-storage";
+import { getSessionUser } from "@/lib/server/data/get-session";
+import { readSidebarOpenFromCookies } from "@/lib/ui/sidebar-storage";
 import { DashboardProviders } from "./_components/dashboard-providers";
 import { DashboardShell } from "./_components/dashboard-shell";
 import { SessionValidator } from "./_components/session-validator";

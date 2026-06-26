@@ -15,7 +15,7 @@ import {
   ComboboxValue,
   useComboboxAnchor,
 } from "@/components/ui/combobox";
-import { getStripePlanLabel } from "@/lib/stripe-plan-label";
+import { getStripePlanLabel } from "@/lib/stripe/plan-label";
 import { cn } from "@/lib/utils";
 
 const VISIBLE_CHIP_LIMIT = 2;

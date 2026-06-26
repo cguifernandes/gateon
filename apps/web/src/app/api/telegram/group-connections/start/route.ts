@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { proxyAuthenticatedJsonApi } from "@/lib/server/proxy-authenticated-json-api";
+import { proxyAuthenticatedJsonApi } from "@/lib/server/fetch/proxy-authenticated-json-api";
 import { startTelegramGroupConnectionResponseSchema } from "@/lib/zod/telegram-group-connection-schemas";
 
 export async function POST(request: NextRequest) {

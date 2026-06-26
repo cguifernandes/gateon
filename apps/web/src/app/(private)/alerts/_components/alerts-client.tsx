@@ -1,19 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
+import { CreateAlertDialog } from "@/components/create-alert-dialog-dynamic";
 import { DataRefreshIndicator } from "@/components/data-refresh-indicator";
 import { DataTablePagination } from "@/components/data-table-pagination";
 import { SearchIcon, type SearchIconHandle } from "@/components/icons/search";
 import { TableResultsEmptyState } from "@/components/table-results-empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import {
   toClientPaginationState,
   useServerPaginationFetch,
 } from "@/hooks/use-server-pagination-fetch";
-import { buildAlertsListSearchParams } from "@/lib/build-alerts-list-search-params";
-import { resolveTableEmptyState } from "@/lib/resolve-table-empty-state";
+import { resolveTableEmptyState } from "@/lib/filters/table-empty-state";
+import { buildAlertsListSearchParams } from "@/lib/query/alerts-list-params";
 import { cn } from "@/lib/utils";
 import {
   type AlertSummaryDto,
@@ -22,7 +24,6 @@ import {
 } from "@/lib/zod/alert-schemas";
 import type { StripeBillingConnectionDto } from "@/lib/zod/stripe-billing-schemas";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
-import { CreateAlertDialog } from "../../../../components/create-alert-dialog";
 import { useAlertsFiltersUrl } from "../_hooks/use-alerts-filters-url";
 import { AlertCard } from "./alert-card";
 import { AlertDetailDrawer } from "./alert-detail-drawer";
@@ -42,7 +43,7 @@ export function AlertsClient({
   stripeConnections,
 }: AlertsClientProps) {
   const [query, setQuery] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(query.trim());
   const { urlFilters, control: filtersControl } = useAlertsFiltersUrl();
   const [selectedAlert, setSelectedAlert] = useState<AlertSummaryDto | null>(
     null,
@@ -51,14 +52,6 @@ export function AlertsClient({
     null,
   );
   const searchIconRef = useRef<SearchIconHandle>(null);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setDebouncedSearch(query.trim());
-    }, 300);
-
-    return () => window.clearTimeout(timer);
-  }, [query]);
 
   const fetchPage = useCallback(
     async (page: number, signal?: AbortSignal) => {

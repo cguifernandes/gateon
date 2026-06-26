@@ -5,4 +5,4 @@ export {
   type MemberActionTarget,
   type MemberBulkAction,
   runMemberActions as runBulkMemberAction,
-} from "@/lib/member-actions";
+} from "@/lib/members/actions";

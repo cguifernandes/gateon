@@ -11,7 +11,8 @@ Documento canônico completo: **`AGENTS.md`**. Este arquivo resume o essencial p
 3. **Zod** → `apps/web/src/lib/zod/` (web) ou `apps/api/src/lib/zod/` (API).
 4. **Nest API** → `modules/<name>/` com **apenas** `<name>.module.ts`, `<name>.controller.ts`, `<name>.service.ts`, `<name>.spec.ts`; testes de `lib/` usados pelo módulo ficam **dentro** desse `<name>.spec.ts` (nunca em `lib/**/*.spec.ts`); registrar em `app.module.ts` — ver `AGENTS.md`.
 5. **DRY (API)** → antes de função/endpoint/service/helper novo: buscar existente, reutilizar ou estender; checklist obrigatório em **`AGENTS.md` → DRY e reutilização de código (API)**.
-6. **Lint:** Biome (web/bot), ESLint+Prettier (api).
+6. **DRY (Web)** → antes de componente/hook/fetch/helper novo: buscar existente; checklist em **`AGENTS.md` → DRY e reutilização de código (Web)**.
+7. **Lint:** Biome (web/bot), ESLint+Prettier (api).
 
 ### Monorepo (3 apps)
 
@@ -51,7 +52,7 @@ Automação de acesso a grupos Telegram pagos via Stripe:
 | Fontes | Inter (corpo) + Geist Sans (títulos) |
 | Primary | `oklch(0.55 0.2 255)` ≈ `#3b82f6` |
 | Tokens extras | Paleta `surface-*` (Material-like) |
-| Ícones | Animados custom (`src/components/icons/`) > Lucide |
+| Ícones | Animados custom (`src/components/icons/`) > Lucide; Lucide só em `ui/*` ou sem equivalente |
 | Layout | Sidebar colapsável + header; `Container max-w-7xl` |
 | Cards | `rounded-xl shadow-sm ring-1 ring-foreground/10` |
 | Tema | next-themes; privado = system/light/dark; auth = light forçado |
@@ -63,9 +64,16 @@ Detalhes completos de tokens, componentes ui/, padrões de botão/badge/tabela/d
 
 Client Component + `react-hook-form` + `zodResolver` + schema Zod + `defaultValues` + erros via `formState.errors` + tokens shadcn (`border-input`, `bg-background`, `ring-primary/*`).
 
+### Antes de implementar na Web
+
+1. Ler **`AGENTS.md` → DRY e reutilização de código (Web)** e preencher o checklist.
+2. Buscar componente/hook/util em `components/`, `hooks/`, `lib/` antes de criar novo.
+3. Ícones: `components/icons/` primeiro; `lucide-react` só como exceção documentada.
+4. Dialogs pesados: considerar `next/dynamic`; manter arquivos < ~300 linhas.
+
 ### Ao alterar regras compartilhadas
 
-Sincronizar entre apps: `plan-limits`, `telegram-admin-rights`, `bot-start-message-builder`, `bot-start-subscribe-steps`, schemas Zod espelhados. Lista completa em **`AGENTS.md` → Código sincronizado**.
+Sincronizar entre apps: `plan/limits`, `telegram/admin-rights`, `bot-start/message-builder`, `bot-start/subscribe-steps`, schemas Zod espelhados. Lista completa em **`AGENTS.md` → Código sincronizado**.
 
 ### Antes de implementar na API
 

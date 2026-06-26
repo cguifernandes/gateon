@@ -22,12 +22,12 @@ import {
   FieldTitle,
 } from "@/components/ui/field";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { dispatchQuickAlertWithToast } from "@/lib/quick-alert-dispatch";
 import {
   fetchQuickAlertOptions,
   getQuickAlertCardDescription,
   type QuickAlertOption,
-} from "@/lib/quick-alerts";
+} from "@/lib/alerts/quick-alerts";
+import { dispatchQuickAlertWithToast } from "@/lib/alerts/quick-dispatch";
 import { cn } from "@/lib/utils";
 
 export type QuickNoticeMemberTarget = {

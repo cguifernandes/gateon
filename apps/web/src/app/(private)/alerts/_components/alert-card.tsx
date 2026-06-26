@@ -2,7 +2,7 @@
 
 import { TruncatedTextTooltip } from "@/components/truncated-text-tooltip";
 import { Badge } from "@/components/ui/badge";
-import type { AlertAction } from "@/lib/alert-actions";
+import type { AlertAction } from "@/lib/alerts/actions";
 import { cn } from "@/lib/utils";
 import type { AlertSummaryDto } from "@/lib/zod/alert-schemas";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { isPaidPlan, PLAN_LABELS } from "@/lib/plan-limits";
+import { isPaidPlan, PLAN_LABELS } from "@/lib/plan/limits";
 import { cn } from "@/lib/utils";
 import type { UserProfileDto } from "@/lib/zod/auth-schemas";
 import { formatProfileDateTime } from "./profile-format";

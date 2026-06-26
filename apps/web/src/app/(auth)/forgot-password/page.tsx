@@ -21,8 +21,8 @@ export default function ForgotPasswordPage() {
           Esqueceu a senha?
         </CardTitle>
         <CardDescription className="text-sm leading-relaxed">
-          Informe o e-mail da sua conta. Se existir cadastro com senha, enviaremos
-          um link seguro para redefinição.
+          Informe o e-mail da sua conta. Se existir cadastro com senha,
+          enviaremos um link seguro para redefinição.
         </CardDescription>
       </CardHeader>
       <CardContent className="px-6 pb-6">

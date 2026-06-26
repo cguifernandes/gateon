@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getTrackedMemberStatusDisplay } from "@/lib/telegram-bot-status";
+import { getTrackedMemberStatusDisplay } from "@/lib/telegram/bot-status";
 import { cn } from "@/lib/utils";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
 import { useDashboardFilters } from "./dashboard-filters-context";

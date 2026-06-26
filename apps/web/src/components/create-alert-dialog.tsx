@@ -26,10 +26,6 @@ import {
 } from "react-hook-form";
 import { toast } from "sonner";
 import type { ZodError } from "zod";
-import {
-  getMemberDisplayName,
-  getMemberInitials,
-} from "@/app/(private)/members/_components/members-table-helpers";
 import stripeLogo from "@/assets/gateway/stripe-4.svg";
 import {
   AlertReviewSummary,
@@ -96,7 +92,8 @@ import type { IconAnimationHandle } from "@/hooks/use-icon-animation";
 import {
   DEFAULT_ALERT_FORM_VALUES,
   mapAlertSummaryToFormValues,
-} from "@/lib/alert-form-values";
+} from "@/lib/alerts/form-values";
+import { getMemberDisplayName, getMemberInitials } from "@/lib/members/display";
 import { cn, withCacheBuster } from "@/lib/utils";
 import {
   type AlertDestinationType,

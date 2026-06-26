@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { LoaderPage } from "@/components/loader-page";
-import { getTelegramGroupOptions } from "@/lib/server/get-telegram-group-options";
-import { getTelegramGroupsForMembers } from "@/lib/server/get-telegram-groups-for-members";
+import { getTelegramGroupOptions } from "@/lib/server/data/get-telegram-group-options";
+import { getTelegramGroupsForMembers } from "@/lib/server/data/get-telegram-groups-for-members";
 import { MEMBERS_TABLE_PAGE_SIZE } from "@/lib/zod/pagination-schemas";
 import { MemberSummaryStats } from "./_components/member-summary-stats";
 import { MembersTable } from "./_components/table/members-table";

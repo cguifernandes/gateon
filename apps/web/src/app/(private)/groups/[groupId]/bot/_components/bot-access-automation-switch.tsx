@@ -21,8 +21,8 @@ export function BotAccessAutomationSwitch({
       tooltip="Só afeta membros vinculados ao checkout do bot. O bot precisa ser administrador com permissão para remover membros."
     >
       <p className="text-muted-foreground text-xs leading-relaxed">
-        Para a remoção acontecer assim que a Stripe atualizar o status, configure
-        o webhook em{" "}
+        Para a remoção acontecer assim que a Stripe atualizar o status,
+        configure o webhook em{" "}
         <Link
           href="/integrations"
           className="font-medium text-foreground underline-offset-4 hover:underline"

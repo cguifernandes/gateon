@@ -14,13 +14,13 @@ import {
   areGroupsUrlFiltersEqual,
   countActiveGroupsUrlFilters,
   EMPTY_GROUPS_URL_FILTERS,
-} from "@/lib/filter-utils";
+} from "@/lib/filters/utils";
 import {
   buildGroupsUrlFiltersSearchParams,
   type GroupsUrlFiltersState,
   parseGroupsUrlFiltersFromSearchParams,
-} from "@/lib/groups-url-filters";
-import type { BotStatusFilterValue } from "@/lib/telegram-bot-status";
+} from "@/lib/groups/url-filters";
+import type { BotStatusFilterValue } from "@/lib/telegram/bot-status";
 
 export type GroupsFiltersPopoverControl = {
   draft: GroupsUrlFiltersState;
@@ -82,9 +82,12 @@ export function useGroupsFiltersUrl() {
     setDraftFilters((current) => ({ ...current, connectedRange }));
   }, []);
 
-  const setStripeConnectionIds = useCallback((stripeConnectionIds: string[]) => {
-    setDraftFilters((current) => ({ ...current, stripeConnectionIds }));
-  }, []);
+  const setStripeConnectionIds = useCallback(
+    (stripeConnectionIds: string[]) => {
+      setDraftFilters((current) => ({ ...current, stripeConnectionIds }));
+    },
+    [],
+  );
 
   const apply = useCallback(() => {
     markFiltersPending(draftFilters);

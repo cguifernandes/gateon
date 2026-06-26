@@ -56,7 +56,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useGroupLimit } from "@/contexts/group-limit-context";
-import { revalidateTelegramGroupsAction } from "@/lib/server/revalidate-telegram-groups.action";
+import { revalidateTelegramGroupsAction } from "@/lib/server/actions/revalidate-telegram-groups.action";
 import { cn, TELEGRAM_BOT_PERMISSION_GROUPS } from "@/lib/utils";
 import type {
   TelegramConnectionStatusFromApi,

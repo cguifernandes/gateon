@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { proxyAuthenticatedJsonApi } from "@/lib/server/proxy-authenticated-json-api";
+import { proxyAuthenticatedJsonApi } from "@/lib/server/fetch/proxy-authenticated-json-api";
 
 export async function GET(
   request: NextRequest,

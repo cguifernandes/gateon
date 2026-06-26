@@ -10,7 +10,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   readSidebarOpenFromCookies,
   SIDEBAR_STATE_HTML_ATTR,
-} from "@/lib/sidebar-storage";
+} from "@/lib/ui/sidebar-storage";
 import { cn } from "@/lib/utils";
 
 const fontInter = Inter({

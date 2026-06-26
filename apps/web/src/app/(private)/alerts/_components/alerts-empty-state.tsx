@@ -1,3 +1,4 @@
+import { CreateAlertDialog } from "@/components/create-alert-dialog-dynamic";
 import { BadgeAlertIcon } from "@/components/icons/badge-alert";
 import {
   Empty,
@@ -9,7 +10,6 @@ import {
 } from "@/components/ui/empty";
 import type { StripeBillingConnectionDto } from "@/lib/zod/stripe-billing-schemas";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
-import { CreateAlertDialog } from "../../../../components/create-alert-dialog";
 
 type AlertsEmptyStateProps = {
   groups: TelegramGroupSummaryDto[];

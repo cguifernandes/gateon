@@ -2,9 +2,9 @@ import type { StaticImageData } from "next/image";
 import pagarme from "@/assets/gateway/pagarme.svg";
 import pagseguro from "@/assets/gateway/pagseguro.svg";
 import stripe from "@/assets/gateway/stripe-4.svg";
+import { Container } from "@/components/container";
 import type { GatewayId } from "@/lib/utils";
 import { PAYMENT_GATEWAYS } from "@/lib/utils";
-import { Container } from "@/components/container";
 import { GatewayCard } from "../gateway-card";
 
 const gatewayLogos: Record<GatewayId, StaticImageData> = {

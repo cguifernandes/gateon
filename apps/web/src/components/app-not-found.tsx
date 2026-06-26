@@ -13,7 +13,7 @@ import {
   type ArrowRightIconHandle,
 } from "@/components/icons/arrow-right";
 import { ImageComponent } from "@/components/image-component";
-import { getTelegramGroupTypeDisplay } from "@/lib/telegram-chat-type";
+import { getTelegramGroupTypeDisplay } from "@/lib/telegram/chat-type";
 import { cn, EMAIL_SUPPORT, withCacheBuster } from "@/lib/utils";
 import {
   type AlertSummaryDto,

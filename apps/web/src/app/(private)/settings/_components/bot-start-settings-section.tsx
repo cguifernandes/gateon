@@ -1,4 +1,4 @@
-import { getBotStartSettings } from "@/lib/server/get-bot-start-settings";
+import { getBotStartSettings } from "@/lib/server/data/get-bot-start-settings";
 import { BotStartSettingsForm } from "./bot-start-settings-form";
 
 export async function BotStartSettingsSection() {

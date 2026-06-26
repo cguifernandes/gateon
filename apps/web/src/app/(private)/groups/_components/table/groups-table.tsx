@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { TelegramGroupTypeCell } from "@/app/(private)/groups/_components/table/telegram-group-type-badges";
-import { AddGroupBotDialog } from "@/components/add-group-bot-dialog";
+import { AddGroupBotDialog } from "@/components/add-group-bot-dialog-dynamic";
 import { DataRefreshIndicator } from "@/components/data-refresh-indicator";
 import { DataTablePagination } from "@/components/data-table-pagination";
 import { DataTableToolbar } from "@/components/data-table-toolbar";
@@ -27,14 +27,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import {
   toClientPaginationState,
   useServerPaginationFetch,
 } from "@/hooks/use-server-pagination-fetch";
-import { buildTelegramGroupsListSearchParams } from "@/lib/build-telegram-groups-list-search-params";
-import { countActiveGroupsUrlFilters } from "@/lib/filter-utils";
-import { resolveTableEmptyState } from "@/lib/resolve-table-empty-state";
-import { getBotStatusDisplay } from "@/lib/telegram-bot-status";
+import { resolveTableEmptyState } from "@/lib/filters/table-empty-state";
+import { countActiveGroupsUrlFilters } from "@/lib/filters/utils";
+import { buildTelegramGroupsListSearchParams } from "@/lib/query/telegram-groups-list-params";
+import { getBotStatusDisplay } from "@/lib/telegram/bot-status";
 import { cn, withCacheBuster } from "@/lib/utils";
 import {
   GROUPS_TABLE_PAGE_SIZE,
@@ -76,21 +77,13 @@ export function GroupsTable({
   const { search, setSearch, clearSearch, urlFilters, filtersPopover } =
     useGroupsFiltersUrl();
   const searchIconRef = useRef<SearchIconHandle>(null);
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim());
   const [membersDrawerGroup, setMembersDrawerGroup] =
     useState<TelegramGroupSummaryDto | null>(null);
   const [removeGroupTarget, setRemoveGroupTarget] =
     useState<TelegramGroupSummaryDto | null>(null);
   const [quickNoticePayload, setQuickNoticePayload] =
     useState<QuickNoticePayload | null>(null);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setDebouncedSearch(search.trim());
-    }, 300);
-
-    return () => window.clearTimeout(timer);
-  }, [search]);
 
   const fetchPage = useCallback(
     async (page: number, signal?: AbortSignal) => {

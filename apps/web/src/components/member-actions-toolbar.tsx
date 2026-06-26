@@ -5,12 +5,15 @@ import { toast } from "sonner";
 import { BanIcon, type BanIconHandle } from "@/components/icons/ban";
 import { BellIcon, type BellIconHandle } from "@/components/icons/bell";
 import { CopyIcon, type CopyIconHandle } from "@/components/icons/copy";
-import { UserMinusIcon, type UserMinusIconHandle } from "@/components/icons/user-minus";
+import {
+  UserMinusIcon,
+  type UserMinusIconHandle,
+} from "@/components/icons/user-minus";
 import { ToolbarIconButton } from "@/components/toolbar-icon-button";
 import {
   createMemberActionTarget,
   useMemberActionHandler,
-} from "@/lib/member-actions";
+} from "@/lib/members/actions";
 import { cn } from "@/lib/utils";
 
 type MemberActionsToolbarProps = {

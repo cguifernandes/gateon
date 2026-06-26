@@ -2,7 +2,7 @@ import {
   TELEGRAM_ADMINISTRATOR_RIGHT_DEFINITIONS,
   type TelegramAdministratorRightKey,
   type TelegramGroupAdministratorRights,
-} from "@/lib/telegram-admin-rights";
+} from "@/lib/telegram/admin-rights";
 import type { TelegramGroupDetailDto } from "@/lib/zod/telegram-group-connection-schemas";
 
 export type BotPermissionStatus = "active" | "missing" | "attention";

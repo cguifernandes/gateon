@@ -5,11 +5,11 @@ import { type FilterParam, FiltersPopover } from "@/components/filters-popever";
 import {
   MEMBER_STATUS_FILTER_OPTIONS,
   type MemberStatusFilterValue,
-} from "@/lib/members-filter";
+} from "@/lib/members/filter";
 import {
   STRIPE_PAYER_FILTER_OPTIONS,
   type StripePayerFilterValue,
-} from "@/lib/stripe-payer-filter";
+} from "@/lib/stripe/payer-filter";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
 import type { MembersFiltersPopoverControl } from "../../_hooks/use-members-filters-url";
 import { MembersGroupFilterOptions } from "./members-group-filter-options";

@@ -33,7 +33,7 @@ import {
   getMaxGroupsForPlan,
   getMaxManagedMembersPerGroupForPlan,
   PLAN_LABELS,
-} from "@/lib/plan-limits";
+} from "@/lib/plan/limits";
 import { cn, withCacheBuster } from "@/lib/utils";
 import type { AlertSummaryDto } from "@/lib/zod/alert-schemas";
 import type { PlanId } from "@/lib/zod/plan-schemas";
@@ -235,10 +235,7 @@ function PlanUpsellCard() {
 
     return (
       <div
-        className={cn(
-          PLAN_CARD_SHELL_CLASS,
-          "border border-border bg-card",
-        )}
+        className={cn(PLAN_CARD_SHELL_CLASS, "border border-border bg-card")}
       >
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">

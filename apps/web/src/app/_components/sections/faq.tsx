@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Container } from "@/components/container";
 import {
   Accordion,
   AccordionContent,
@@ -9,7 +10,6 @@ import {
 } from "@/components/ui/accordion";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Container } from "@/components/container";
 
 const faqs = [
   {

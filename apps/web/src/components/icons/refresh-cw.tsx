@@ -4,7 +4,7 @@ import { motion } from "motion/react";
 import type { HTMLAttributes } from "react";
 import { forwardRef } from "react";
 import { useIconAnimation } from "@/hooks/use-icon-animation";
-import { iconSizeClass } from "@/lib/icon-size-class";
+import { iconSizeClass } from "@/lib/ui/icon-size-class";
 import { cn } from "@/lib/utils";
 
 export interface RefreshCWIconHandle {

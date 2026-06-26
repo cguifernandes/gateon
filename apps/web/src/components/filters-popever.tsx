@@ -1,9 +1,9 @@
 "use client";
 
 import { ptBR } from "date-fns/locale";
-import { Search } from "lucide-react";
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
+import { SearchIcon, type SearchIconHandle } from "@/components/icons/search";
 import {
   SlidersHorizontalIcon,
   type SlidersHorizontalIconHandle,
@@ -205,7 +205,11 @@ export function FiltersPopover({
                     {filter.label}
                   </Label>
                   <div className="relative group">
-                    <Search className="absolute left-3 z-10 top-1/2 -translate-y-1/2 group-focus-within:-translate-y-[calc(50%+2px)] size-4 text-muted-foreground transition-transform duration-150" />
+                    <SearchIcon
+                      className="absolute left-3 z-10 top-1/2 -translate-y-1/2 group-focus-within:-translate-y-[calc(50%+2px)] text-muted-foreground transition-transform duration-150"
+                      size={16}
+                      aria-hidden
+                    />
                     <Input
                       id={`filter-${filter.field}`}
                       placeholder={

@@ -9,7 +9,7 @@ import {
 import {
   BOT_STATUS_FILTER_OPTIONS,
   type BotStatusFilterValue,
-} from "@/lib/telegram-bot-status";
+} from "@/lib/telegram/bot-status";
 import type { StripeBillingConnectionDto } from "@/lib/zod/stripe-billing-schemas";
 import type { GroupsFiltersPopoverControl } from "../_hooks/use-groups-filters-url";
 

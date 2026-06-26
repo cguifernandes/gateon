@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { LoaderPage } from "@/components/loader-page";
-import { getAlerts } from "@/lib/server/get-alerts";
-import { getStripeBillingConnectionOptions } from "@/lib/server/get-stripe-billing-connection-options";
-import { getTelegramGroupOptions } from "@/lib/server/get-telegram-group-options";
+import { getAlerts } from "@/lib/server/data/get-alerts";
+import { getStripeBillingConnectionOptions } from "@/lib/server/data/get-stripe-billing-connection-options";
+import { getTelegramGroupOptions } from "@/lib/server/data/get-telegram-group-options";
 import { AlertsClient } from "./_components/alerts-client";
 
 export const metadata: Metadata = {

@@ -1,6 +1,5 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, type RefObject, useRef } from "react";
@@ -39,7 +38,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { resolveAccountPlanCta } from "@/lib/account-plan-cta";
+import { resolveAccountPlanCta } from "@/lib/plan/account-cta";
 import { cn, getUserInitials } from "@/lib/utils";
 import type { PublicUserDto } from "@/lib/zod/auth-schemas";
 
@@ -58,19 +57,11 @@ type AnimatedIconKey =
   | "plug"
   | "user";
 
-type NavItem =
-  | {
-      href: string;
-      label: string;
-      kind: "animated";
-      iconKey: AnimatedIconKey;
-    }
-  | {
-      href: string;
-      label: string;
-      kind: "lucide";
-      Icon: LucideIcon;
-    };
+type NavItem = {
+  href: string;
+  label: string;
+  iconKey: AnimatedIconKey;
+};
 
 type NavSection = {
   label: string;
@@ -84,31 +75,26 @@ const navSections: NavSection[] = [
       {
         href: "/dashboard",
         label: "Dashboard",
-        kind: "animated",
         iconKey: "dashboard",
       },
       {
         href: "/groups",
         label: "Grupos",
-        kind: "animated",
         iconKey: "groups",
       },
       {
         href: "/members",
         label: "Membros",
-        kind: "animated",
         iconKey: "members",
       },
       {
         href: "/alerts",
         label: "Alertas",
-        kind: "animated",
         iconKey: "alerts",
       },
       {
         href: "/integrations",
         label: "Integrações",
-        kind: "animated",
         iconKey: "plug",
       },
     ],
@@ -119,7 +105,6 @@ const navSections: NavSection[] = [
       {
         href: "/settings",
         label: "Configurações",
-        kind: "animated",
         iconKey: "settings",
       },
     ],
@@ -130,7 +115,6 @@ const navSections: NavSection[] = [
       {
         href: "/terms",
         label: "Termos",
-        kind: "animated",
         iconKey: "terms",
       },
     ],
@@ -322,15 +306,11 @@ function SidebarNavItem({ item, isActive, isCollapsed }: SidebarNavItemProps) {
         onMouseEnter={() => iconRef.current?.startAnimation()}
         onMouseLeave={() => iconRef.current?.stopAnimation()}
       >
-        {item.kind === "animated" ? (
-          <SidebarAnimatedIcon
-            iconKey={item.iconKey}
-            iconRef={iconRef}
-            className={iconClassName}
-          />
-        ) : (
-          <item.Icon aria-hidden className={iconClassName} />
-        )}
+        <SidebarAnimatedIcon
+          iconKey={item.iconKey}
+          iconRef={iconRef}
+          className={iconClassName}
+        />
         <span className={cn("truncate", isCollapsed && "sr-only")}>
           {item.label}
         </span>

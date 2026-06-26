@@ -11,7 +11,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { getBotConfigStatusDisplay } from "@/lib/telegram-bot-status";
+import { getBotConfigStatusDisplay } from "@/lib/telegram/bot-status";
 import { cn, withCacheBuster } from "@/lib/utils";
 import type { TelegramGroupDetailDto } from "@/lib/zod/telegram-group-connection-schemas";
 

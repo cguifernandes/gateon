@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import type { Control } from "react-hook-form";
 import { useWatch } from "react-hook-form";
-import { buildBotStartPreviewMessage } from "@/lib/bot-start-message-builder";
+import { buildBotStartPreviewMessage } from "@/lib/bot-start/message-builder";
 import {
   defaultBotStartSettingsValues,
   type TelegramBotStartSettingsDto,

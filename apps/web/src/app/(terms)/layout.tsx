@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { readSidebarOpenFromCookies } from "@/lib/sidebar-storage";
+import { readSidebarOpenFromCookies } from "@/lib/ui/sidebar-storage";
 import { LegalShell } from "./_components/legal-shell";
 
 type LegalLayoutProps = {

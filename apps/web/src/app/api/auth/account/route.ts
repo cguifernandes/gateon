@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { proxyAuthenticatedJsonApi } from "@/lib/server/proxy-authenticated-json-api";
+import { proxyAuthenticatedJsonApi } from "@/lib/server/fetch/proxy-authenticated-json-api";
 import { SESSION_COOKIE_NAME } from "@/lib/utils";
 import { deleteAccountRequestSchema } from "@/lib/zod/auth-schemas";
 

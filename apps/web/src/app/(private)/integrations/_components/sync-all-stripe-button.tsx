@@ -12,6 +12,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { readErrorBody } from "@/lib/http/read-error-body";
 import { cn } from "@/lib/utils";
 import {
   type StripeBillingConnectionDto,
@@ -25,26 +26,6 @@ type SyncAllStripeButtonProps = {
   onSyncingChange?: (isSyncing: boolean) => void;
   disabled?: boolean;
 };
-
-function getErrorMessage(body: unknown, fallback: string) {
-  if (
-    body &&
-    typeof body === "object" &&
-    "error" in body &&
-    typeof (body as { error?: unknown }).error === "string"
-  ) {
-    return (body as { error: string }).error;
-  }
-  if (
-    body &&
-    typeof body === "object" &&
-    "message" in body &&
-    typeof (body as { message?: unknown }).message === "string"
-  ) {
-    return (body as { message: string }).message;
-  }
-  return fallback;
-}
 
 export function SyncAllStripeButton({
   connections,
@@ -69,7 +50,7 @@ export function SyncAllStripeButton({
         const body: unknown = await response.json().catch(() => null);
         if (!response.ok) {
           throw new Error(
-            getErrorMessage(body, "Não foi possível concluir a sincronização."),
+            readErrorBody(body, "Não foi possível concluir a sincronização."),
           );
         }
 

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getUserProfile } from "@/lib/server/get-user-profile";
+import { getUserProfile } from "@/lib/server/data/get-user-profile";
 import { getUserInitials } from "@/lib/utils";
 import { ProfileAccountCard } from "./_components/profile-account-card";
 import { ProfileBottomSection } from "./_components/profile-bottom-section";

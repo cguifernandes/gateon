@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { proxyAuthenticatedJsonApi } from "@/lib/server/proxy-authenticated-json-api";
+import { proxyAuthenticatedJsonApi } from "@/lib/server/fetch/proxy-authenticated-json-api";
 
 const ROUTE_LABEL = "/api/auth/sessions";
 const UPSTREAM_PATH = "/auth/sessions";

@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   getTelegramGroupTypeDisplay,
   type TelegramGroupTypeDisplay,
-} from "@/lib/telegram-chat-type";
+} from "@/lib/telegram/chat-type";
 import { cn } from "@/lib/utils";
 
 type TelegramGroupTypeBadgesProps = {

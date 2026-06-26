@@ -5,7 +5,7 @@ import { motion } from "motion/react";
 import type { HTMLAttributes } from "react";
 import { forwardRef } from "react";
 import { useIconAnimation } from "@/hooks/use-icon-animation";
-import { iconSizeClass } from "@/lib/icon-size-class";
+import { iconSizeClass } from "@/lib/ui/icon-size-class";
 import { cn } from "@/lib/utils";
 
 export interface PlugIconHandle {
@@ -90,11 +90,19 @@ const PlugIcon = forwardRef<PlugIconHandle, PlugIconProps>(
           role="presentation"
           aria-hidden="true"
         >
-          <motion.g animate={controls} initial="normal" variants={PLUG_PRONGS_VARIANTS}>
+          <motion.g
+            animate={controls}
+            initial="normal"
+            variants={PLUG_PRONGS_VARIANTS}
+          >
             <path d="M15 8V2" />
             <path d="M9 8V2" />
           </motion.g>
-          <motion.g animate={controls} initial="normal" variants={PLUG_BODY_VARIANTS}>
+          <motion.g
+            animate={controls}
+            initial="normal"
+            variants={PLUG_BODY_VARIANTS}
+          >
             <path d="M17 8a1 1 0 0 1 1 1v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1z" />
             <path d="M12 22v-5" />
           </motion.g>

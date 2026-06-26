@@ -1,21 +1,27 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
 import type { DateRangeValue } from "@/components/filters-popever";
 import { usePendingUrlFiltersApply } from "@/hooks/use-pending-url-filters";
 import {
   areMembersUrlFiltersEqual,
   countActiveMembersUrlFilters,
   EMPTY_MEMBERS_URL_FILTERS,
-} from "@/lib/filter-utils";
-import type { MemberStatusFilterValue } from "@/lib/members-filter";
-import type { StripePayerFilterValue } from "@/lib/stripe-payer-filter";
+} from "@/lib/filters/utils";
+import type { MemberStatusFilterValue } from "@/lib/members/filter";
 import {
   buildMembersUrlFiltersSearchParams,
   type MembersUrlFiltersState,
   parseMembersUrlFiltersFromSearchParams,
-} from "@/lib/members-url-filters";
+} from "@/lib/members/url-filters";
+import type { StripePayerFilterValue } from "@/lib/stripe/payer-filter";
 
 export type MembersFiltersPopoverControl = {
   draft: MembersUrlFiltersState;
@@ -71,9 +77,12 @@ export function useMembersFiltersUrl() {
     setDraftFilters(urlFilters);
   }, [urlFilters]);
 
-  const setMemberStatus = useCallback((memberStatus: MemberStatusFilterValue) => {
-    setDraftFilters((current) => ({ ...current, memberStatus }));
-  }, []);
+  const setMemberStatus = useCallback(
+    (memberStatus: MemberStatusFilterValue) => {
+      setDraftFilters((current) => ({ ...current, memberStatus }));
+    },
+    [],
+  );
 
   const setStripePayer = useCallback((stripePayer: StripePayerFilterValue) => {
     setDraftFilters((current) => ({ ...current, stripePayer }));

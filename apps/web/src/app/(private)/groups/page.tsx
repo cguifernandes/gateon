@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { LoaderPage } from "@/components/loader-page";
-import { DEFAULT_PLAN_ID, getMaxGroupsForPlan } from "@/lib/plan-limits";
-import { getSessionUser } from "@/lib/server/get-session";
-import { getStripeBillingConnectionOptions } from "@/lib/server/get-stripe-billing-connection-options";
-import { getTelegramGroups } from "@/lib/server/get-telegram-groups";
+import { DEFAULT_PLAN_ID, getMaxGroupsForPlan } from "@/lib/plan/limits";
+import { getSessionUser } from "@/lib/server/data/get-session";
+import { getStripeBillingConnectionOptions } from "@/lib/server/data/get-stripe-billing-connection-options";
+import { getTelegramGroups } from "@/lib/server/data/get-telegram-groups";
 import { cn } from "@/lib/utils";
 import { GroupsSummaryStats } from "./_components/groups-summary-stats";
 import { SyncGroupLimit } from "./_components/sync-group-limit";

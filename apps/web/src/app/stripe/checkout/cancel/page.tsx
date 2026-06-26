@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { getPublicTelegramBotUrlFromEnv } from "@/lib/telegram-bot-url";
+import { getPublicTelegramBotUrlFromEnv } from "@/lib/telegram/bot-url";
 
 const REDIRECT_DELAY_MS = 2_000;
 

@@ -4,7 +4,7 @@ import {
   formatReviewBoolean,
   formatReviewValue,
 } from "@/components/alert-review-summary";
-import type { QuickAlertOption } from "@/lib/quick-alerts";
+import type { QuickAlertOption } from "@/lib/alerts/quick-alerts";
 import { cn } from "@/lib/utils";
 
 type QuickAlertSelectedDetailsProps = {

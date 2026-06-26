@@ -22,7 +22,9 @@ export function getPresetRange(preset: DatePreset): DateRangeBounds {
   return { from: new Date(to.getTime() - hours * 3_600_000), to };
 }
 
-export function getPreviousRange(range: DateRangeBounds): DateRangeBounds | null {
+export function getPreviousRange(
+  range: DateRangeBounds,
+): DateRangeBounds | null {
   if (!range.from) return null;
   const duration = range.to.getTime() - range.from.getTime();
   return {
@@ -223,7 +225,9 @@ export type MemberMovementRow = {
   isActiveNow: boolean;
 };
 
-function getMemberDisplayName(member: TelegramGroupSummaryDto["members"][number]) {
+function getMemberDisplayName(
+  member: TelegramGroupSummaryDto["members"][number],
+) {
   const name = [member.firstName, member.lastName].filter(Boolean).join(" ");
   return name || `Membro ${member.telegramUserId}`;
 }
@@ -305,8 +309,12 @@ export function getMemberMovementsInRange(
   const sortByRecent = (a: MemberMovementRow, b: MemberMovementRow) =>
     new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime();
 
-  const joined = events.filter((event) => event.movement === "joined").sort(sortByRecent);
-  const left = events.filter((event) => event.movement === "left").sort(sortByRecent);
+  const joined = events
+    .filter((event) => event.movement === "joined")
+    .sort(sortByRecent);
+  const left = events
+    .filter((event) => event.movement === "left")
+    .sort(sortByRecent);
   const perTypeLimit = Math.ceil(limit / 2);
 
   return [...joined.slice(0, perTypeLimit), ...left.slice(0, perTypeLimit)]
@@ -338,7 +346,10 @@ function filterAlertsForGroup(groupId: string, alerts: AlertSummaryDto[]) {
   );
 }
 
-export function getGroupDeliveryRate(groupId: string, alerts: AlertSummaryDto[]) {
+export function getGroupDeliveryRate(
+  groupId: string,
+  alerts: AlertSummaryDto[],
+) {
   const groupAlerts = filterAlertsForGroup(groupId, alerts);
   if (groupAlerts.length === 0) return 0;
   return Math.round(

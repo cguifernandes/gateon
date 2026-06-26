@@ -1,10 +1,10 @@
+import { Container } from "@/components/container";
 import {
   Card,
   CardContent,
   CardFooter,
   CardHeader,
 } from "@/components/ui/card";
-import { Container } from "@/components/container";
 
 const items = [
   {

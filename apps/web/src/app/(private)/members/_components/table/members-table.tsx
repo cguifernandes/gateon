@@ -1,14 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { Fragment, useCallback, useMemo, useRef, useState } from "react";
 import { DataRefreshIndicator } from "@/components/data-refresh-indicator";
 import { DataTablePagination } from "@/components/data-table-pagination";
 import { DataTableToolbar } from "@/components/data-table-toolbar";
@@ -31,14 +24,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import {
   toClientPaginationState,
   useServerPaginationFetch,
 } from "@/hooks/use-server-pagination-fetch";
-import { buildTelegramGroupsListSearchParams } from "@/lib/build-telegram-groups-list-search-params";
-import { countActiveMembersUrlFilters } from "@/lib/filter-utils";
-import { resolveTableEmptyState } from "@/lib/resolve-table-empty-state";
-import { getTrackedMemberStatusDisplay } from "@/lib/telegram-bot-status";
+import { resolveTableEmptyState } from "@/lib/filters/table-empty-state";
+import { countActiveMembersUrlFilters } from "@/lib/filters/utils";
+import { buildTelegramGroupsListSearchParams } from "@/lib/query/telegram-groups-list-params";
+import { getTrackedMemberStatusDisplay } from "@/lib/telegram/bot-status";
 import { cn, withCacheBuster } from "@/lib/utils";
 import {
   MEMBERS_TABLE_PAGE_SIZE,
@@ -89,7 +83,7 @@ export function MembersTable({
   const { search, setSearch, clearSearch, urlFilters, filtersPopover } =
     useMembersFiltersUrl();
   const searchIconRef = useRef<SearchIconHandle>(null);
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim());
   const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -102,14 +96,6 @@ export function MembersTable({
     targets: { telegramUserId: string; displayName?: string }[];
   } | null>(null);
   const hasPopoverFilters = countActiveMembersUrlFilters(urlFilters) > 0;
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setDebouncedSearch(search.trim());
-    }, 300);
-
-    return () => window.clearTimeout(timer);
-  }, [search]);
 
   const fetchPage = useCallback(
     async (page: number, signal?: AbortSignal) => {
@@ -346,7 +332,9 @@ export function MembersTable({
                         onCheckedChange={toggleAllVisible}
                       />
                     </TableHead>
-                    <TableHead className="min-w-0 sm:min-w-60">Membro</TableHead>
+                    <TableHead className="min-w-0 sm:min-w-60">
+                      Membro
+                    </TableHead>
                     <TableHead className="hidden w-36 min-w-36 whitespace-nowrap px-2 text-center md:table-cell">
                       Entrada
                     </TableHead>

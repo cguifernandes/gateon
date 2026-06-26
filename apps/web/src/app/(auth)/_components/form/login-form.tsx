@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { FormField } from "@/components/form-field";
 import { notifyNavigationStart } from "@/components/navigation-progress-bar";
 import { Button } from "@/components/ui/button";
-import { loginAction } from "@/lib/server/login.action";
+import { loginAction } from "@/lib/server/actions/login.action";
 import { type AuthFormValues, createAuthSchema } from "@/lib/zod/auth-schemas";
 
 export function LoginForm() {

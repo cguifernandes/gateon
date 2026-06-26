@@ -1,6 +1,6 @@
 "use client";
 
-import { AddGroupBotDialog } from "@/components/add-group-bot-dialog";
+import { AddGroupBotDialog } from "@/components/add-group-bot-dialog-dynamic";
 import { UsersIcon } from "@/components/icons/users";
 import { Button } from "@/components/ui/button";
 import {

@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { getTrackedMemberStatusDisplay } from "@/lib/telegram-bot-status";
+import { getTrackedMemberStatusDisplay } from "@/lib/telegram/bot-status";
 import { cn } from "@/lib/utils";
 import type { telegramGroupChatMemberSchema } from "@/lib/zod/telegram-group-connection-schemas";
 
@@ -32,7 +32,10 @@ type GroupMemberRowProps = {
 
 function getMemberInitials(member: GroupMemberRowData) {
   const letter =
-    member.firstName?.[0] ?? member.lastName?.[0] ?? member.telegramUserId[0] ?? "?";
+    member.firstName?.[0] ??
+    member.lastName?.[0] ??
+    member.telegramUserId[0] ??
+    "?";
   return letter.toUpperCase();
 }
 

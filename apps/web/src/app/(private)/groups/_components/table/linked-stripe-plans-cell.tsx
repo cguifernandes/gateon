@@ -18,10 +18,7 @@ type LinkedStripePlansCellProps = {
 function PlanBadge({ plan }: { plan: LinkedStripePlan }) {
   if (!plan.cancelAtPeriodEnd) {
     return (
-      <Badge
-        variant="outline"
-        className="max-w-full truncate text-[10px]"
-      >
+      <Badge variant="outline" className="max-w-full truncate text-[10px]">
         {plan.label}
       </Badge>
     );

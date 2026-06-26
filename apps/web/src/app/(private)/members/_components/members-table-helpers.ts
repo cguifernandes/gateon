@@ -1,4 +1,5 @@
-import type { MemberActionTarget } from "@/lib/member-actions";
+import type { MemberActionTarget } from "@/lib/members/actions";
+import { getMemberDisplayName, getMemberInitials } from "@/lib/members/display";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
 
 export type MemberSummary = TelegramGroupSummaryDto["members"][number];
@@ -7,26 +8,14 @@ export type VisibleGroup = TelegramGroupSummaryDto & {
   visibleMembers: MemberSummary[];
 };
 
+export { getMemberDisplayName, getMemberInitials };
+
 export function getMemberKey(groupId: string, telegramUserId: string) {
   return `${groupId}:${telegramUserId}`;
 }
 
 export function getMemberKeyGroupId(memberKey: string) {
   return memberKey.split(":")[0] ?? "";
-}
-
-export function getMemberDisplayName(member: MemberSummary) {
-  const fullName = [member.firstName, member.lastName]
-    .filter(Boolean)
-    .join(" ");
-
-  if (fullName) return fullName;
-  return member.telegramUserId;
-}
-
-export function getMemberInitials(member: MemberSummary) {
-  const source = member.firstName ?? member.lastName ?? member.telegramUserId;
-  return source.slice(0, 2).toUpperCase();
 }
 
 export function formatMemberDate(value: string) {
@@ -116,9 +105,7 @@ export function getVisibleSelectionSummary(
     const members = selectedGroupIds.has(group.id)
       ? group.visibleMembers
       : group.visibleMembers.filter((member) =>
-          selectedMemberKeys.has(
-            getMemberKey(group.id, member.telegramUserId),
-          ),
+          selectedMemberKeys.has(getMemberKey(group.id, member.telegramUserId)),
         );
 
     for (const member of members) {

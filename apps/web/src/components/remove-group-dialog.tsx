@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { removeTelegramGroupAction } from "@/lib/server/remove-telegram-group.action";
+import { removeTelegramGroupAction } from "@/lib/server/actions/remove-telegram-group.action";
 
 type RemoveGroupDialogProps = {
   groupId: string;

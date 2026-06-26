@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { resolveAccountPlanCta } from "@/lib/account-plan-cta";
+import { resolveAccountPlanCta } from "@/lib/plan/account-cta";
 import { cn } from "@/lib/utils";
 import type { PlanId } from "@/lib/zod/plan-schemas";
 

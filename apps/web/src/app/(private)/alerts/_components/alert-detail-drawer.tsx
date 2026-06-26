@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { runAlertActionWithToasts } from "@/lib/alert-actions";
+import { runAlertActionWithToasts } from "@/lib/alerts/actions";
 import { cn } from "@/lib/utils";
 import {
   type AlertRunRecordDto,

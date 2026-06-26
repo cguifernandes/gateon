@@ -392,7 +392,7 @@ Planos definidos em `plan-schemas.ts`: `free`, `starter`, `pro`.
 
 **Atualmente todos os usuários usam `free`** — billing Gateon ainda não está wired ao modelo `Users`.
 
-Arquivos: `apps/api/src/lib/plan/plan-limits.ts`, `apps/web/src/lib/plan-limits.ts`, `apps/api/src/modules/group-limits/group-limits.service.ts`.
+Arquivos: `apps/api/src/lib/plan/plan-limits.ts`, `apps/web/src/lib/plan/limits.ts`, `apps/api/src/modules/group-limits/group-limits.service.ts`.
 
 ---
 
@@ -466,14 +466,42 @@ Route handlers autenticados que fazem proxy para a API Nest — usados por Clien
 
 ## Padrões Web → API
 
+### Estrutura de `apps/web/src/lib/`
+
+**Não** criar arquivos soltos na raiz de `lib/` (exceto `utils.ts`); usar subpastas por domínio:
+
+```
+lib/
+├── zod/              # schemas HTTP (nunca em _components/)
+├── http/             # session, api-base-url, read-error-body
+├── filters/          # date-params, utils, table-empty-state
+├── query/            # alerts-list-params, telegram-groups-list-params
+├── alerts/           # url-filters, actions, form-values, quick-*
+├── groups/           # url-filters, date-range-filter
+├── members/          # url-filters, display, filter, actions
+├── telegram/         # admin-rights, bot-status, bot-url, chat-type, cache-tags
+├── stripe/           # payer-filter, plan-label
+├── plan/             # limits, account-cta
+├── bot-start/        # message-builder, subscribe-steps
+├── integrations/     # config, gateways
+├── ui/               # icon-size-class, sidebar-storage, theme-routes
+├── sentry/           # report-*-error, sentry-options
+└── server/
+    ├── actions/      # *.action.ts, apply-session-set-cookie.ts
+    ├── data/         # get-*.ts (RSC, cache())
+    └── fetch/        # authenticated-upstream, upstream-fetch, proxy-authenticated-json-api
+```
+
+`utils.ts` mantém apenas `cn()`, `withCacheBuster`, `getUserInitials` e re-exports estáveis (`SESSION_COOKIE_NAME`, `PAYMENT_GATEWAYS`, etc.).
+
 ### Três camadas
 
-1. **Server Components / server functions** (`apps/web/src/lib/server/`)
+1. **Server Components / server functions** (`apps/web/src/lib/server/data/`)
    - `getSessionUser()`, `getTelegramGroups()`, `getAlerts()`, etc.
-   - Fetch direto à API com cookie + `getServerApiBaseUrl()`
+   - Fetch via `server/fetch/authenticated-upstream.ts` + cookie + `getServerApiBaseUrl()`
    - Validação de resposta com Zod (`apps/web/src/lib/zod/`)
 
-2. **Server Actions** (`*.action.ts`)
+2. **Server Actions** (`apps/web/src/lib/server/actions/*.action.ts`)
    - Auth: login, register, logout
    - Propagam `Set-Cookie` via `apply-session-set-cookie.ts`
 
@@ -540,12 +568,12 @@ Não há pacote `@gateon/shared`. Manter em sync manualmente (comentários "keep
 
 | Conceito | API | Web | Bot |
 |----------|-----|-----|-----|
-| Plan limits | `api/src/lib/plan/plan-limits.ts` | `web/src/lib/plan-limits.ts` | — |
+| Plan limits | `api/src/lib/plan/plan-limits.ts` | `web/src/lib/plan/limits.ts` | — |
 | Stripe payment group limits | `api/src/lib/plan/stripe-payment-group-limits.ts` | `web/src/lib/zod/stripe-payment-group-schemas.ts` | — |
 | Plan schemas | `api/src/lib/zod/plan-schemas.ts` | `web/src/lib/zod/plan-schemas.ts` | — |
-| Telegram admin rights | `api/src/lib/telegram-admin-rights.ts` | `web/src/lib/telegram-admin-rights.ts` | `bot/src/telegram-admin-rights.ts` |
-| Bot start message | — | `web/src/lib/bot-start-message-builder.ts` (preview) | `bot/src/bot-start-message-builder.ts` (runtime) |
-| Bot start subscribe steps | — | `web/src/lib/bot-start-subscribe-steps.ts` | `bot/src/bot-start-subscribe-steps.ts` |
+| Telegram admin rights | `api/src/lib/telegram/admin-rights.ts` | `web/src/lib/telegram/admin-rights.ts` | `bot/src/telegram-admin-rights.ts` |
+| Bot start message | — | `web/src/lib/bot-start/message-builder.ts` (preview) | `bot/src/bot-start-message-builder.ts` (runtime) |
+| Bot start subscribe steps | — | `web/src/lib/bot-start/subscribe-steps.ts` | `bot/src/bot-start-subscribe-steps.ts` |
 | Alert schemas | `api/.../alert-schemas.ts` | `web/src/lib/zod/alert-schemas.ts` | `bot/alert-triggers.ts` |
 | Stripe billing schemas | `api/.../stripe-billing-schemas.ts` | `web/src/lib/zod/stripe-billing-schemas.ts` | — |
 | Bot start settings schemas | `api/.../bot-start-settings-schemas.ts` | `web/src/lib/zod/bot-start-settings-schemas.ts` | tipos em `gateon-api.ts` |
@@ -744,7 +772,8 @@ Variants: `default`, `secondary`, `destructive`, `outline`, `ghost`, `link`, `al
 #### Ícones
 
 - **Preferir** ícones animados em `src/components/icons/` (Motion)
-- **Lucide** (`lucide-react`) apenas onde necessário (sidebar types, alguns internals shadcn)
+- **Lucide** (`lucide-react`) apenas em primitivos `ui/*` ou quando não houver equivalente em `icons/`
+- Ver regras completas em [DRY e reutilização de código (Web)](#dry-e-reutilização-de-código-web) → Ícones
 
 ### Arquivos-chave do design system
 
@@ -772,6 +801,105 @@ Variants: `default`, `secondary`, `destructive`, `outline`, `ghost`, `link`, `al
 
 ---
 
+## DRY e reutilização de código (Web)
+
+**Obrigatório antes de qualquer feature nova no front-end.** Evitar duplicação é requisito de merge — não opcional.
+
+### Regras permanentes
+
+- Antes de criar qualquer **componente**, pesquisar em `src/components/`, `_components/` da rota e `src/components/ui/`.
+- Antes de criar qualquer **hook**, pesquisar `src/hooks/`, `_hooks/` da rota e hooks embutidos em `lib/` (ex.: `useMemberActionHandler`).
+- Antes de criar qualquer **utilitário**, pesquisar `src/lib/`, `src/lib/server/` e `src/lib/zod/`.
+- Antes de criar qualquer **fetch**, verificar se já existe em `lib/server/get-*.ts`, `app/api/**/route.ts` ou `proxyAuthenticatedJsonApi`.
+- **Reutilizar** código existente sempre que possível; **estender** em vez de copiar.
+- **Centralizar** validações em `lib/zod/`; formatações em `lib/<domínio>/`; erros HTTP em `lib/http/read-error-body.ts`.
+- **Centralizar** paginação em `use-server-pagination-fetch.ts`, `use-client-pagination.ts`, `data-table-pagination.tsx`.
+- **Centralizar** filtros URL em `lib/<feature>/url-filters.ts` + `lib/filters/date-params.ts` + `lib/filters/utils.ts`.
+- Manter componentes **< ~250–300 linhas**; dividir quando misturar responsabilidades.
+- **Ícones:** usar `src/components/icons/` (animados) — `lucide-react` só em primitivos shadcn ou quando não houver equivalente.
+- **Lazy-load** dialogs pesados (`create-alert-dialog`, `add-group-bot-dialog`, `connect-integration-dialog`) com `next/dynamic` quando importados fora do fluxo principal.
+- Validar impacto em **bundle** antes de adicionar dependências (`recharts`, `motion`, etc.).
+
+### Helpers compartilhados preferidos (Web — evitar reimplementar)
+
+| Responsabilidade | Onde centralizar | Não duplicar em |
+|------------------|------------------|-----------------|
+| Proxy BFF autenticado | `lib/server/fetch/proxy-authenticated-json-api.ts` | Cada `route.ts` com fetch manual |
+| Fetch upstream no server (RSC) | `lib/server/fetch/authenticated-upstream.ts` + `server/data/get-*.ts` | Novo `get-*.ts` copiando cookie/timeout/Zod |
+| Erro HTTP (server + client) | `lib/http/read-error-body.ts` (`readErrorBody`, `readUpstreamError`) | Parse manual de `body.message` / `body.error` |
+| Erro API (client + Sentry) | `read-error-body.ts` + `lib/sentry/report-client-api-error.ts` | `getErrorMessage` / `readApiError` local |
+| Datas em filtros URL | `lib/filters/date-params.ts` | `parseDateParam` / `format*FilterDate` por feature |
+| Paginação server | `hooks/use-server-pagination-fetch.ts` | `useEffect` + `fetch` + estado manual |
+| Paginação client | `hooks/use-client-pagination.ts` | Lógica de página inline |
+| Filtros URL (draft/apply) | `hooks/use-pending-url-filters.ts` + `lib/<feature>/url-filters.ts` | Copiar hook por feature sem extrair genérico |
+| Empty state de tabela | `components/table-results-empty-state.tsx` + `lib/filters/table-empty-state.ts` | Empty inline por tabela |
+| Toolbar de tabela | `components/data-table-toolbar.tsx` + `data-table-pagination.tsx` | Toolbar duplicada |
+| Form field padrão | `components/form-field.tsx` + `ui/field.tsx` | Label + Input + erro manual |
+| Sessão (server) | `lib/server/data/get-session.ts` (`cache()`) | `getSessionUser` redundante sem necessidade |
+| Ícones de produto | `components/icons/*` | `lucide-react` em telas de produto |
+| Animação de ícone | `hooks/use-icon-animation.ts` | `animate-spin` em Lucide quando há ícone animado equivalente |
+
+### Checklist obrigatório — nova funcionalidade (Web)
+
+1. [ ] Busquei em `apps/web/src/` por componentes, hooks, utils e fetches semelhantes (grep/semantic search).
+2. [ ] Listei o que já existe e decidi **reutilizar / estender** vs. criar novo (justificativa no PR).
+3. [ ] UI só desta rota → `_components/`; compartilhada → `src/components/`.
+4. [ ] Schema Zod em `lib/zod/`; sem schema duplicado em `_components`.
+5. [ ] Server data → `lib/server/data/get-*.ts`; mutations client → BFF `app/api/**` com `proxyAuthenticatedJsonApi`.
+6. [ ] Respostas validadas com Zod (`safeParse`); erros com helper centralizado, não parse inline.
+7. [ ] Formulário: RHF + `zodResolver` + `FormField`/`Field` + toast Sonner.
+8. [ ] Loading: `Button loading`, `DataRefreshIndicator`, `Skeleton` ou `LoaderPage` — estado explícito.
+9. [ ] Empty/error states seguem `Empty` compound ou `TableResultsEmptyState`.
+10. [ ] Ícone: verifiquei `components/icons/` (versão animada) antes de `lucide-react`.
+11. [ ] Componente novo < ~300 linhas; se maior, dividi por responsabilidade.
+12. [ ] Acessibilidade mínima: labels, `aria-label` em botões só-ícone, foco visível, contraste.
+13. [ ] Sem `console.log`; sem token em `localStorage`/`sessionStorage`.
+14. [ ] Verifiquei duplicação de lógica antes de finalizar (DRY pass).
+15. [ ] Se tocar código sincronizado web/api/bot, atualizei todos os arquivos da tabela [Código sincronizado](#código-sincronizado-entre-apps).
+
+### Performance (Web)
+
+- Preferir **RSC** + props iniciais; client fetch só quando filtros/paginação mudam no client (`useServerPaginationFetch`).
+- **`next/dynamic`** para dialogs > ~400 linhas importados em listagens (`create-alert-dialog`, `add-group-bot-dialog`).
+- **`React.memo`** em linhas de tabela (`group-member-row`, rows de members) quando listas > ~50 itens.
+- Evitar cálculos pesados no render — extrair para `useMemo` ou pré-processar no server.
+- **`GroupLimitProvider`** / **`SidebarProvider`**: não colocar estado que muda frequentemente no mesmo contexto global.
+- Recharts e Motion: importar só onde renderizam; não re-exportar charts mortos.
+- Imagens: `ImageComponent` / `next/image` com `alt`; fotos Telegram via BFF com cache.
+
+### Acessibilidade mínima (Web)
+
+Todo componente novo deve incluir:
+
+- Labels visíveis ou `aria-label` em controles só-ícone (`ToolbarIconButton`, refresh, close).
+- `aria-describedby` quando houver texto de ajuda (`FieldDescription`).
+- `aria-invalid` + `FieldError` em campos com erro de validação.
+- Foco visível (`ring-ring` / `focus-visible:ring-*`) — não remover outline sem substituto.
+- Botões destrutivos com confirmação (`Dialog`) quando ação for irreversível.
+- Imagens com `alt` descritivo; avatares com nome do usuário/grupo.
+
+### Ícones (regras obrigatórias)
+
+1. **Sempre** pesquisar `src/components/icons/` antes de importar `lucide-react`.
+2. **Preferir** versão animada (`useIconAnimation`, hover em nav/toolbar) para loading, sync, sucesso, atenção.
+3. **`lucide-react` permitido** apenas em: primitivos `components/ui/*` (shadcn), tipos internos, ou quando não existir equivalente (`MinusIcon`, `HashIcon`, `UserRoundIcon`).
+4. Ao criar ícone novo, seguir padrão dos existentes: `forwardRef`, `startAnimation`/`stopAnimation`, `aria-hidden` no SVG.
+5. Não misturar Lucide e ícone animado na mesma toolbar sem justificativa visual.
+
+### Arquitetura Web (camadas)
+
+```
+RSC page → lib/server/get-*.ts → API Nest (cookie)
+Client Component → fetch /api/* (BFF) → proxyAuthenticatedJsonApi → API Nest
+Server Action → lib/server/*.action.ts → API Nest (auth forms, logout)
+```
+
+- **Não** chamar API Nest diretamente do browser (sempre BFF ou Server Action).
+- **Não** duplicar regra de negócio que já existe na API — consumir DTO validado com Zod.
+- Lógica pura (filtros, builders, labels) → `lib/`; orquestração UI → componentes; estado de URL → `_hooks/`.
+
+---
+
 ## Segurança
 
 - Nunca armazenar dados sensíveis de pagamento
@@ -783,6 +911,8 @@ Variants: `default`, `secondary`, `destructive`, `outline`, `ghost`, `link`, `al
 - Logs anonimizados quando possível; não logar tokens, secrets ou PII desnecessária
 - Sessões em cookie httpOnly (`gateon.session`)
 - Sem `$queryRaw` / SQL concatenado — usar Prisma tipado
+- **Web:** nunca armazenar sessão/token em `localStorage`/`sessionStorage`; dados de API renderizados como texto React (sem `dangerouslySetInnerHTML` exceto CSS de charts)
+- **Web:** rotas privadas protegidas por `(private)/layout.tsx` + BFF com `proxyAuthenticatedJsonApi`; não confiar só em checagem client-side
 
 ---
 
@@ -794,6 +924,7 @@ Variants: `default`, `secondary`, `destructive`, `outline`, `ghost`, `link`, `al
 - Arquivos > 200–300 linhas: considerar divisão
 - Não sobrescrever `.env` sem confirmação do usuário
 - **API:** novo módulo Nest → incluir testes unitários Jest no padrão de `AGENTS.md` → Testes unitários da API; rodar `npm test` em `apps/api` antes de concluir
+- **Web:** nova feature → preencher checklist em **`AGENTS.md` → DRY e reutilização de código (Web)**; rodar `npm run lint` em `apps/web` antes de concluir
 
 ---
 

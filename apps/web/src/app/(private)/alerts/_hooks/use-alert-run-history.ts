@@ -150,8 +150,7 @@ export function useAlertRunHistory(
     void loadDeliveries();
   }, [loadDeliveries, open, selectedRunId]);
 
-  const selectedRun =
-    runs.find((run) => run.id === selectedRunId) ?? null;
+  const selectedRun = runs.find((run) => run.id === selectedRunId) ?? null;
   const failedDeliveries = deliveries.filter(
     (delivery) => delivery.status === "FAILED" && delivery.error?.trim(),
   );

@@ -1,9 +1,9 @@
 "use client";
 
-import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { usePathname } from "next/navigation";
+import { ThemeProvider as NextThemesProvider } from "next-themes";
 import type { ReactNode } from "react";
-import { isPrivateThemeRoute } from "@/lib/theme-routes";
+import { isPrivateThemeRoute } from "@/lib/ui/theme-routes";
 
 const DASHBOARD_THEME_STORAGE_KEY = "gateon-dashboard-theme";
 

@@ -10,7 +10,7 @@ import { ToolbarIconButton } from "@/components/toolbar-icon-button";
 import {
   type AlertAction,
   runAlertActionWithToasts,
-} from "@/lib/alert-actions";
+} from "@/lib/alerts/actions";
 
 const playPauseIconClassName = "transition-transform hover:scale-110";
 

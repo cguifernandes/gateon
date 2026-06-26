@@ -15,7 +15,7 @@ import {
   getMaxStripePaymentGroupsForPlan,
   isPaidPlan,
   PLAN_LABELS,
-} from "@/lib/plan-limits";
+} from "@/lib/plan/limits";
 import type { UserProfileDto } from "@/lib/zod/auth-schemas";
 import type { PlanId } from "@/lib/zod/plan-schemas";
 

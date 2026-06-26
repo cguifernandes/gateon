@@ -16,9 +16,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
   return (
     <html lang="pt-BR">
       <body className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-foreground">
-        <h1 className="font-heading font-semibold text-xl">
-          Algo deu errado
-        </h1>
+        <h1 className="font-heading font-semibold text-xl">Algo deu errado</h1>
         <p className="max-w-md text-center text-muted-foreground text-sm">
           Ocorreu um erro inesperado. Nossa equipe foi notificada
           automaticamente.

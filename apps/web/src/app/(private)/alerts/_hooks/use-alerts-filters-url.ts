@@ -14,12 +14,12 @@ import {
   type AlertsUrlFiltersState,
   buildAlertsUrlFiltersSearchParams,
   parseAlertsUrlFiltersFromSearchParams,
-} from "@/lib/alerts-url-filters";
+} from "@/lib/alerts/url-filters";
 import {
   areAlertsUrlFiltersEqual,
   countActiveAlertsUrlFilters,
   EMPTY_ALERTS_URL_FILTERS,
-} from "@/lib/filter-utils";
+} from "@/lib/filters/utils";
 import type {
   AlertDestinationType,
   AlertStatus,

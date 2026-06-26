@@ -7,6 +7,7 @@ import { useController, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { useRefreshTelegramGroup } from "@/app/(private)/groups/_hooks/use-refresh-telegram-group";
 import { RemoveGroupDialog } from "@/components/remove-group-dialog";
+import { readErrorBody } from "@/lib/http/read-error-body";
 import {
   type TelegramBotStartSettingsResponseDto,
   telegramBotStartSettingsResponseSchema,
@@ -60,15 +61,6 @@ export function BotConfigForm({
   });
   const hasAutomationChanges = automationValue !== savedAutomationValue;
 
-  function readApiError(body: unknown, fallback: string) {
-    return body &&
-      typeof body === "object" &&
-      "error" in body &&
-      typeof (body as { error?: unknown }).error === "string"
-      ? (body as { error: string }).error
-      : fallback;
-  }
-
   async function saveGroupSettings(valuesToSave: TelegramGroupBotSettingsDto) {
     const response = await fetch(
       `/api/telegram/groups/${encodeURIComponent(group.id)}/bot-settings`,
@@ -82,7 +74,7 @@ export function BotConfigForm({
     const raw: unknown = await response.json().catch(() => null);
     if (!response.ok) {
       throw new Error(
-        readApiError(raw, "Não foi possível salvar as configurações."),
+        readErrorBody(raw, "Não foi possível salvar as configurações."),
       );
     }
 
@@ -106,7 +98,7 @@ export function BotConfigForm({
     const raw: unknown = await response.json().catch(() => null);
     if (!response.ok) {
       throw new Error(
-        readApiError(
+        readErrorBody(
           raw,
           "Não foi possível salvar a configuração de automação.",
         ),

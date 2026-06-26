@@ -27,7 +27,9 @@ function readRefreshAllError(body: unknown): string {
   return "Não foi possível sincronizar os grupos.";
 }
 
-function getRefreshAllSuccessMessage(result: RefreshAllTelegramGroupsResultDto) {
+function getRefreshAllSuccessMessage(
+  result: RefreshAllTelegramGroupsResultDto,
+) {
   if (result.totalCount === 0) {
     return "Nenhum grupo conectado para sincronizar.";
   }

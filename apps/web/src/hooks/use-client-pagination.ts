@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { DEFAULT_PAGE_SIZE } from "@/lib/zod/pagination-schemas";
 
-export const DEFAULT_PAGE_SIZE = 10;
+export { DEFAULT_PAGE_SIZE };
 
 type UseClientPaginationOptions = {
   pageSize?: number;

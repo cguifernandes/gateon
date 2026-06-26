@@ -15,7 +15,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { getIntegrationProvider } from "@/lib/integrations-config";
+import { readErrorBody } from "@/lib/http/read-error-body";
+import { getIntegrationProvider } from "@/lib/integrations/config";
 import { cn } from "@/lib/utils";
 import {
   type StripeBillingConnectionDto,
@@ -127,26 +128,6 @@ function ReviewSummaryGrid({
       })}
     </div>
   );
-}
-
-function getErrorMessage(body: unknown, fallback: string) {
-  if (
-    body &&
-    typeof body === "object" &&
-    "error" in body &&
-    typeof (body as { error?: unknown }).error === "string"
-  ) {
-    return (body as { error: string }).error;
-  }
-  if (
-    body &&
-    typeof body === "object" &&
-    "message" in body &&
-    typeof (body as { message?: unknown }).message === "string"
-  ) {
-    return (body as { message: string }).message;
-  }
-  return fallback;
 }
 
 function buildPlanReviewFields(
@@ -299,9 +280,7 @@ export function StripeConnectedCard({
   async function refreshFromResponse(response: Response) {
     const body: unknown = await response.json().catch(() => null);
     if (!response.ok) {
-      throw new Error(
-        getErrorMessage(body, "Não foi possível concluir a ação."),
-      );
+      throw new Error(readErrorBody(body, "Não foi possível concluir a ação."));
     }
     const parsed = stripeBillingStatusSchema.safeParse(body);
     if (!parsed.success) {

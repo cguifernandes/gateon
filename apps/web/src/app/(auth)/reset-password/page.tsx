@@ -27,7 +27,11 @@ export default function ResetPasswordPage() {
         </CardDescription>
       </CardHeader>
       <CardContent className="px-6 pb-6">
-        <Suspense fallback={<p className="text-muted-foreground text-sm">Carregando…</p>}>
+        <Suspense
+          fallback={
+            <p className="text-muted-foreground text-sm">Carregando…</p>
+          }
+        >
           <ResetPasswordForm />
         </Suspense>
       </CardContent>

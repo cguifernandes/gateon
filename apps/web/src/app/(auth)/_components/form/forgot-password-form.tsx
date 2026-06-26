@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { FormField } from "@/components/form-field";
 import { Button } from "@/components/ui/button";
-import { requestPasswordResetAction } from "@/lib/server/request-password-reset.action";
+import { requestPasswordResetAction } from "@/lib/server/actions/request-password-reset.action";
 import {
   type PasswordResetRequestValues,
   passwordResetRequestSchema,

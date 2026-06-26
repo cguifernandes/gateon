@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { readUpstreamError } from "@/lib/http/read-error-body";
 import { reportBffError } from "@/lib/sentry/report-bff-error";
-import { readUpstreamError } from "@/lib/server/read-upstream-error";
 import { getServerApiBaseUrl } from "@/lib/utils";
 
 const ROUTE_LABEL = "/api/stripe-billing/checkout/finalize";

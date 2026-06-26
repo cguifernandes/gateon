@@ -1,6 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { type NextRequest, NextResponse } from "next/server";
-import { proxyAuthenticatedJsonApi } from "@/lib/server/proxy-authenticated-json-api";
+import { proxyAuthenticatedJsonApi } from "@/lib/server/fetch/proxy-authenticated-json-api";
 import {
   telegramBotStartSettingsPatchSchema,
   telegramBotStartSettingsResponseSchema,

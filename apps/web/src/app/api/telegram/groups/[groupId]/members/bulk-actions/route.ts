@@ -1,8 +1,8 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { type NextRequest, NextResponse } from "next/server";
-import { telegramGroupsCacheTag } from "@/lib/cache-tags";
-import { getSessionUser } from "@/lib/server/get-session";
-import { proxyAuthenticatedJsonApi } from "@/lib/server/proxy-authenticated-json-api";
+import { getSessionUser } from "@/lib/server/data/get-session";
+import { proxyAuthenticatedJsonApi } from "@/lib/server/fetch/proxy-authenticated-json-api";
+import { telegramGroupsCacheTag } from "@/lib/telegram/cache-tags";
 import {
   telegramGroupMemberBulkActionRequestSchema,
   telegramGroupMemberBulkActionResultSchema,

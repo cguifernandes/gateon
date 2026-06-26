@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { FormField } from "@/components/form-field";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { confirmPasswordResetAction } from "@/lib/server/confirm-password-reset.action";
+import { confirmPasswordResetAction } from "@/lib/server/actions/confirm-password-reset.action";
 import { cn } from "@/lib/utils";
 import {
   type PasswordResetConfirmValues,

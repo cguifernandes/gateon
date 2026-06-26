@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getBotStartSettings } from "@/lib/server/get-bot-start-settings";
-import { getTelegramGroupById } from "@/lib/server/get-telegram-group-by-id";
+import { getBotStartSettings } from "@/lib/server/data/get-bot-start-settings";
+import { getTelegramGroupById } from "@/lib/server/data/get-telegram-group-by-id";
 import { BotConfigForm } from "./_components/bot-config-form";
 
 type BotConfigPageProps = {
@@ -37,10 +37,5 @@ export default async function BotConfigPage({ params }: BotConfigPageProps) {
     notFound();
   }
 
-  return (
-    <BotConfigForm
-      group={group}
-      automationSettings={userSettings.data}
-    />
-  );
+  return <BotConfigForm group={group} automationSettings={userSettings.data} />;
 }
