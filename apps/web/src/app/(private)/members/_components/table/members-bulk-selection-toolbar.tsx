@@ -15,12 +15,12 @@ import {
   type UserMinusIconHandle,
 } from "@/components/icons/user-minus";
 import { XIcon, type XIconHandle } from "@/components/icons/x";
-import { PlanFeatureGate } from "@/components/plan-feature-gate";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useGroupLimit } from "@/contexts/group-limit-context";
 import {
   MEMBER_ACTION_UI_LABELS,
+  type MemberActionTarget,
   type MemberBulkAction,
   useMemberActionHandler,
 } from "@/lib/members/actions";
@@ -114,6 +114,16 @@ type BulkActionButtonsProps = {
   copyIconRef: RefObject<CopyIconHandle | null>;
   userMinusIconRef: RefObject<UserMinusIconHandle | null>;
   banIconRef: RefObject<BanIconHandle | null>;
+  selectedTargets: SelectedMemberTarget[];
+  onClear: () => void;
+  runAction: (params: {
+    action: MemberBulkAction;
+    targets: MemberActionTarget[];
+    onlyActive?: boolean;
+    plural?: boolean;
+    actionLabel?: string;
+    onAfterSuccess?: (action: MemberBulkAction) => void;
+  }) => void;
 };
 
 function BulkActionButtons({
@@ -126,6 +136,9 @@ function BulkActionButtons({
   copyIconRef,
   userMinusIconRef,
   banIconRef,
+  selectedTargets,
+  onClear,
+  runAction,
 }: BulkActionButtonsProps) {
   return (
     <>
@@ -262,26 +275,15 @@ export function MembersBulkSelectionToolbar({
 
         <div className="flex min-w-0 items-center overflow-hidden gap-2 overflow-x-auto">
           {requiresBulkPlan && !canUseBulkActions ? (
-            <PlanFeatureGate
-              feature="bulkMemberActions"
-              className="min-h-9 min-w-48 flex-1"
-              message="Ações em massa estão disponíveis a partir do plano Starter."
-            >
-              <BulkActionButtons
-                isPending={isPending}
-                hasRemovableMember={hasRemovableMember}
-                selectedTelegramUserIds={selectedTelegramUserIds}
-                onSendNotice={onSendNotice}
-                onBulkAction={handleBulkAction}
-                bellIconRef={bellIconRef}
-                copyIconRef={copyIconRef}
-                userMinusIconRef={userMinusIconRef}
-                banIconRef={banIconRef}
-              />
-            </PlanFeatureGate>
+            <p className="text-sm text-muted-foreground">
+              Ações em massa estão disponíveis a partir do plano Starter.
+            </p>
           ) : (
             <BulkActionButtons
               isPending={isPending}
+              selectedTargets={selectedTargets}
+              onClear={onClear}
+              runAction={runAction}
               hasRemovableMember={hasRemovableMember}
               selectedTelegramUserIds={selectedTelegramUserIds}
               onSendNotice={onSendNotice}

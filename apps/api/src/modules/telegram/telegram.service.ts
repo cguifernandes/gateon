@@ -2510,7 +2510,11 @@ export class TelegramService {
       const batch = activeMembers.slice(index, index + concurrency);
       const results = await Promise.all(
         batch.map((member) =>
-          this.resolveTrackedMemberPresence(chatId, gateonGroupId, member.telegramUserId),
+          this.resolveTrackedMemberPresence(
+            chatId,
+            gateonGroupId,
+            member.telegramUserId,
+          ),
         ),
       );
 
