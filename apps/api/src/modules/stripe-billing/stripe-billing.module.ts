@@ -2,7 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { AlertsModule } from '../alerts/alerts.module';
 import { BotStartSettingsModule } from '../bot-start-settings/bot-start-settings.module';
-import { GroupLimitService } from '../../lib/group-limit.service';
+import { GroupLimitsModule } from '../group-limits/group-limits.module';
 import { TelegramModule } from '../telegram/telegram.module';
 import {
   StripeBillingController,
@@ -18,6 +18,7 @@ import {
   imports: [
     AuthModule,
     AlertsModule,
+    GroupLimitsModule,
     TelegramModule,
     forwardRef(() => BotStartSettingsModule),
   ],
@@ -26,7 +27,6 @@ import {
     StripeBillingService,
     StripeBillingSyncService,
     StripeBillingWebhookService,
-    GroupLimitService,
   ],
   exports: [StripeBillingService],
 })

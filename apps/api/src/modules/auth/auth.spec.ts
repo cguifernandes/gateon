@@ -3,6 +3,13 @@ import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { deleteAccountSchema, updateProfileSchema, passwordResetRequestSchema, passwordResetConfirmSchema } from '../../lib/zod/auth-schemas';
+import {
+  buildPasswordResetUrl,
+  getPasswordResetMaxRequestsPerHour,
+  getPasswordResetTtlMs,
+  hashPasswordResetToken,
+} from '../../lib/auth/password-reset';
+import { buildPasswordResetEmailContent } from '../../lib/auth/password-reset-email-template';
 
 describe('deleteAccountSchema', () => {
   it('accepts explicit confirmation', () => {
@@ -228,5 +235,145 @@ describe('AuthService', () => {
         service.revokeSession('user-1', 'session-current', 'session-current'),
       ).rejects.toThrow('Não é possível encerrar a sessão atual');
     });
+  });
+});
+
+describe('password reset helpers', () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    process.env = { ...originalEnv, DATA_HASH_SECRET: 'test-secret' };
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it('hashes tokens with a stable prefix', () => {
+    const first = hashPasswordResetToken('abc');
+    const second = hashPasswordResetToken('abc');
+    const other = hashPasswordResetToken('xyz');
+
+    expect(first).toBe(second);
+    expect(first).not.toBe(other);
+  });
+
+  it('builds reset URLs without trailing slash duplication', () => {
+    expect(buildPasswordResetUrl('http://localhost:3000/', 'token-1')).toBe(
+      'http://localhost:3000/reset-password?token=token-1',
+    );
+  });
+
+  it('falls back to safe defaults for ttl and rate limits', () => {
+    delete process.env.PASSWORD_RESET_TTL_MINUTES;
+    delete process.env.PASSWORD_RESET_MAX_REQUESTS_PER_HOUR;
+
+    expect(getPasswordResetTtlMs()).toBe(60 * 60_000);
+    expect(getPasswordResetMaxRequestsPerHour()).toBe(3);
+  });
+});
+
+describe('buildPasswordResetEmailContent', () => {
+  const expiresAt = new Date('2026-06-23T18:30:00.000Z');
+
+  it('builds subject and plain text with reset URL', () => {
+    const content = buildPasswordResetEmailContent({
+      resetUrl: 'http://localhost:3000/reset-password?token=abc',
+      expiresAt,
+    });
+
+    expect(content.subject).toBe('Redefinição de senha — Gateon');
+    expect(content.text).toContain(
+      'http://localhost:3000/reset-password?token=abc',
+    );
+    expect(content.text).toContain(
+      'Por segurança, o link só pode ser usado uma vez.',
+    );
+  });
+
+  it('builds branded HTML with CTA and escaped content', () => {
+    const content = buildPasswordResetEmailContent({
+      resetUrl:
+        'http://localhost:3000/reset-password?token=abc&x=<script>alert(1)</script>',
+      expiresAt,
+    });
+
+    expect(content.html).toContain(
+      'Gate<span style="color:#3b82f6;">on</span>',
+    );
+    expect(content.html).toContain('Redefinir senha');
+    expect(content.html).toContain('background-color:#3b82f6');
+    expect(content.html).not.toContain('<script>');
+    expect(content.html).toContain('&lt;script&gt;');
+  });
+});
+
+describe('password reset helpers', () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    process.env = { ...originalEnv, DATA_HASH_SECRET: 'test-secret' };
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it('hashes tokens with a stable prefix', () => {
+    const first = hashPasswordResetToken('abc');
+    const second = hashPasswordResetToken('abc');
+    const other = hashPasswordResetToken('xyz');
+
+    expect(first).toBe(second);
+    expect(first).not.toBe(other);
+  });
+
+  it('builds reset URLs without trailing slash duplication', () => {
+    expect(buildPasswordResetUrl('http://localhost:3000/', 'token-1')).toBe(
+      'http://localhost:3000/reset-password?token=token-1',
+    );
+  });
+
+  it('falls back to safe defaults for ttl and rate limits', () => {
+    delete process.env.PASSWORD_RESET_TTL_MINUTES;
+    delete process.env.PASSWORD_RESET_MAX_REQUESTS_PER_HOUR;
+
+    expect(getPasswordResetTtlMs()).toBe(60 * 60_000);
+    expect(getPasswordResetMaxRequestsPerHour()).toBe(3);
+  });
+});
+
+describe('buildPasswordResetEmailContent', () => {
+  const expiresAt = new Date('2026-06-23T18:30:00.000Z');
+
+  it('builds subject and plain text with reset URL', () => {
+    const content = buildPasswordResetEmailContent({
+      resetUrl: 'http://localhost:3000/reset-password?token=abc',
+      expiresAt,
+    });
+
+    expect(content.subject).toBe('Redefinição de senha — Gateon');
+    expect(content.text).toContain(
+      'http://localhost:3000/reset-password?token=abc',
+    );
+    expect(content.text).toContain(
+      'Por segurança, o link só pode ser usado uma vez.',
+    );
+  });
+
+  it('builds branded HTML with CTA and escaped content', () => {
+    const content = buildPasswordResetEmailContent({
+      resetUrl:
+        'http://localhost:3000/reset-password?token=abc&x=<script>alert(1)</script>',
+      expiresAt,
+    });
+
+    expect(content.html).toContain(
+      'Gate<span style="color:#3b82f6;">on</span>',
+    );
+    expect(content.html).toContain('Redefinir senha');
+    expect(content.html).toContain('background-color:#3b82f6');
+    expect(content.html).not.toContain('<script>');
+    expect(content.html).toContain('&lt;script&gt;');
   });
 });

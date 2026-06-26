@@ -77,10 +77,11 @@ modules/<name>/
 | Tipo | Local | Nome |
 |------|-------|------|
 | Testes do módulo | `modules/<name>/` | `<name>.spec.ts` |
-| Lógica pura em `lib/` | `apps/api/src/lib/` | `<helper>.spec.ts` |
 | Fixtures de integração | `apps/api/src/testing/` | conforme necessário |
 
-**Um único** `<name>.spec.ts` por módulo agrupa testes de service, schemas Zod usados pelo módulo e integração com banco (quando aplicável). Use `describe` aninhados para separar camadas.
+**Não** criar `*.spec.ts` em `apps/api/src/lib/` nem em `apps/api/src/lib/zod/`. Toda lógica pura, schema Zod e integração DB usados por um módulo ficam no **mesmo** `modules/<name>/<name>.spec.ts` desse módulo, com `describe` aninhados por camada.
+
+**Um único** `<name>.spec.ts` por módulo agrupa testes de service, helpers em `lib/` consumidos pelo módulo, schemas Zod e integração com banco (quando aplicável).
 
 Testes que dependem de PostgreSQL: use `describe.skip` quando `DATABASE_URL` estiver ausente (padrão no mesmo `<name>.spec.ts`).
 
@@ -91,9 +92,9 @@ Testes que dependem de PostgreSQL: use `describe.skip` quando `DATABASE_URL` est
 | **Service** | `describe('<Name>Service')` | Orquestração, filtros, erros, mocks de dependências |
 | **Schemas Zod** | `describe('<schema>')` | `safeParse` — válidos, inválidos, mensagens |
 | **Integração DB** | `describeWithDb(...)` | Fluxo real com Prisma; skip sem `DATABASE_URL` |
-| **Lib pura** | `lib/<name>.spec.ts` | Funções sem I/O; matrizes com `it.each` |
+| **Helpers em `lib/`** | `describe('<helper>')` no spec do módulo que usa a regra | Funções puras; matrizes com `it.each` |
 
-**Prioridade:** extrair regras testáveis para `apps/api/src/lib/` e manter services finos.
+**Prioridade:** extrair regras testáveis para `apps/api/src/lib/` e cobri-las no `<name>.spec.ts` do módulo dono do comportamento.
 
 #### Padrão 1 — Service NestJS (mock de dependências)
 
@@ -136,10 +137,10 @@ describe('ExampleService', () => {
 - Para métodos internos pesados, preferir `jest.spyOn(service, 'runX').mockResolvedValue(...)` quando o foco for outro método público.
 - Não usar banco real em `*.spec.ts`.
 
-#### Padrão 2 — Lógica pura em `lib/`
+#### Padrão 2 — Lógica pura em `lib/` (no spec do módulo)
 
 ```typescript
-import { resolveExampleTrigger } from './example-rules';
+import { resolveExampleTrigger } from '../../lib/example-rules';
 
 describe('resolveExampleTrigger', () => {
   it('returns null when input is stable', () => {
@@ -155,9 +156,12 @@ describe('resolveExampleTrigger', () => {
 ```
 
 - Sem `@nestjs/testing`.
-- Usar `it.each` para matrizes de casos (ver `stripe-billing-sync-events.spec.ts`, `alert-schemas-stripe.spec.ts`).
+- Colocar no `modules/<name>/<name>.spec.ts` do módulo que depende da regra.
+- Usar `it.each` para matrizes de casos (ver `stripe-billing.spec.ts`, `alerts.spec.ts`).
 
 #### Padrão 3 — Schemas Zod (`lib/zod/`)
+
+Colocar no `<name>.spec.ts` do módulo que valida o schema (não criar `lib/zod/**/*.spec.ts`).
 
 ```typescript
 import { exampleUpsertSchema } from '../../lib/zod/example-schemas';
@@ -208,11 +212,53 @@ Referências no repo: `stripe-billing.spec.ts`, `src/testing/stripe-alert-test-f
 1. [ ] `*.module.ts` registrado em `app.module.ts`
 2. [ ] Apenas os 4 arquivos padrão no diretório do módulo (ou module+service para infra)
 3. [ ] Schemas em `lib/zod/<name>-schemas.ts`
-4. [ ] `<name>.spec.ts` com happy path + erros principais (+ integração DB se crítico)
-5. [ ] Funções puras em `lib/` com `*.spec.ts` se a lógica for complexa
+4. [ ] `<name>.spec.ts` com happy path + erros principais (+ integração DB se crítico); helpers `lib/` testados no mesmo arquivo
+5. [ ] Funções puras em `lib/` sem `lib/**/*.spec.ts` — cobertura via spec do módulo
 6. [ ] `npm test` passando em `apps/api`
 
 **Anti-padrões:** testes que só assertam mocks sem comportamento; testes E2E HTTP no lugar de unitários; specs sem rodar na CI local (`npm test`).
+
+### DRY e reutilização de código (API)
+
+**Obrigatório antes de qualquer feature nova na API.** Evitar duplicação é requisito de merge — não opcional.
+
+#### Regras permanentes
+
+- Antes de criar qualquer **função**, pesquisar funções semelhantes já existentes (`apps/api/src/lib/`, `utils/`, services).
+- Antes de criar qualquer **endpoint**, verificar controllers existentes (`modules/*/*.controller.ts`).
+- Antes de criar qualquer **service**, verificar services existentes e `GroupLimitService` / helpers em `lib/`.
+- Antes de criar qualquer **helper**, verificar `apps/api/src/lib/` e `apps/api/src/utils/`.
+- Antes de criar qualquer **repository** ou query Prisma repetida, buscar `where: { userId }` / ownership no codebase.
+- **Reutilizar** código existente sempre que possível; **estender** em vez de copiar.
+- Aplicar **DRY** rigorosamente; não duplicar regras de negócio entre módulos.
+- **Centralizar** validações compartilhadas em `lib/zod/` e ownership em `lib/` (ex.: `assert-owned-group`, `is-internal-bot-secret-valid`).
+- **Centralizar** queries compartilhadas (ex.: grupo do usuário, sessão válida) em um único helper/service.
+- **Refatorar** duplicações identificadas **antes** de criar novas implementações paralelas.
+- Toda nova feature deve passar por **análise de reutilização** documentada no PR/commit.
+- Sempre **documentar** onde uma funcionalidade semelhante já existe (comentário `// see lib/foo.ts` ou link no PR).
+- Sempre **preferir extensão** de funcionalidades existentes em vez de implementações paralelas.
+
+#### Helpers compartilhados preferidos (API — evitar reimplementar)
+
+| Responsabilidade | Onde centralizar | Não duplicar em |
+|------------------|------------------|-----------------|
+| Sessão / `userId` do request | `AuthGuard` + decorator ou `lib/request-auth.ts` | Cada controller com `private getUserId` |
+| Secret do bot (`x-gateon-bot-secret`) | `lib/bot-internal-secret.ts` | `telegram`, `group-bot-settings`, `bot-start-settings` services |
+| Ownership de `TelegramGroups` | `lib/owned-telegram-group.ts` ou método em service dedicado | `telegram`, `stripe-billing`, `group-bot-settings` |
+| Validação HTTP body/query | DTOs `nestjs-zod` + pipe global | `.parse(body)` manual em todo handler |
+| Limites de plano | `modules/group-limits/group-limits.service.ts` + `lib/plan/plan-limits.ts` | Lógica inline nos services |
+
+#### Checklist obrigatório — nova funcionalidade (API)
+
+1. [ ] Busquei em `apps/api/src/` por funções, endpoints e queries semelhantes (grep/semantic search).
+2. [ ] Listei o que já existe e decidi **reutilizar / estender** vs. criar novo (justificativa no PR).
+3. [ ] Não criei `isInternalSecretValid`, `getUserId`, `findOwnedGroup` ou equivalente sem checar helpers acima.
+4. [ ] Schemas Zod em `lib/zod/`; sem schema duplicado no módulo.
+5. [ ] Regras de negócio puras em `lib/`; service só orquestra.
+6. [ ] Endpoint autenticado usa `@UseGuards(AuthGuard)`; interno do bot usa secret + `timingSafeEqual`.
+7. [ ] Rotas públicas/sensíveis têm `@Throttle` adequado (login, finalize checkout, password-reset).
+8. [ ] `<name>.spec.ts` do módulo atualizado; **sem** novo `lib/**/*.spec.ts`.
+9. [ ] Se tocar código sincronizado web/bot, atualizei todos os arquivos da tabela [Código sincronizado](#código-sincronizado-entre-apps).
 
 ### Lint e formatação
 
@@ -342,11 +388,11 @@ Planos definidos em `plan-schemas.ts`: `free`, `starter`, `pro`.
 |--------|------|---------|-----|
 | Grupos | 5 | 15 | 100 |
 | Membros/grupo | 100 | 150 | 300 |
-| Grupos Stripe payment | ver `stripe-payment-group-limits.ts` | | |
+| Grupos Stripe payment | ver `lib/plan/stripe-payment-group-limits.ts` | | |
 
 **Atualmente todos os usuários usam `free`** — billing Gateon ainda não está wired ao modelo `Users`.
 
-Arquivos: `apps/api/src/lib/plan-limits.ts`, `apps/web/src/lib/plan-limits.ts`, `GroupLimitService`.
+Arquivos: `apps/api/src/lib/plan/plan-limits.ts`, `apps/web/src/lib/plan-limits.ts`, `apps/api/src/modules/group-limits/group-limits.service.ts`.
 
 ---
 
@@ -354,6 +400,7 @@ Arquivos: `apps/api/src/lib/plan-limits.ts`, `apps/web/src/lib/plan-limits.ts`, 
 
 | Módulo | Propósito |
 |--------|-----------|
+| `group-limits/` | Limites de grupos/membros por plano (`GroupLimitService`) |
 | `prisma/` | Cliente Prisma global |
 | `auth/` | Registro, login, logout, refresh, Google OAuth; sessões em cookie |
 | `telegram/` | Grupos, membros, conexão via bot, fotos, bulk actions, eventos internos |
@@ -364,7 +411,25 @@ Arquivos: `apps/api/src/lib/plan-limits.ts`, `apps/web/src/lib/plan-limits.ts`, 
 
 **Infra global:** `ThrottlerGuard`, `helmet`, `cookie-parser`, CORS, `ZodValidationPipe`.
 
-**Libs compartilhadas:** `apps/api/src/lib/` — plan limits, stripe payment group limits, telegram admin rights, alert delivery messages, group-limit service.
+**Libs compartilhadas:** `apps/api/src/lib/` — funções puras, clients HTTP, schemas Zod (`lib/zod/`). **Não** criar arquivos soltos na raiz de `lib/`; usar subpastas por domínio:
+
+```
+lib/
+├── guards/          # AuthGuard
+├── http/            # request-public-base-url
+├── url/             # normalize-base-url
+├── query/           # pagination, date-param-range
+├── prisma/          # prisma-errors
+├── plan/            # plan-limits, stripe-payment-group-limits
+├── auth/            # password-reset, mail, email template
+├── alerts/          # delivery-messages
+├── telegram/        # admin-rights, member-presence, bot-status-filter, groups-list-filter
+│   └── groups-list/ # resolver split: types, summary, query, members, mapper, resolver
+├── stripe/          # checkout, webhook, billing client/sync/dispatch, telegram links
+└── zod/             # schemas HTTP (nunca em modules/)
+```
+
+Serviço Nest de limites: `modules/group-limits/` (não em `lib/`).
 
 ---
 
@@ -475,8 +540,8 @@ Não há pacote `@gateon/shared`. Manter em sync manualmente (comentários "keep
 
 | Conceito | API | Web | Bot |
 |----------|-----|-----|-----|
-| Plan limits | `api/src/lib/plan-limits.ts` | `web/src/lib/plan-limits.ts` | — |
-| Stripe payment group limits | `api/src/lib/stripe-payment-group-limits.ts` | `web/src/lib/zod/stripe-payment-group-schemas.ts` | — |
+| Plan limits | `api/src/lib/plan/plan-limits.ts` | `web/src/lib/plan-limits.ts` | — |
+| Stripe payment group limits | `api/src/lib/plan/stripe-payment-group-limits.ts` | `web/src/lib/zod/stripe-payment-group-schemas.ts` | — |
 | Plan schemas | `api/src/lib/zod/plan-schemas.ts` | `web/src/lib/zod/plan-schemas.ts` | — |
 | Telegram admin rights | `api/src/lib/telegram-admin-rights.ts` | `web/src/lib/telegram-admin-rights.ts` | `bot/src/telegram-admin-rights.ts` |
 | Bot start message | — | `web/src/lib/bot-start-message-builder.ts` (preview) | `bot/src/bot-start-message-builder.ts` (runtime) |
@@ -710,11 +775,14 @@ Variants: `default`, `secondary`, `destructive`, `outline`, `ghost`, `link`, `al
 ## Segurança
 
 - Nunca armazenar dados sensíveis de pagamento
-- Criptografar chaves de API Stripe
+- Criptografar chaves de API Stripe (`SECRET_ENCRYPTION_KEY` obrigatório em production)
 - Validar todas as requisições externas com Zod
-- Bot autentica na API via secret interno (não exposto ao client)
-- Logs anonimizados quando possível
-- Sessões em cookie httpOnly
+- Bot autentica na API via secret interno (`TELEGRAM_BOT_INTERNAL_SECRET`) — não exposto ao client
+- Endpoints autenticados: `@UseGuards(AuthGuard)`; ownership sempre filtrado por `userId` no Prisma
+- Rotas públicas intencionais (`POST /stripe-billing/checkout/finalize`, auth login/register): rate limit dedicado
+- Logs anonimizados quando possível; não logar tokens, secrets ou PII desnecessária
+- Sessões em cookie httpOnly (`gateon.session`)
+- Sem `$queryRaw` / SQL concatenado — usar Prisma tipado
 
 ---
 

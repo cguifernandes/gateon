@@ -1,5 +1,52 @@
 import { telegramGroupsListQuerySchema } from '../../lib/zod/telegram-groups-list-query-schemas';
+import { telegramSubscriptionCancelPortalSchema } from '../../lib/zod/telegram-subscription-schemas';
+import {
+  isTelegramMemberGoneStatus,
+  isTelegramMemberLookupGoneError,
+} from '../../lib/telegram/member-presence';
 import { TelegramService } from './telegram.service';
+
+describe('telegram member presence', () => {
+  describe('isTelegramMemberGoneStatus', () => {
+    it('detects left and kicked statuses', () => {
+      expect(isTelegramMemberGoneStatus('left')).toBe(true);
+      expect(isTelegramMemberGoneStatus('kicked')).toBe(true);
+    });
+
+    it('keeps active membership statuses', () => {
+      expect(isTelegramMemberGoneStatus('member')).toBe(false);
+      expect(isTelegramMemberGoneStatus('administrator')).toBe(false);
+      expect(isTelegramMemberGoneStatus('creator')).toBe(false);
+    });
+  });
+
+  describe('isTelegramMemberLookupGoneError', () => {
+    it('detects Telegram lookup errors for missing participants', () => {
+      expect(
+        isTelegramMemberLookupGoneError('Bad Request: user not found'),
+      ).toBe(true);
+      expect(
+        isTelegramMemberLookupGoneError('Bad Request: USER_NOT_PARTICIPANT'),
+      ).toBe(true);
+    });
+  });
+});
+
+describe('telegramSubscriptionCancelPortalSchema', () => {
+  it('accepts telegram user id', () => {
+    const result = telegramSubscriptionCancelPortalSchema.safeParse({
+      telegramUserId: '123456789',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects empty telegram user id', () => {
+    const result = telegramSubscriptionCancelPortalSchema.safeParse({
+      telegramUserId: '',
+    });
+    expect(result.success).toBe(false);
+  });
+});
 
 describe('telegramGroupsListQuerySchema', () => {
   it('accepts stripe payer and connection filters', () => {

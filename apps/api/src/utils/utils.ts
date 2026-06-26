@@ -108,18 +108,3 @@ export function decryptSecretValue(value: string): string {
     decipher.final(),
   ]).toString('utf8');
 }
-
-export {
-  getTelegramAdminRightTitle,
-  listMissingRequiredAdministratorRights,
-  noTelegramGroupAdministratorRights,
-  parseTelegramGroupAdministratorRights,
-  parseTelegramGroupAdministratorRightsPayload,
-  REQUIRED_TELEGRAM_GROUP_ADMIN_RIGHT_IDS,
-  type RequiredTelegramGroupAdminRightId,
-  type TelegramGroupAdministratorRights,
-} from '../lib/telegram-admin-rights';
-
-/** @deprecated Use `TelegramGroupAdministratorRights` */
-export type TelegramAdministratorRightsInput =
-  import('../lib/telegram-admin-rights').TelegramGroupAdministratorRights;

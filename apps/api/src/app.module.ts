@@ -8,6 +8,7 @@ import { AlertsModule } from './modules/alerts/alerts.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { BotStartSettingsModule } from './modules/bot-start-settings/bot-start-settings.module';
 import { GroupBotSettingsModule } from './modules/group-bot-settings/group-bot-settings.module';
+import { GroupLimitsModule } from './modules/group-limits/group-limits.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { StripeBillingModule } from './modules/stripe-billing/stripe-billing.module';
 import { TelegramModule } from './modules/telegram/telegram.module';
@@ -29,6 +30,7 @@ function readPositiveIntegerEnv(name: string, fallback: number): number {
       },
     ]),
     PrismaModule,
+    GroupLimitsModule,
     AuthModule,
     TelegramModule,
     GroupBotSettingsModule,

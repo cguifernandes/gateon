@@ -1,5 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
-import { GroupLimitService } from '../../lib/group-limit.service';
+import { GroupLimitsModule } from '../group-limits/group-limits.module';
 import { AuthModule } from '../auth/auth.module';
 import { StripeBillingModule } from '../stripe-billing/stripe-billing.module';
 import { TelegramModule } from '../telegram/telegram.module';
@@ -10,9 +10,14 @@ import {
 import { BotStartSettingsService } from './bot-start-settings.service';
 
 @Module({
-  imports: [AuthModule, TelegramModule, forwardRef(() => StripeBillingModule)],
+  imports: [
+    AuthModule,
+    GroupLimitsModule,
+    TelegramModule,
+    forwardRef(() => StripeBillingModule),
+  ],
   controllers: [BotStartSettingsController, BotStartSettingsInternalController],
-  providers: [BotStartSettingsService, GroupLimitService],
+  providers: [BotStartSettingsService],
   exports: [BotStartSettingsService],
 })
 export class BotStartSettingsModule {}

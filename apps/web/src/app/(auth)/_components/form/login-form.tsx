@@ -9,7 +9,6 @@ import { FormField } from "@/components/form-field";
 import { notifyNavigationStart } from "@/components/navigation-progress-bar";
 import { Button } from "@/components/ui/button";
 import { loginAction } from "@/lib/server/login.action";
-import { SENTRY_TEST_LOGIN_EMAIL } from "@/lib/sentry/sentry-test-login";
 import { type AuthFormValues, createAuthSchema } from "@/lib/zod/auth-schemas";
 
 export function LoginForm() {
@@ -72,14 +71,6 @@ export function LoginForm() {
         >
           Esqueceu a senha?
         </Link>
-
-        <p className="text-xs text-muted-foreground">
-          Teste Sentry: use{" "}
-          <code className="font-mono text-foreground">
-            {SENTRY_TEST_LOGIN_EMAIL}
-          </code>{" "}
-          com qualquer senha.
-        </p>
 
         <Button loading={isSubmitting} disabled={isSubmitting} type="submit">
           Entrar

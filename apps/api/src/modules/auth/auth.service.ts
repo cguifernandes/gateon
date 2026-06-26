@@ -30,13 +30,13 @@ import {
   type RegisterInput,
   type UpdateProfileInput,
 } from '../../lib/zod/auth-schemas';
-import { sendPasswordResetEmail } from '../../lib/password-reset-mail';
+import { sendPasswordResetEmail } from '../../lib/auth/password-reset-mail';
 import {
   buildPasswordResetUrl,
   getPasswordResetMaxRequestsPerHour,
   getPasswordResetTtlMs,
   hashPasswordResetToken,
-} from '../../lib/password-reset';
+} from '../../lib/auth/password-reset';
 
 type GoogleUserProfile = {
   sub: string;

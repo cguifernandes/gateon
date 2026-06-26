@@ -12,11 +12,11 @@ import {
   TelegramConnectionStatus,
   StripeTelegramMemberLinkStatus,
 } from '@prisma/client';
-import { GroupLimitService } from '../../lib/group-limit.service';
+import { GroupLimitService } from '../group-limits/group-limits.service';
 import {
   resolveStripePayerSubscriptionForLink,
   type LinkedStripePlanSummary,
-} from '../../lib/stripe-telegram-member-links';
+} from '../../lib/stripe/telegram-member-links';
 import { PrismaService } from '../prisma/prisma.service';
 import { hashSensitiveValue } from '../../utils/utils';
 import type { TelegramGroupChatNoticeRequestInput } from '../../lib/zod/telegram-group-chat-notice-schemas';
@@ -29,13 +29,13 @@ import {
   parseTelegramGroupAdministratorRights,
   parseTelegramGroupAdministratorRightsPayload,
   type TelegramGroupAdministratorRights,
-} from '../../lib/telegram-admin-rights';
+} from '../../lib/telegram/admin-rights';
 import {
   isTelegramMemberGoneStatus,
   isTelegramMemberLookupGoneError,
-} from '../../lib/telegram-member-presence';
+} from '../../lib/telegram/member-presence';
 import type { TelegramGroupsListQueryInput } from '../../lib/zod/telegram-groups-list-query-schemas';
-import { resolveTelegramGroupsList } from '../../lib/telegram-groups-list.resolver';
+import { resolveTelegramGroupsList } from '../../lib/telegram/groups-list/resolver';
 
 const DEFAULT_MEMBER_NOTICE_TEXT = 'Boa tarde';
 

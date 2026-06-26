@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { isStripeAutomationTriggerType } from '../stripe/automation-alerts';
+import { paginationQuerySchema } from './pagination-schemas';
 
 const alertMessages = {
   required: 'Este campo é obrigatório.',
@@ -47,11 +49,7 @@ const alertMessages = {
     'O plano selecionado é inválido ou está desconectado.',
 } as const;
 
-export function isStripeAutomationTriggerType(
-  triggerType: string | null | undefined,
-): boolean {
-  return typeof triggerType === 'string' && triggerType.startsWith('STRIPE_');
-}
+export { isStripeAutomationTriggerType } from '../stripe/automation-alerts';
 
 export const alertStatusSchema = z.enum(
   ['DRAFT', 'ACTIVE', 'PAUSED', 'FAILED'],
@@ -287,13 +285,7 @@ const optionalDateParam = z
   .regex(/^\d{4}-\d{2}-\d{2}$/)
   .optional();
 
-export const alertListQuerySchema = z.object({
-  page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(10),
-  all: z
-    .enum(['true', 'false'])
-    .optional()
-    .transform((value) => value === 'true'),
+export const alertListQuerySchema = paginationQuerySchema.extend({
   q: z.string().trim().optional(),
   status: alertStatusSchema.optional(),
   destinationType: alertDestinationTypeSchema.optional(),

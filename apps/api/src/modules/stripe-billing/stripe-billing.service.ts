@@ -16,16 +16,17 @@ import {
   StripeTelegramMemberLinkStatus,
 } from '@prisma/client';
 import { decryptSecretValue, encryptSecretValue } from '../../utils/utils';
-import { GroupLimitService } from '../../lib/group-limit.service';
-import { PLAN_LABELS } from '../../lib/plan-limits';
+import { GroupLimitService } from '../group-limits/group-limits.service';
+import { PLAN_LABELS } from '../../lib/plan/plan-limits';
 import {
   countDistinctLinkedStripeGroups,
   getMaxStripePaymentGroupsForPlan,
   STRIPE_PAYMENT_GROUP_LIMIT_REACHED_CODE,
   wouldExceedStripePaymentGroupLimitForLink,
-} from '../../lib/stripe-payment-group-limits';
-import { resolveStripeCheckoutRedirectUrls } from '../../lib/stripe-checkout-redirect';
-import { buildStripeWebhookEndpointUrl } from '../../lib/stripe-billing-webhook-url';
+} from '../../lib/plan/stripe-payment-group-limits';
+import { resolveStripeCheckoutRedirectUrls } from '../../lib/stripe/checkout-redirect';
+import { normalizeBaseUrl } from '../../lib/url/normalize-base-url';
+import { buildStripeWebhookEndpointUrl } from '../../lib/stripe/webhook-url';
 import {
   canOpenStripeSubscriptionCancelPortal,
   isEntitledStripeSubscription,
@@ -33,7 +34,7 @@ import {
   reactivateStripeTelegramMemberLinks,
   revokeStripeTelegramMemberLinks,
   shouldRevokeStripeTelegramMemberLinkForSubscription,
-} from '../../lib/stripe-telegram-member-links';
+} from '../../lib/stripe/telegram-member-links';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import {
@@ -53,26 +54,26 @@ import {
   subscriptionIncludesPrice,
   getStripeCustomerSnapshot,
   getStripePaymentIntentId,
-} from '../../lib/stripe-billing-stripe-client';
+} from '../../lib/stripe/billing-stripe-client';
 import { AlertsService } from '../alerts/alerts.service';
 import { BotStartSettingsService } from '../bot-start-settings/bot-start-settings.service';
 import {
   dispatchSubscriptionStripeTrigger,
   processInvoiceStripeEvent,
-} from '../../lib/stripe-billing-alert-dispatch';
+} from '../../lib/stripe/billing-alert-dispatch';
 import {
   resolveInvoicePaymentTrigger,
   resolveSubscriptionStripeTrigger,
   shouldDispatchInvoicePaymentTrigger,
   STRIPE_EXPIRING_WINDOW_DAYS,
-} from '../../lib/stripe-billing-sync-events';
+} from '../../lib/stripe/billing-sync-events';
 import {
   buildInvoiceAutomationDedupeKey,
   buildSubscriptionAutomationDedupeKey,
-  isPrismaUniqueConstraintError,
   shouldDispatchStripeAutomation,
-} from '../../lib/stripe-billing-automation-dedup';
-import { verifyStripeWebhookSignature } from 'src/lib/stripe-webhook-signature';
+} from '../../lib/stripe/billing-automation-dedup';
+import { isPrismaUniqueConstraintError } from '../../lib/prisma/prisma-errors';
+import { verifyStripeWebhookSignature } from '../../lib/stripe/webhook-signature';
 
 const EXPIRING_WINDOW_DAYS = STRIPE_EXPIRING_WINDOW_DAYS;
 
@@ -1904,7 +1905,7 @@ export class StripeBillingService {
     const base =
       this.config.get<string>('WEB_BASE_URL')?.trim() ||
       'http://localhost:3000';
-    return base.replace(/\/$/, '');
+    return normalizeBaseUrl(base);
   }
 
   private resolveCheckoutRedirectUrls() {

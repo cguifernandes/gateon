@@ -9,8 +9,9 @@ Documento canônico completo: **`AGENTS.md`**. Este arquivo resume o essencial p
 1. **UI só de uma rota** → `_components` da página; **compartilhada** → `src/components/`.
 2. **Inglês** em filenames, tipos, variáveis e comentários; UI do produto pode ser `pt-BR`.
 3. **Zod** → `apps/web/src/lib/zod/` (web) ou `apps/api/src/lib/zod/` (API).
-4. **Nest API** → `modules/<name>/` com **apenas** `<name>.module.ts`, `<name>.controller.ts`, `<name>.service.ts`, `<name>.spec.ts`; registrar em `app.module.ts` — ver `AGENTS.md`.
-5. **Lint:** Biome (web/bot), ESLint+Prettier (api).
+4. **Nest API** → `modules/<name>/` com **apenas** `<name>.module.ts`, `<name>.controller.ts`, `<name>.service.ts`, `<name>.spec.ts`; testes de `lib/` usados pelo módulo ficam **dentro** desse `<name>.spec.ts` (nunca em `lib/**/*.spec.ts`); registrar em `app.module.ts` — ver `AGENTS.md`.
+5. **DRY (API)** → antes de função/endpoint/service/helper novo: buscar existente, reutilizar ou estender; checklist obrigatório em **`AGENTS.md` → DRY e reutilização de código (API)**.
+6. **Lint:** Biome (web/bot), ESLint+Prettier (api).
 
 ### Monorepo (3 apps)
 
@@ -65,3 +66,9 @@ Client Component + `react-hook-form` + `zodResolver` + schema Zod + `defaultValu
 ### Ao alterar regras compartilhadas
 
 Sincronizar entre apps: `plan-limits`, `telegram-admin-rights`, `bot-start-message-builder`, `bot-start-subscribe-steps`, schemas Zod espelhados. Lista completa em **`AGENTS.md` → Código sincronizado**.
+
+### Antes de implementar na API
+
+1. Ler **`AGENTS.md` → DRY e reutilização de código (API)** e preencher o checklist.
+2. Não criar `getUserId`, `isInternalSecretValid` ou ownership de grupo sem checar helpers centralizados.
+3. Preferir `lib/<domínio>/` + spec no módulo dono; listagem de grupos em `lib/telegram/groups-list/`; evitar services monolíticos > ~300 linhas por responsabilidade.

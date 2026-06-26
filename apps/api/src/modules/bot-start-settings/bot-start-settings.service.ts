@@ -11,9 +11,9 @@ import {
   Prisma,
   StripeBillingConnectionStatus,
 } from '@prisma/client';
-import { GroupLimitService } from '../../lib/group-limit.service';
-import { isPaidPlan, PLAN_LABELS } from '../../lib/plan-limits';
-import { resolveStripeLinkedTelegramSubscriber } from '../../lib/stripe-telegram-subscriber';
+import { GroupLimitService } from '../group-limits/group-limits.service';
+import { isPaidPlan, PLAN_LABELS } from '../../lib/plan/plan-limits';
+import { resolveStripeLinkedTelegramSubscriber } from '../../lib/stripe/telegram-subscriber';
 import { PrismaService } from '../prisma/prisma.service';
 import { TelegramService } from '../telegram/telegram.service';
 import {

@@ -17,10 +17,9 @@ import { TelegramService } from '../telegram/telegram.service';
 import {
   ALERT_DELIVERY_NO_TARGETS_MESSAGE,
   getAlertGroupDeliveryBlockReason,
-} from '../../lib/alert-delivery-messages';
-import { filterStripeAutomationAlerts } from '../../lib/stripe-automation-alerts';
-import { buildPaginationMeta, resolvePagination } from '../../lib/pagination';
-import { buildInclusiveDateParamRange } from '../../lib/telegram-groups-list-filter';
+} from '../../lib/alerts/delivery-messages';
+import { buildDateParamRange } from '../../lib/query/date-param-range';
+import { filterStripeAutomationAlerts, isStripeAutomationTriggerType } from '../../lib/stripe/automation-alerts';
 import {
   alertInternalTriggerSchema,
   type AlertContentInput,
@@ -30,9 +29,9 @@ import {
   type AlertQuickDispatchInput,
   type AlertTemplateCreateInput,
   type AlertUpsertInput,
-  isStripeAutomationTriggerType,
   toAlertTriggerTypeInput,
 } from '../../lib/zod/alert-schemas';
+import { buildPaginationMeta, resolvePagination } from '../../lib/query/pagination';
 
 const DEFAULT_RATE_LIMIT_PER_MINUTE = 20;
 
@@ -61,7 +60,7 @@ export class AlertsService {
   ) {}
 
   async listAlerts(userId: string, query: AlertListQueryInput) {
-    const createdRange = buildInclusiveDateParamRange(
+    const createdRange = buildDateParamRange(
       query.createdFrom,
       query.createdTo,
     );
