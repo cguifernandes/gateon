@@ -1,11 +1,15 @@
 "use client";
 
 import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";
-import { MinusIcon } from "lucide-react";
+import { useRef } from "react";
 import { cn } from "@/lib/utils";
-import { CheckIcon } from "../icons/check";
+import { CheckIcon, type CheckIconHandle } from "../icons/check";
+import { MinusIcon, type MinusIconHandle } from "../icons/minus";
 
 function Checkbox({ className, ...props }: CheckboxPrimitive.Root.Props) {
+  const minusIconRef = useRef<MinusIconHandle>(null);
+  const checkIconRef = useRef<CheckIconHandle>(null);
+
   return (
     <CheckboxPrimitive.Root
       data-slot="checkbox"
@@ -21,10 +25,18 @@ function Checkbox({ className, ...props }: CheckboxPrimitive.Root.Props) {
       >
         <CheckIcon
           isAnimateOnView={true}
+          animateOnHover
+          ref={checkIconRef}
           size={13}
-          className=" group-data-indeterminate/checkbox:hidden"
+          className="group-data-indeterminate/checkbox:hidden"
         />
-        <MinusIcon className="hidden size-3.5 group-data-indeterminate/checkbox:block" />
+        <MinusIcon
+          isAnimateOnView={true}
+          animateOnHover
+          ref={minusIconRef}
+          size={13}
+          className="hidden group-data-indeterminate/checkbox:block"
+        />
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
   );

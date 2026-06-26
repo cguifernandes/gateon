@@ -155,15 +155,11 @@ export const MembersTableGroupSection = memo(function MembersTableGroupSection({
         })
       )}
 
-      <TableRow className="hover:bg-background!">
-        <TableCell colSpan={6} className="p-0 hover:bg-transparent!">
-          <GroupMembersPagination
-            group={group}
-            disabled={showDataRefresh}
-            onPageChange={onGroupMembersPageChange}
-          />
-        </TableCell>
-      </TableRow>
+      <GroupMembersPagination
+        group={group}
+        disabled={showDataRefresh}
+        onPageChange={onGroupMembersPageChange}
+      />
     </>
   );
 }, areGroupSectionPropsEqual);
