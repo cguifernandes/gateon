@@ -120,17 +120,17 @@ model TelegramGroupConnectionIntents {
 }
 
 model TelegramGroups {
-  id                        String   @id @default(cuid())
-  userId                    String
-  telegramChatId            String   @unique
-  title                     String?
-  chatPhotoFileId           String?
-  type                      String
-  isForum                   Boolean  @default(false)
-  botStatus                 String
-  connectedAt               DateTime @default(now())
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
+  id              String   @id @default(cuid())
+  userId          String
+  telegramChatId  String   @unique
+  title           String?
+  chatPhotoFileId String?
+  type            String
+  isForum         Boolean  @default(false)
+  botStatus       String
+  connectedAt     DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   user                           Users                            @relation(fields: [userId], references: [id], onDelete: Cascade)
   members                        TelegramGroupMembers[]
@@ -384,14 +384,14 @@ model StripeBillingConnections {
   createdAt                     DateTime                      @default(now())
   updatedAt                     DateTime                      @updatedAt
 
-  user             Users                            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  group            TelegramGroups?                  @relation(fields: [telegramGroupId], references: [id], onDelete: SetNull)
-  customers        StripeBillingCustomers[]
-  subscriptions    StripeBillingSubscriptions[]
-  payments         StripeBillingPayments[]
-  auditLogs            StripeBillingAuditLogs[]
-  memberLinks      StripeTelegramMemberLinks[]
-  checkoutSessions StripeTelegramCheckoutSessions[]
+  user                   Users                                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group                  TelegramGroups?                       @relation(fields: [telegramGroupId], references: [id], onDelete: SetNull)
+  customers              StripeBillingCustomers[]
+  subscriptions          StripeBillingSubscriptions[]
+  payments               StripeBillingPayments[]
+  auditLogs              StripeBillingAuditLogs[]
+  memberLinks            StripeTelegramMemberLinks[]
+  checkoutSessions       StripeTelegramCheckoutSessions[]
   processedWebhookEvents StripeBillingProcessedWebhookEvents[]
 
   @@index([userId, status])
@@ -420,20 +420,20 @@ model StripeBillingCustomers {
 }
 
 model StripeBillingSubscriptions {
-  id                   String    @id @default(cuid())
-  userId               String
-  connectionId         String
-  customerId           String?
-  stripeSubscriptionId String
-  stripeCustomerId     String?
-  status               String
-  planName             String?
-  currentPeriodEnd     DateTime?
-  cancelAtPeriodEnd    Boolean   @default(false)
-  lastEventType            String?
-  lastAutomationDedupeKey  String?
-  createdAt                DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  id                      String    @id @default(cuid())
+  userId                  String
+  connectionId            String
+  customerId              String?
+  stripeSubscriptionId    String
+  stripeCustomerId        String?
+  status                  String
+  planName                String?
+  currentPeriodEnd        DateTime?
+  cancelAtPeriodEnd       Boolean   @default(false)
+  lastEventType           String?
+  lastAutomationDedupeKey String?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
   user       Users                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   connection StripeBillingConnections @relation(fields: [connectionId], references: [id], onDelete: Cascade)
@@ -445,19 +445,19 @@ model StripeBillingSubscriptions {
 }
 
 model StripeBillingPayments {
-  id                    String    @id @default(cuid())
-  userId                String
-  connectionId          String
-  customerId            String?
-  stripeInvoiceId       String?
-  stripeCustomerId      String?
-  status                String
-  amountCents           Int
-  currency              String
-  paidAt                DateTime?
+  id                      String    @id @default(cuid())
+  userId                  String
+  connectionId            String
+  customerId              String?
+  stripeInvoiceId         String?
+  stripeCustomerId        String?
+  status                  String
+  amountCents             Int
+  currency                String
+  paidAt                  DateTime?
   lastAutomationDedupeKey String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
   user       Users                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   connection StripeBillingConnections @relation(fields: [connectionId], references: [id], onDelete: Cascade)

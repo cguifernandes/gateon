@@ -35,6 +35,10 @@ async function bootstrap() {
     credentials: true,
   });
   app.useGlobalPipes(new ZodValidationPipe());
+
+  console.log({ version: process.version });
+  console.log({ execArgv: process.execArgv });
+
   await app.listen(process.env.PORT ?? 4000);
 }
 
