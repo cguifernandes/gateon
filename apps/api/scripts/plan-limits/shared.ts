@@ -45,7 +45,9 @@ export function parseCliArgs(argv = process.argv.slice(2)) {
 
   const planArg =
     typeof flags.plan === 'string' ? flags.plan : process.env.PLAN_TEST_PLAN;
-  const planId = (planArg === 'starter' ? 'starter' : 'free') as SupportedTestPlanId;
+  const planId = (
+    planArg === 'starter' ? 'starter' : 'free'
+  ) as SupportedTestPlanId;
 
   const email =
     (typeof flags.email === 'string' ? flags.email : undefined) ??

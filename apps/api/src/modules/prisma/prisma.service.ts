@@ -13,6 +13,13 @@ export class PrismaService
   implements OnModuleInit, OnModuleDestroy
 {
   constructor() {
+    const config = resolvePrismaRuntimePoolConfig();
+
+    console.log({
+      connectionString: config?.connectionString?.replace(/:.+@/, ':***@'),
+      ssl: config.ssl,
+    });
+
     const adapter = new PrismaPg(resolvePrismaRuntimePoolConfig());
     super({ adapter });
   }
