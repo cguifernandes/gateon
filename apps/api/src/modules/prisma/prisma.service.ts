@@ -6,7 +6,6 @@ import {
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import { resolvePrismaRuntimePoolConfig } from '../../lib/prisma/database-connection';
-import { Client } from 'pg';
 
 @Injectable()
 export class PrismaService
@@ -19,24 +18,13 @@ export class PrismaService
   }
 
   async onModuleInit() {
-    const client = new Client({
-      connectionString: process.env.DATABASE_URL,
-    });
-
     try {
-      await client.connect();
-      console.log('✅ PG CONNECT OK');
-
-      const result = await client.query('SELECT 1');
-      console.log(result.rows);
-
-      await client.end();
+      await this.$connect();
     } catch (e) {
-      console.error('❌ PG ERROR');
       console.error(e);
+      console.error(e?.cause);
+      throw e;
     }
-
-    await this.$connect();
   }
 
   async onModuleDestroy() {

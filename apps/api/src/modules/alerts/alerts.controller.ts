@@ -131,6 +131,7 @@ export class AlertsController {
     @Param('alertId') alertId: string,
     @Body() body: unknown,
   ) {
+    console.log(JSON.stringify(body, null, 2));
     return this.alerts.dispatchQuickAlert(
       this.getUserId(req),
       alertId,

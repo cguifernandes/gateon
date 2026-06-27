@@ -30,10 +30,15 @@ import {
 import { dispatchQuickAlertWithToast } from "@/lib/alerts/quick-dispatch";
 import { cn } from "@/lib/utils";
 
-export type QuickNoticeMemberTarget = {
-  telegramUserId: string;
-  displayName?: string;
-};
+export type QuickNoticeMemberTarget =
+  | {
+      telegramUserId: string;
+      displayName?: string;
+    }
+  | {
+      groupId: string;
+      selectAllInGroup: true;
+    };
 
 export type QuickNoticePayload =
   | {
@@ -108,7 +113,7 @@ export function QuickNoticeDialog({
   const summaryLabel = useMemo(() => {
     if (!payload) return "";
     if (payload.type === "members") {
-      return `${payload.targets.length} membro${payload.targets.length === 1 ? "" : "s"}`;
+      return `${payload.targets.length} destinatário${payload.targets.length === 1 ? "" : "s"}`;
     }
     return payload.title;
   }, [payload]);
@@ -135,10 +140,19 @@ export function QuickNoticeDialog({
               selectedAlert.id,
               {
                 targetType: "members",
-                targets: payload.targets.map((target) => ({
-                  telegramUserId: target.telegramUserId,
-                  displayName: target.displayName,
-                })),
+                targets: payload.targets.map((target) => {
+                  if ("telegramUserId" in target) {
+                    return {
+                      telegramUserId: target.telegramUserId,
+                      displayName: target.displayName,
+                    };
+                  }
+
+                  return {
+                    groupId: target.groupId,
+                    selectAllInGroup: true,
+                  };
+                }),
               },
               {
                 successMessage: `Aviso enviado para ${payload.targets.length} membro(s).`,
@@ -196,7 +210,7 @@ export function QuickNoticeDialog({
         >
           {isLoadingAlerts ? (
             <div
-              className="flex items-center justify-center gap-2 px-6 py-10 text-muted-foreground text-sm"
+              className="flex items-center justify-center gap-2 px-4 py-10 text-muted-foreground text-sm"
               aria-live="polite"
               aria-busy="true"
             >
@@ -204,13 +218,13 @@ export function QuickNoticeDialog({
               Carregando avisos rápidos…
             </div>
           ) : loadError ? (
-            <div className="px-6 pb-4">
+            <div className="px-4 pb-4">
               <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-destructive text-sm">
                 {loadError}
               </p>
             </div>
           ) : hasQuickAlerts ? (
-            <div className="space-y-4 px-6 pb-4">
+            <div className="space-y-4 px-4 pb-4">
               <Field>
                 <FieldLabel>Modelo de aviso</FieldLabel>
                 <RadioGroup

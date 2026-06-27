@@ -1,18 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import {
-  startTransition,
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { startTransition, useCallback, useMemo, useRef, useState } from "react";
 import { DataRefreshIndicator } from "@/components/data-refresh-indicator";
 import { DataTablePagination } from "@/components/data-table-pagination";
 import { DataTableToolbar } from "@/components/data-table-toolbar";
 import { SearchIcon, type SearchIconHandle } from "@/components/icons/search";
-import { QuickNoticeDialog } from "@/components/quick-notice-dialog";
+import {
+  QuickNoticeDialog,
+  type QuickNoticePayload,
+} from "@/components/quick-notice-dialog";
 import { TableResultsEmptyState } from "@/components/table-results-empty-state";
 import { Input } from "@/components/ui/input";
 import {
@@ -51,6 +48,7 @@ import {
   getMemberKey,
   getVisibleSelectionSummary,
   type MemberSummary,
+  type QuickNoticeTarget,
   type VisibleGroup,
 } from "../members-table-helpers";
 import { MemberSelectionCheckbox } from "./member-selection-checkbox";
@@ -102,11 +100,8 @@ export function MembersTable({
       onApplyMembersPerGroupPageSize: handleMembersPerGroupPageSizeChange,
     });
   const debouncedSearch = useDebouncedValue(search.trim());
-  const [quickNoticePayload, setQuickNoticePayload] = useState<{
-    type: "members";
-    title: string;
-    targets: { telegramUserId: string; displayName?: string }[];
-  } | null>(null);
+  const [quickNoticePayload, setQuickNoticePayload] =
+    useState<QuickNoticePayload | null>(null);
   const hasPopoverFilters = countActiveMembersUrlFilters(urlFilters) > 0;
 
   const fetchPage = useCallback(
@@ -162,9 +157,7 @@ export function MembersTable({
 
   const isSearchPending = search.trim() !== debouncedSearch;
   const showDataRefresh =
-    isRefreshing ||
-    filtersPopover.isFiltersPending ||
-    isSearchPending;
+    isRefreshing || filtersPopover.isFiltersPending || isSearchPending;
 
   const visibleGroups = useMemo<VisibleGroup[]>(
     () =>
@@ -486,12 +479,18 @@ export function MembersTable({
           hasRemovableMember={selectionSummary.hasRemovableMember}
           onClear={clearSelection}
           onSendNotice={() => {
-            const targetsByUserId = new Map<
-              string,
-              { telegramUserId: string; displayName?: string }
-            >();
+            const targets: QuickNoticeTarget[] = [];
 
             for (const target of selectionSummary.targets) {
+              if (target.selectAllInGroup) {
+                targets.push({
+                  groupId: target.groupId,
+                  selectAllInGroup: true,
+                });
+
+                continue;
+              }
+
               if (!target.telegramUserId) {
                 continue;
               }
@@ -502,7 +501,7 @@ export function MembersTable({
                   (item) => item.telegramUserId === target.telegramUserId,
                 );
 
-              targetsByUserId.set(target.telegramUserId, {
+              targets.push({
                 telegramUserId: target.telegramUserId,
                 displayName: member ? getMemberDisplayName(member) : undefined,
               });
@@ -510,8 +509,8 @@ export function MembersTable({
 
             setQuickNoticePayload({
               type: "members",
-              title: `${targetsByUserId.size} membro${targetsByUserId.size === 1 ? "" : "s"}`,
-              targets: [...targetsByUserId.values()],
+              title: `${selectionSummary.count} membro${selectionSummary.count === 1 ? "" : "s"}`,
+              targets,
             });
           }}
         />

@@ -643,6 +643,8 @@ export class TelegramService {
   }): Promise<TelegramMemberBulkActionResult> {
     const { group, groupId, telegramUserIds } = input;
 
+    console.log({ group, groupId, telegramUserIds });
+
     const trackedMembers = await this.prisma.telegramGroupMembers.findMany({
       where: {
         telegramGroupId: groupId,
@@ -676,7 +678,7 @@ export class TelegramService {
         failures.push({
           telegramUserId,
           reason:
-            'Não é possível remover ou banir o dono do grupo. O bot não tem permissão para isso.',
+            'Não é possível remover ou banir o dono do grupo. O bot  não tem permissão para isso.',
         });
         continue;
       }
@@ -688,6 +690,8 @@ export class TelegramService {
         });
         continue;
       }
+
+      console.log('bate aqui');
 
       const actionResult = await this.executeGroupMemberAction({
         action: input.input.action,

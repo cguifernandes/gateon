@@ -20,7 +20,6 @@ import { Separator } from "@/components/ui/separator";
 import { useGroupLimit } from "@/contexts/group-limit-context";
 import {
   MEMBER_ACTION_UI_LABELS,
-  type MemberActionTarget,
   type MemberBulkAction,
   useMemberActionHandler,
 } from "@/lib/members/actions";
@@ -114,16 +113,6 @@ type BulkActionButtonsProps = {
   copyIconRef: RefObject<CopyIconHandle | null>;
   userMinusIconRef: RefObject<UserMinusIconHandle | null>;
   banIconRef: RefObject<BanIconHandle | null>;
-  selectedTargets: SelectedMemberTarget[];
-  onClear: () => void;
-  runAction: (params: {
-    action: MemberBulkAction;
-    targets: MemberActionTarget[];
-    onlyActive?: boolean;
-    plural?: boolean;
-    actionLabel?: string;
-    onAfterSuccess?: (action: MemberBulkAction) => void;
-  }) => void;
 };
 
 function BulkActionButtons({
@@ -136,9 +125,6 @@ function BulkActionButtons({
   copyIconRef,
   userMinusIconRef,
   banIconRef,
-  selectedTargets,
-  onClear,
-  runAction,
 }: BulkActionButtonsProps) {
   return (
     <>
@@ -146,16 +132,6 @@ function BulkActionButtons({
         label={MEMBER_ACTION_UI_LABELS.notice}
         disabled={isPending}
         onClick={() => {
-          if (selectedTargets.some((target) => target.selectAllInGroup)) {
-            runAction({
-              action: "notice",
-              targets: selectedTargets,
-              plural: true,
-              onAfterSuccess: () => onClear(),
-            });
-            return;
-          }
-
           onSendNotice();
         }}
         onMouseEnter={() => bellIconRef.current?.startAnimation()}
@@ -281,9 +257,6 @@ export function MembersBulkSelectionToolbar({
           ) : (
             <BulkActionButtons
               isPending={isPending}
-              selectedTargets={selectedTargets}
-              onClear={onClear}
-              runAction={runAction}
               hasRemovableMember={hasRemovableMember}
               selectedTelegramUserIds={selectedTelegramUserIds}
               onSendNotice={onSendNotice}

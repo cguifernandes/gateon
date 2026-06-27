@@ -182,3 +182,13 @@ export function getGroupMemberListCount(group: TelegramGroupSummaryDto) {
     group.trackedMemberCount + group.leftMemberCount
   );
 }
+
+export type QuickNoticeTarget =
+  | {
+      telegramUserId: string;
+      displayName?: string;
+    }
+  | {
+      groupId: string;
+      selectAllInGroup: true;
+    };

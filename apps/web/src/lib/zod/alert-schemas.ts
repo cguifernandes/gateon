@@ -420,11 +420,21 @@ const alertQuickDispatchMemberTargetSchema = z.object({
   displayName: z.string().trim().max(200).optional(),
 });
 
+const alertQuickDispatchGroupMembersTargetSchema = z.object({
+  groupId: z.string().trim().min(1, alertMessages.groupIdMin),
+  selectAllInGroup: z.literal(true),
+});
+
+const alertQuickDispatchTargetSchema = z.union([
+  alertQuickDispatchMemberTargetSchema,
+  alertQuickDispatchGroupMembersTargetSchema,
+]);
+
 export const alertQuickDispatchSchema = z.discriminatedUnion("targetType", [
   z.object({
     targetType: z.literal("members"),
     targets: z
-      .array(alertQuickDispatchMemberTargetSchema)
+      .array(alertQuickDispatchTargetSchema)
       .min(1, alertMessages.selectMember)
       .max(500, alertMessages.membersMax),
   }),

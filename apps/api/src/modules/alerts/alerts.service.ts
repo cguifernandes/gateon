@@ -13,6 +13,9 @@ import {
   AlertTriggerType,
   Prisma,
   StripeBillingConnectionStatus,
+  TelegramAlertRuns,
+  TelegramAlerts,
+  TelegramGroups,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroupLimitService } from '../group-limits/group-limits.service';
@@ -49,6 +52,7 @@ import {
   buildPaginationMeta,
   resolvePagination,
 } from '../../lib/query/pagination';
+import pLimit from 'p-limit';
 
 const DEFAULT_RATE_LIMIT_PER_MINUTE = 20;
 
@@ -65,6 +69,10 @@ type RunAlertOptions = {
   quickDispatchMembers?: { telegramUserId: string; displayName?: string }[];
   /** When true (default), user-initiated runs throw if nothing was delivered. */
   throwOnTotalFailure?: boolean;
+};
+
+type AlertWithRelations = TelegramAlerts & {
+  group: Pick<TelegramGroups, 'botStatus'> | null;
 };
 
 @Injectable()
@@ -475,6 +483,133 @@ export class AlertsService {
     return { triggeredCount: matchingAlerts.length };
   }
 
+  async sendTarget({
+    alertId,
+    alert,
+    run,
+    target,
+    options,
+    defaultText,
+    baseMessageText,
+    photoUrl,
+    replyMarkup,
+    groupsByChatId,
+  }: {
+    alertId: string;
+    alert: AlertWithRelations;
+    run: TelegramAlertRuns;
+    target: DeliveryTarget;
+    options: AlertOptionsInput;
+    defaultText: string;
+    baseMessageText: string;
+    photoUrl?: string;
+    replyMarkup?: Record<string, unknown> | undefined;
+    groupsByChatId: Map<string, string>;
+  }) {
+    try {
+      let deliveryError: string | null = null;
+      let delivered = false;
+
+      if (target.kind === 'chat') {
+        const blockReason = getAlertGroupDeliveryBlockReason(
+          groupsByChatId.get(target.chatId) ?? alert.group?.botStatus,
+        );
+
+        if (blockReason) {
+          deliveryError = blockReason;
+
+          this.logger.warn(
+            `[alert-dispatch] delivery blocked alertId=${alertId} chatId=${target.chatId} reason=${blockReason}`,
+          );
+        } else {
+          const result = await this.telegram.sendAlertToChat({
+            chatId: target.chatId,
+            messageThreadId: target.threadId,
+            text: defaultText,
+            photoUrl,
+            silent: options.silent,
+            pinMessage: options.pinMessage,
+            replyMarkup,
+          });
+
+          delivered = result.ok;
+
+          if (!result.ok) {
+            deliveryError = result.reason;
+
+            this.logger.warn(
+              `[alert-dispatch] chat delivery failed alertId=${alertId} chatId=${target.chatId} reason=${result.reason}`,
+            );
+          } else {
+            this.logger.log(
+              `[alert-dispatch] chat delivery ok alertId=${alertId} chatId=${target.chatId}`,
+            );
+          }
+        }
+      } else {
+        const messageText =
+          target.displayName !== undefined
+            ? this.renderAutomationMessageText(baseMessageText, {
+                scopeToMemberDisplayName: target.displayName,
+              })
+            : defaultText;
+
+        const result = await this.telegram.sendAlertDm({
+          telegramUserId: target.telegramUserId,
+          text: messageText,
+          photoUrl,
+          silent: options.silent,
+          replyMarkup,
+        });
+
+        delivered = result.ok;
+
+        if (!result.ok) {
+          deliveryError = result.reason;
+
+          this.logger.warn(
+            `[alert-dispatch] dm delivery failed alertId=${alertId} telegramUserId=${target.telegramUserId} reason=${result.reason}`,
+          );
+        } else {
+          this.logger.log(
+            `[alert-dispatch] dm delivery ok alertId=${alertId} telegramUserId=${target.telegramUserId}`,
+          );
+        }
+      }
+
+      await this.prisma.telegramAlertDeliveries.create({
+        data: {
+          runId: run.id,
+          status: delivered
+            ? AlertDeliveryStatus.SENT
+            : AlertDeliveryStatus.FAILED,
+          error: delivered ? undefined : (deliveryError ?? undefined),
+          sentAt: delivered ? new Date() : undefined,
+          ...(target.kind === 'chat'
+            ? {
+                chatId: target.chatId,
+                threadId: target.threadId ?? undefined,
+              }
+            : {
+                telegramUserId: target.telegramUserId,
+              }),
+        },
+      });
+
+      return {
+        delivered,
+        error: deliveryError,
+      };
+    } catch (error) {
+      this.logger.error(error);
+
+      return {
+        delivered: false,
+        error: error instanceof Error ? error.message : 'Erro interno',
+      };
+    }
+  }
+
   async runAlert(alertId: string, runOptions?: RunAlertOptions) {
     const alert = await this.prisma.telegramAlerts.findUnique({
       where: { id: alertId },
@@ -524,7 +659,6 @@ export class AlertsService {
       baseMessageText,
       runOptions,
     );
-    const waitMs = this.resolveWaitMs(options.rateLimitPerMinute);
 
     const chatTargets = targets.filter(
       (target): target is Extract<DeliveryTarget, { kind: 'chat' }> =>
@@ -543,93 +677,31 @@ export class AlertsService {
       ).map((group) => [group.telegramChatId, group.botStatus] as const),
     );
 
-    for (const [index, target] of targets.entries()) {
-      let deliveryError: string | null = null;
-      let delivered = false;
+    const limit = pLimit(10);
 
-      if (target.kind === 'chat') {
-        const blockReason = getAlertGroupDeliveryBlockReason(
-          groupsByChatId.get(target.chatId) ?? alert.group?.botStatus,
-        );
-        if (blockReason) {
-          deliveryError = blockReason;
-          this.logger.warn(
-            `[alert-dispatch] delivery blocked alertId=${alertId} chatId=${target.chatId} reason=${blockReason}`,
-          );
-        } else {
-          const result = await this.telegram.sendAlertToChat({
-            chatId: target.chatId,
-            messageThreadId: target.threadId,
-            text: defaultText,
+    const results = await Promise.all(
+      targets.map((target) =>
+        limit(() =>
+          this.sendTarget({
+            alertId,
+            alert,
+            run,
+            target,
+            options,
+            defaultText,
+            baseMessageText,
             photoUrl,
-            silent: options.silent,
-            pinMessage: options.pinMessage,
             replyMarkup,
-          });
-          delivered = result.ok;
-          if (!result.ok) {
-            deliveryError = result.reason;
-            this.logger.warn(
-              `[alert-dispatch] chat delivery failed alertId=${alertId} chatId=${target.chatId} reason=${result.reason}`,
-            );
-          } else {
-            this.logger.log(
-              `[alert-dispatch] chat delivery ok alertId=${alertId} chatId=${target.chatId}`,
-            );
-          }
-        }
-      } else {
-        const messageText =
-          target.displayName !== undefined
-            ? this.renderAutomationMessageText(baseMessageText, {
-                scopeToMemberDisplayName: target.displayName,
-              })
-            : defaultText;
-        const result = await this.telegram.sendAlertDm({
-          telegramUserId: target.telegramUserId,
-          text: messageText,
-          photoUrl,
-          silent: options.silent,
-          replyMarkup,
-        });
-        delivered = result.ok;
-        if (!result.ok) {
-          deliveryError = result.reason;
-          this.logger.warn(
-            `[alert-dispatch] dm delivery failed alertId=${alertId} telegramUserId=${target.telegramUserId} reason=${result.reason}`,
-          );
-        } else {
-          this.logger.log(
-            `[alert-dispatch] dm delivery ok alertId=${alertId} telegramUserId=${target.telegramUserId}`,
-          );
-        }
-      }
+            groupsByChatId,
+          }),
+        ),
+      ),
+    );
 
-      if (delivered) {
-        successCount += 1;
-      } else {
-        failCount += 1;
-        firstFailureMessage ??= deliveryError;
-      }
+    successCount = results.filter((r) => r.delivered).length;
+    failCount = results.length - successCount;
 
-      await this.prisma.telegramAlertDeliveries.create({
-        data: {
-          runId: run.id,
-          status: delivered
-            ? AlertDeliveryStatus.SENT
-            : AlertDeliveryStatus.FAILED,
-          error: delivered ? undefined : (deliveryError ?? undefined),
-          sentAt: delivered ? new Date() : undefined,
-          ...(target.kind === 'chat'
-            ? { chatId: target.chatId, threadId: target.threadId ?? undefined }
-            : { telegramUserId: target.telegramUserId }),
-        },
-      });
-
-      if (index < targets.length - 1 && waitMs > 0) {
-        await this.delay(waitMs);
-      }
-    }
+    firstFailureMessage = results.find((r) => !r.delivered)?.error ?? null;
 
     const status = this.resolveRunStatus(successCount, failCount);
     const deliveryRate =
@@ -724,8 +796,59 @@ export class AlertsService {
       });
     }
 
+    const membersMap = new Map<
+      string,
+      {
+        telegramUserId: string;
+        displayName?: string;
+      }
+    >();
+
+    for (const target of input.targets) {
+      if ('telegramUserId' in target) {
+        membersMap.set(target.telegramUserId, {
+          telegramUserId: target.telegramUserId,
+          displayName: target.displayName,
+        });
+
+        continue;
+      }
+
+      const groupIds = input.targets
+        .filter(
+          (target): target is { groupId: string; selectAllInGroup: true } =>
+            'groupId' in target,
+        )
+        .map((target) => target.groupId);
+
+      const members = await this.prisma.telegramGroupMembers.findMany({
+        where: {
+          telegramGroupId: {
+            in: groupIds,
+          },
+        },
+        select: {
+          telegramUserId: true,
+          firstName: true,
+          lastName: true,
+        },
+      });
+
+      for (const member of members) {
+        membersMap.set(member.telegramUserId, {
+          telegramUserId: member.telegramUserId,
+          displayName:
+            [member.firstName, member.lastName]
+              .filter((name): name is string => Boolean(name))
+              .join(' ') || undefined,
+        });
+      }
+    }
+
+    const uniqueMembers = [...membersMap.values()];
+
     return this.runAlert(alertId, {
-      quickDispatchMembers: input.targets,
+      quickDispatchMembers: uniqueMembers,
     });
   }
 
