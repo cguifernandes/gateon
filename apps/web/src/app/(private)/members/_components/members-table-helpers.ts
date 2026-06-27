@@ -98,22 +98,30 @@ export function getVisibleSelectionSummary(
   selectedMemberKeys: Set<string>,
 ): VisibleSelectionSummary {
   const targets: SelectedMemberTarget[] = [];
+  const uniqueTelegramUserIds = new Set<string>();
+
   let hasActiveMember = false;
   let hasRemovableMember = false;
-  let count = 0;
 
   for (const group of visibleGroups) {
     if (selectedGroupIds.has(group.id)) {
-      const groupCount = getGroupMemberListCount(group);
-      count += groupCount;
       targets.push({
         groupId: group.id,
         selectAllInGroup: true,
       });
-      if (group.trackedMemberCount > 0) {
-        hasActiveMember = true;
-        hasRemovableMember = true;
+
+      for (const member of group.visibleMembers) {
+        uniqueTelegramUserIds.add(member.telegramUserId);
+
+        if (member.status === "active") {
+          hasActiveMember = true;
+
+          if (!member.isOwner) {
+            hasRemovableMember = true;
+          }
+        }
       }
+
       continue;
     }
 
@@ -122,15 +130,18 @@ export function getVisibleSelectionSummary(
     );
 
     for (const member of members) {
-      count += 1;
+      uniqueTelegramUserIds.add(member.telegramUserId);
+
       targets.push({
         groupId: group.id,
         telegramUserId: member.telegramUserId,
         status: member.status,
         isOwner: member.isOwner,
       });
+
       if (member.status === "active") {
         hasActiveMember = true;
+
         if (!member.isOwner) {
           hasRemovableMember = true;
         }
@@ -139,11 +150,9 @@ export function getVisibleSelectionSummary(
   }
 
   return {
-    count,
+    count: uniqueTelegramUserIds.size,
     targets,
-    telegramUserIds: targets
-      .map((target) => target.telegramUserId)
-      .filter((value): value is string => Boolean(value)),
+    telegramUserIds: [...uniqueTelegramUserIds],
     hasActiveMember,
     hasRemovableMember,
   };
