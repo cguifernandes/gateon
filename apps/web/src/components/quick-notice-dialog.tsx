@@ -112,12 +112,34 @@ export function QuickNoticeDialog({
 
   const summaryLabel = useMemo(() => {
     if (!payload) return "";
-    if (payload.type === "members") {
-      return `${payload.targets.length} destinatário${payload.targets.length === 1 ? "" : "s"}`;
-    }
-    return payload.title;
-  }, [payload]);
 
+    if (payload.type === "group") {
+      return payload.title;
+    }
+
+    let memberCount = 0;
+    let groupCount = 0;
+
+    for (const target of payload.targets) {
+      if ("telegramUserId" in target) {
+        memberCount++;
+      } else {
+        groupCount++;
+      }
+    }
+
+    const parts: string[] = [];
+
+    if (memberCount > 0) {
+      parts.push(`${memberCount} membro${memberCount === 1 ? "" : "s"}`);
+    }
+
+    if (groupCount > 0) {
+      parts.push(`${groupCount} grupo${groupCount === 1 ? "" : "s"}`);
+    }
+
+    return parts.join(" e ");
+  }, [payload]);
   function handleClose() {
     onOpenChange(false);
   }
@@ -210,7 +232,7 @@ export function QuickNoticeDialog({
         >
           {isLoadingAlerts ? (
             <div
-              className="flex items-center justify-center gap-2 px-4 py-10 text-muted-foreground text-sm"
+              className="flex items-center justify-center gap-2 px-6 py-10 text-muted-foreground text-sm"
               aria-live="polite"
               aria-busy="true"
             >

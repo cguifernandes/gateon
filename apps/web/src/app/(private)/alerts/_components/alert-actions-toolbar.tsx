@@ -19,6 +19,7 @@ type AlertActionsToolbarProps = {
   isActive: boolean;
   isAutomation?: boolean;
   onActionSuccess?: (action: AlertAction) => void | Promise<void>;
+  isQuickAlert?: boolean;
 };
 
 export function AlertActionsToolbar({
@@ -26,6 +27,7 @@ export function AlertActionsToolbar({
   isActive,
   isAutomation = false,
   onActionSuccess,
+  isQuickAlert = false,
 }: AlertActionsToolbarProps) {
   const copyIconRef = useRef<CopyIconHandle>(null);
   const deleteIconRef = useRef<Trash2IconHandle>(null);
@@ -57,19 +59,22 @@ export function AlertActionsToolbar({
       className="flex items-center gap-0.5 rounded-lg bg-background/40 px-1 py-0.5 backdrop-blur-[2px]"
       onPointerDown={(event) => event.stopPropagation()}
     >
-      <ToolbarIconButton
-        label="Executar agora"
-        loading={pendingAction === "run"}
-        disabled={isBusy}
-        stopPointerPropagation
-        onClick={() => {
-          void runAction("run");
-        }}
-        onMouseEnter={() => rocketIconRef.current?.startAnimation()}
-        onMouseLeave={() => rocketIconRef.current?.stopAnimation()}
-      >
-        <RocketIcon ref={rocketIconRef} size={16} />
-      </ToolbarIconButton>
+      {!isQuickAlert && (
+        <ToolbarIconButton
+          label="Executar agora"
+          loading={pendingAction === "run"}
+          disabled={isBusy}
+          stopPointerPropagation
+          onClick={() => {
+            void runAction("run");
+          }}
+          onMouseEnter={() => rocketIconRef.current?.startAnimation()}
+          onMouseLeave={() => rocketIconRef.current?.stopAnimation()}
+        >
+          <RocketIcon ref={rocketIconRef} size={16} />
+        </ToolbarIconButton>
+      )}
+
       <ToolbarIconButton
         label="Duplicar"
         loading={pendingAction === "duplicate"}

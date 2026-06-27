@@ -535,7 +535,6 @@ export function MembersTable({
           pagination={pagination}
           itemLabel="grupo"
           itemLabelPlural="grupos"
-          summaryClassName={selectionSummary.count > 0 ? "pb-16" : undefined}
         />
       ) : null}
     </div>

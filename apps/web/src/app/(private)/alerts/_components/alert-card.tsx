@@ -36,6 +36,7 @@ export function AlertCard({
 }: AlertCardProps) {
   const isActive = alert.status === "ACTIVE";
   const isAutomation = alert.destinationType === "AUTOMATION";
+  const isQuickAlert = alert.destinationType === "QUICK_ALERT";
 
   function handleCardActivate() {
     onSelect?.(alert);
@@ -95,6 +96,7 @@ export function AlertCard({
                   alertId={alert.id}
                   isActive={isActive}
                   isAutomation={isAutomation}
+                  isQuickAlert={isQuickAlert}
                   onActionSuccess={(action) =>
                     onActionSuccess?.(alert.id, action)
                   }
