@@ -122,7 +122,7 @@ function InsightSparkline({
   const columnWidth = 100 / normalized.length;
 
   return (
-    <div className="relative mt-auto h-28 w-full flex-1">
+    <div className="relative mt-auto h-36 w-full flex-1">
       <svg
         viewBox={`0 0 ${width} ${height}`}
         preserveAspectRatio="none"
@@ -263,27 +263,25 @@ export function DashboardGroupInsights({
         </div>
 
         <Empty className="min-h-[240px] w-full">
-              <EmptyHeader>
-                <EmptyMedia className="size-14 rounded-lg">
-                  <UsersIcon className="text-primary" size={24} />
-                </EmptyMedia>
-                <EmptyTitle>
-                  Conecte um grupo para ver os indicadores
-                </EmptyTitle>
-                <EmptyDescription className="max-w-sm text-pretty">
-                  Os cards de saída, retenção e entrega aparecem após a primeira
-                  conexão.
-                </EmptyDescription>
-              </EmptyHeader>
-              <EmptyContent>
-                <Link
-                  href="/groups"
-                  className={cn(buttonVariants(), "inline-flex")}
-                >
-                  Conectar grupo
-                </Link>
-              </EmptyContent>
-            </Empty>
+          <EmptyHeader>
+            <EmptyMedia className="size-14 rounded-lg">
+              <UsersIcon className="text-primary" size={24} />
+            </EmptyMedia>
+            <EmptyTitle>Conecte um grupo para ver os indicadores</EmptyTitle>
+            <EmptyDescription className="max-w-sm text-pretty">
+              Os cards de saída, retenção e entrega aparecem após a primeira
+              conexão.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Link
+              href="/groups"
+              className={cn(buttonVariants(), "inline-flex")}
+            >
+              Conectar grupo
+            </Link>
+          </EmptyContent>
+        </Empty>
       </section>
     );
   }
@@ -339,127 +337,134 @@ export function DashboardGroupInsights({
   return (
     <section className="space-y-4">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-            <div className="min-w-0">
-              <p className="text-muted-foreground text-sm text-pretty xl:truncate">
-                Indicadores de {groupTitle} no período selecionado.
-              </p>
-              <h2 className="mt-1 font-heading text-xl font-bold tracking-tight text-foreground whitespace-nowrap sm:text-2xl">
-                Visão do grupo
-              </h2>
-            </div>
+        <div className="min-w-0">
+          <p className="text-muted-foreground text-sm text-pretty xl:truncate">
+            Indicadores de {groupTitle} no período selecionado.
+          </p>
+          <h2 className="mt-1 font-heading text-xl font-bold tracking-tight text-foreground whitespace-nowrap sm:text-2xl">
+            Visão do grupo
+          </h2>
+        </div>
 
-            <div className="flex w-full shrink-0 flex-col gap-2 xl:w-auto xl:flex-row xl:items-center">
-              <Select
-                value={datePreset}
-                onValueChange={(v) => setDatePreset(v as DatePreset)}
-              >
-                <SelectTrigger className="w-full xl:w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(DATE_PRESET_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={selectedGroup.id}
-                onValueChange={setSelectedGroupId}
-              >
-                <SelectTrigger className="w-full xl:w-48">
-                  <SelectValue placeholder="Selecionar grupo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {groups.map((g) => (
-                    <SelectItem key={g.id} value={g.id}>
-                      {g.title?.trim() || g.telegramChatId}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        <div className="flex w-full shrink-0 flex-col gap-2 xl:w-auto xl:flex-row xl:items-center">
+          <Select
+            value={datePreset}
+            onValueChange={(v) => setDatePreset(v as DatePreset)}
+          >
+            <SelectTrigger className="w-full xl:w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(DATE_PRESET_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={selectedGroup.id} onValueChange={setSelectedGroupId}>
+            <SelectTrigger className="w-full xl:w-48">
+              <SelectValue
+                className="bg-red-500"
+                style={{ backgroundColor: "#fff" }}
+                placeholder="Selecionar grupo"
+              />
+            </SelectTrigger>
+            <SelectContent>
+              {groups.map((g) => (
+                <SelectItem
+                  style={{ backgroundColor: "#fff" }}
+                  key={g.id}
+                  value={g.id}
+                >
+                  <span className="truncate min-w-0 flex-1 block w-full">
+                    {g.title?.trim() || g.telegramChatId}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
-            {cards.map((card) => {
-              const positive = card.trendInverted
-                ? card.trend <= 0
-                : card.trend >= 0;
-              const cardStyles = INSIGHT_CARD_STYLES[card.accent];
+        {cards.map((card) => {
+          const positive = card.trendInverted
+            ? card.trend <= 0
+            : card.trend >= 0;
+          const cardStyles = INSIGHT_CARD_STYLES[card.accent];
 
-              return (
-                <div
-                  key={card.label}
-                  className="h-full min-h-[200px] rounded-xl border border-border"
-                >
-                  <div
-                    className={cn(
-                      "relative flex h-full min-h-[240px] flex-col overflow-hidden rounded-xl",
-                      cardStyles.surface,
-                    )}
-                  >
-                    <div className="flex shrink-0 flex-col p-4 sm:p-5">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <ImageComponent
-                          src={photoUrl}
-                          alt={groupTitle}
-                          width={40}
-                          height={40}
-                          sizes="40px"
-                          className="size-10 shrink-0 rounded-full border border-border object-cover"
-                          avatarFallbackClassName="text-lg!"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-muted-foreground text-[11px] uppercase tracking-wide">
-                            {card.eyebrow}
-                          </p>
-                          <p className="truncate font-medium text-foreground text-sm">
-                            {groupTitle}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="relative mt-4 min-w-0">
-                        <p className="truncate text-muted-foreground text-xs">
-                          {card.label}
-                        </p>
-                        <p className="font-heading text-2xl font-bold tracking-tight text-foreground tabular-nums">
-                          {card.value}%
-                        </p>
-                        <div className="mt-1 flex min-w-0 items-center gap-2">
-                          <Badge
-                            variant={positive ? "outline" : "destructive"}
-                            className={cn(
-                              "shrink-0 tabular-nums font-medium",
-                              positive &&
-                                "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400",
-                            )}
-                          >
-                            {card.trend > 0 ? "+" : ""}
-                            {card.trend}%
-                          </Badge>
-                          <span className="min-w-0 truncate text-muted-foreground text-xs">
-                            {card.detail}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <InsightSparkline
-                      data={[...card.sparkline]}
-                      metricLabel={card.label}
-                      datePreset={datePreset}
-                      historicalRange={historicalRange}
-                      formatPointValue={card.formatPointValue}
-                      strokeClassName={INSIGHT_ACCENTS[card.accent].stroke}
-                      fillColor={INSIGHT_ACCENTS[card.accent].fill}
+          return (
+            <div
+              key={card.label}
+              className="h-full min-h-[200px] rounded-xl border border-border"
+            >
+              <div
+                className={cn(
+                  "relative flex h-full gap-3 min-h-[240px] flex-col overflow-hidden rounded-xl",
+                  cardStyles.surface,
+                )}
+              >
+                <div className="flex shrink-0 flex-col p-3 sm:p-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <ImageComponent
+                      src={photoUrl}
+                      alt={groupTitle}
+                      width={40}
+                      height={40}
+                      sizes="40px"
+                      className="size-10 shrink-0 rounded-full border border-border object-cover"
+                      avatarFallbackClassName="text-lg!"
                     />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-muted-foreground text-[11px] uppercase tracking-wide">
+                        {card.eyebrow}
+                      </p>
+                      <p className="truncate font-medium text-foreground text-sm">
+                        {groupTitle}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="relative mt-4 min-w-0">
+                    <p className="truncate text-muted-foreground text-xs">
+                      {card.label}
+                    </p>
+                    <p className="font-heading text-2xl font-bold tracking-tight text-foreground tabular-nums">
+                      {card.value}%
+                    </p>
+                    <div className="mt-1 flex min-w-0 items-center gap-2">
+                      <Badge
+                        variant={positive ? "outline" : "destructive"}
+                        className={cn(
+                          "shrink-0 tabular-nums font-medium",
+                          positive &&
+                            "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400",
+                        )}
+                      >
+                        {card.trend > 0 ? "+" : ""}
+                        {card.trend}%
+                      </Badge>
+                      <span className="min-w-0 truncate text-muted-foreground text-xs">
+                        {card.detail}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              );
-            })}
+
+                <InsightSparkline
+                  data={[...card.sparkline]}
+                  metricLabel={card.label}
+                  datePreset={datePreset}
+                  historicalRange={historicalRange}
+                  formatPointValue={card.formatPointValue}
+                  strokeClassName={INSIGHT_ACCENTS[card.accent].stroke}
+                  fillColor={INSIGHT_ACCENTS[card.accent].fill}
+                />
+              </div>
+            </div>
+          );
+        })}
       </div>
     </section>
   );

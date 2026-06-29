@@ -42,7 +42,9 @@ function PlanFeatureList({
     <ul
       className={cn(
         "space-y-2 text-sm",
-        highlighted ? HIGHLIGHTED_PLAN_MUTED_TEXT_CLASS : "text-muted-foreground",
+        highlighted
+          ? HIGHLIGHTED_PLAN_MUTED_TEXT_CLASS
+          : "text-muted-foreground",
       )}
     >
       {visibleBullets.map((item) => (
@@ -135,6 +137,7 @@ export type PricingPlanCardProps = {
   maxFeatures?: number;
   ctaOverride?: PricingPlanCtaOverride;
   extraFooter?: ReactNode;
+  patternClassName?: string;
 };
 
 export function PricingPlanCard({
@@ -144,6 +147,7 @@ export function PricingPlanCard({
   scaled = true,
   maxFeatures,
   ctaOverride,
+  patternClassName,
   extraFooter,
 }: PricingPlanCardProps) {
   const resolvedCta = resolvePlanCta({ plan, mode, currentPlanId });
@@ -164,6 +168,7 @@ export function PricingPlanCard({
       className={cn(
         "relative pt-4",
         scaled && plan.highlighted && "lg:scale-105",
+        patternClassName,
       )}
     >
       {isCurrent ? (

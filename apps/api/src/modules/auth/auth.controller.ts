@@ -21,7 +21,14 @@ import type { Request, Response } from 'express';
 import { OAUTH_STATE_COOKIE_NAME, toPublicUser } from '../../utils/utils';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '../../lib/guards/auth.guard';
-import { loginSchema, registerSchema, deleteAccountSchema, updateProfileSchema, passwordResetRequestSchema, passwordResetConfirmSchema } from '../../lib/zod/auth-schemas';
+import {
+  loginSchema,
+  registerSchema,
+  deleteAccountSchema,
+  updateProfileSchema,
+  passwordResetRequestSchema,
+  passwordResetConfirmSchema,
+} from '../../lib/zod/auth-schemas';
 
 @Controller('auth')
 export class AuthController {
@@ -91,7 +98,9 @@ export class AuthController {
   profile(@Req() req: Request) {
     const session = req.authSession;
     if (!session) {
-      throw new InternalServerErrorException('Authenticated session not found.');
+      throw new InternalServerErrorException(
+        'Authenticated session not found.',
+      );
     }
     return this.auth.getProfile(session.userId, session.id);
   }
@@ -115,7 +124,9 @@ export class AuthController {
   ) {
     const session = req.authSession;
     if (!session) {
-      throw new InternalServerErrorException('Authenticated session not found.');
+      throw new InternalServerErrorException(
+        'Authenticated session not found.',
+      );
     }
     return this.auth.revokeSession(session.userId, sessionId, session.id);
   }
@@ -125,7 +136,9 @@ export class AuthController {
   async revokeOtherSessions(@Req() req: Request) {
     const session = req.authSession;
     if (!session) {
-      throw new InternalServerErrorException('Authenticated session not found.');
+      throw new InternalServerErrorException(
+        'Authenticated session not found.',
+      );
     }
     return this.auth.revokeOtherSessions(session.userId, session.id);
   }

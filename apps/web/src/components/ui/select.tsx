@@ -23,9 +23,18 @@ function SelectGroup({
 }
 
 function SelectValue({
+  className,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Value>) {
-  return <SelectPrimitive.Value data-slot="select-value" {...props} />;
+  return (
+    <div className="min-w-0">
+      <SelectPrimitive.Value
+        data-slot="select-value"
+        className={cn("truncate flex-1 min-w-0", className)}
+        {...props}
+      />
+    </div>
+  );
 }
 
 function SelectTrigger({
@@ -48,17 +57,19 @@ function SelectTrigger({
           variant: "outline",
           size: size === "sm" ? "sm" : "default",
         }),
-        "w-full justify-between h-9 data-placeholder:text-muted-foreground",
+        "w-full flex justify-between items-center min-w-0 gap-2",
+        "h-9 data-placeholder:text-muted-foreground",
         className,
       )}
       {...props}
     >
-      {children}
+      <div className="flex items-center flex-1 min-w-0">{children}</div>
+
       <SelectPrimitive.Icon asChild>
         <ChevronDownIcon
           isAnimateOnView={false}
           size={16}
-          className="opacity-50"
+          className="opacity-50 shrink-0"
           ref={refChevronDown}
         />
       </SelectPrimitive.Icon>
