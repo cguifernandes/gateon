@@ -15,9 +15,77 @@ import {
 } from "@/components/ui/card";
 import type { PlanCatalogEntry } from "@/lib/plan/features";
 import { cn } from "@/lib/utils";
+import type { AvailablePlan } from "@/lib/zod/billing-schemas";
 import type { PlanId } from "@/lib/zod/plan-schemas";
 
+export type PlanCardPlan = {
+  id: string;
+  planId: string;
+  label: string;
+  description: string | null;
+  price: number;
+  currency: string;
+  interval: string | null;
+  intervalLabel: string | null;
+  features: string[];
+  highlighted: boolean;
+  /** Preço em centavos para o card estático (PlanCatalogEntry), null = grátis */
+  priceCents?: number | null;
+};
+
+export function toPlanCardPlan(
+  source: PlanCatalogEntry | AvailablePlan,
+): PlanCardPlan {
+  if ("label" in source) {
+    const entry = source as PlanCatalogEntry;
+    return {
+      id: entry.id,
+      planId: entry.id,
+      label: entry.label,
+      description: entry.description,
+      price: (entry.priceCents ?? 0) / 100,
+      currency: "BRL",
+      interval: "month",
+      intervalLabel: entry.priceCents !== null ? "/ mês" : null,
+      features: entry.featureBullets,
+      highlighted: entry.highlighted,
+      priceCents: entry.priceCents,
+    };
+  }
+  const ap = source as AvailablePlan;
+  const intervalLabel = ap.interval
+    ? `/ ${ap.interval === "month" ? "mês" : ap.interval === "year" ? "ano" : ap.interval}`
+    : null;
+  return {
+    id: ap.id,
+    planId: ap.planId ?? ap.id,
+    label: ap.name,
+    description: ap.description,
+    price: ap.price,
+    currency: ap.currency,
+    interval: ap.interval,
+    intervalLabel,
+    features: ap.features,
+    highlighted: ap.isHighlight,
+  };
+}
+
 export type PricingPlanMode = "marketing" | "account";
+
+export type PricingPlanCardAction = {
+  label: string;
+  onClick?: () => void;
+  loading?: boolean;
+  variant?:
+    | "default"
+    | "outline"
+    | "secondary"
+    | "ghost"
+    | "destructive"
+    | "link";
+  href?: string | null;
+  disabled?: boolean;
+};
 
 const HIGHLIGHTED_PLAN_CTA_CLASS =
   "bg-white text-primary hover:bg-white/90 disabled:bg-white/70 disabled:text-primary/70";
@@ -71,12 +139,12 @@ type PricingPlanCta = {
 };
 
 function resolvePlanCta(input: {
-  plan: PlanCatalogEntry;
+  plan: PlanCardPlan;
   mode: PricingPlanMode;
   currentPlanId: PlanId;
 }): PricingPlanCta {
   const { plan, mode, currentPlanId } = input;
-  const isCurrent = plan.id === currentPlanId;
+  const isCurrent = plan.planId === currentPlanId;
 
   if (mode === "account") {
     if (isCurrent) {
@@ -88,7 +156,7 @@ function resolvePlanCta(input: {
       };
     }
 
-    if (plan.id === "free") {
+    if (plan.planId === "free") {
       return {
         label: "Plano gratuito",
         href: null,
@@ -98,14 +166,14 @@ function resolvePlanCta(input: {
     }
 
     return {
-      label: "Assinar",
+      label: "Selecionar Plano",
       href: null,
       disabled: true,
       variant: plan.highlighted ? "default" : "outline",
     };
   }
 
-  if (plan.id === "free") {
+  if (plan.planId === "free") {
     return {
       label: "Começar grátis",
       href: "/register",
@@ -115,7 +183,7 @@ function resolvePlanCta(input: {
   }
 
   return {
-    label: "Assinar",
+    label: "Selecionar Plano",
     href: "/register",
     disabled: false,
     variant: plan.highlighted ? "default" : "outline",
@@ -130,12 +198,13 @@ export type PricingPlanCtaOverride = {
 };
 
 export type PricingPlanCardProps = {
-  plan: PlanCatalogEntry;
+  plan: PlanCardPlan;
   mode: PricingPlanMode;
   currentPlanId: PlanId;
   scaled?: boolean;
   maxFeatures?: number;
   ctaOverride?: PricingPlanCtaOverride;
+  action?: PricingPlanCardAction;
   extraFooter?: ReactNode;
   patternClassName?: string;
 };
@@ -147,6 +216,7 @@ export function PricingPlanCard({
   scaled = true,
   maxFeatures,
   ctaOverride,
+  action,
   patternClassName,
   extraFooter,
 }: PricingPlanCardProps) {
@@ -160,8 +230,9 @@ export function PricingPlanCard({
       }
     : resolvedCta;
   const hasMoreFeatures =
-    maxFeatures !== undefined && plan.featureBullets.length > maxFeatures;
-  const isCurrent = plan.id === currentPlanId;
+    maxFeatures !== undefined && plan.features.length > maxFeatures;
+
+  const isCurrent = plan.planId === currentPlanId;
 
   return (
     <div
@@ -212,13 +283,16 @@ export function PricingPlanCard({
               plan.highlighted && "text-white",
             )}
           >
-            <span>R$</span>
-            <AnimatedNumberFlow
-              startValue={0}
-              finalValue={(plan.priceCents ?? 0) / 100}
-              className="font-semibold tracking-tight"
-            />
-            {plan.priceCents !== null ? (
+            <span className="flex gap-1">
+              R${" "}
+              <AnimatedNumberFlow
+                startValue={0}
+                finalValue={plan.price}
+                className="font-semibold tracking-tight"
+                roundNumber={false}
+              />
+            </span>
+            {plan.intervalLabel ? (
               <span
                 className={cn(
                   "font-normal text-sm",
@@ -227,19 +301,20 @@ export function PricingPlanCard({
                     : "text-muted-foreground",
                 )}
               >
-                / mês
+                {plan.intervalLabel}
               </span>
             ) : null}
           </div>
         </CardHeader>
         <CardContent className="flex-1">
           <PlanFeatureList
-            bullets={plan.featureBullets}
+            bullets={plan.features}
             maxFeatures={maxFeatures}
             highlighted={plan.highlighted}
           />
           {hasMoreFeatures && cta.href ? (
             <Button
+              nativeButton={false}
               className={cn(
                 "mt-3 w-full",
                 plan.highlighted && HIGHLIGHTED_PLAN_CTA_CLASS,
@@ -259,7 +334,22 @@ export function PricingPlanCard({
               plan.highlighted ? "border-0!" : "border-border",
             )}
           >
-            {cta.disabled || !cta.href ? (
+            {action?.onClick ? (
+              <Button
+                className={cn(
+                  "w-full",
+                  plan.highlighted && HIGHLIGHTED_PLAN_CTA_CLASS,
+                )}
+                variant={
+                  plan.highlighted ? "secondary" : (action.variant ?? "default")
+                }
+                loading={action.loading}
+                disabled={action.disabled}
+                onClick={action.onClick}
+              >
+                {action.label}
+              </Button>
+            ) : cta.disabled || !cta.href ? (
               <Button
                 className={cn(
                   "w-full",
@@ -272,6 +362,7 @@ export function PricingPlanCard({
               </Button>
             ) : (
               <Button
+                nativeButton={false}
                 className={cn(
                   "w-full",
                   plan.highlighted && HIGHLIGHTED_PLAN_CTA_CLASS,

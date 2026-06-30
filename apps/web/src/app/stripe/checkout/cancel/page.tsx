@@ -33,10 +33,16 @@ export default function StripeCheckoutCancelPage() {
         Nenhuma cobrança foi feita. Você será redirecionado ao bot no Telegram
         para tentar novamente.
       </p>
-      <Button render={<a href={telegramBotUrl}>Voltar ao Telegram agora</a>} />
-      <Button variant="outline" render={<Link href="/dashboard" />}>
-        Ir para o painel
-      </Button>
+      <Button
+        nativeButton={false}
+        render={<a href={telegramBotUrl}>Voltar ao Telegram agora</a>}
+      />
+
+      <Button
+        nativeButton={false}
+        variant="outline"
+        render={<Link href="/dashboard">Ir para o painel</Link>}
+      />
     </main>
   );
 }

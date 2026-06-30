@@ -1,6 +1,8 @@
 import type { AlertSummaryDto } from "@/lib/zod/alert-schemas";
 import type { StripeBillingStatusDto } from "@/lib/zod/stripe-billing-schemas";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
+import type { AvailablePlan } from "@/lib/server/data/get-billing-plans";
+import type { PlanId } from "@/lib/zod/plan-schemas";
 import { DashboardFiltersProvider } from "./dashboard-filters-context";
 import {
   DashboardConnectedBotsCard,
@@ -26,6 +28,8 @@ export type DashboardOverviewProps = {
   alertStats: AlertStats;
   alerts: AlertSummaryDto[];
   stripeBilling: StripeBillingStatusDto;
+  nextPlan?: AvailablePlan | null;
+  planId?: PlanId;
 };
 
 export function DashboardOverview({
@@ -33,6 +37,8 @@ export function DashboardOverview({
   alertStats,
   alerts,
   stripeBilling,
+  nextPlan,
+  planId = "free",
 }: DashboardOverviewProps) {
   const deliveryRateRounded = Math.round(alertStats.deliveryRate);
 
@@ -55,7 +61,7 @@ export function DashboardOverview({
           </section>
 
           <section className="flex min-w-0 flex-col space-y-4 sm:space-y-6">
-            <DashboardPlanUpsellCard />
+            <DashboardPlanUpsellCard nextPlan={nextPlan} planId={planId} />
             <DashboardRecentAlertsCard groups={groups} alerts={alerts} />
             <DashboardConnectedBotsCard groups={groups} />
           </section>

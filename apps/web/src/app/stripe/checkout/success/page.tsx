@@ -94,11 +94,16 @@ function StripeCheckoutSuccessContent() {
             levar alguns minutos para ser liberado.
           </p>
           <Button
+            nativeButton={false}
             render={<a href={telegramBotUrl}>Abrir o bot no Telegram</a>}
           />
         </>
       ) : null}
-      <Button variant="outline" render={<Link href="/dashboard" />}>
+      <Button
+        nativeButton={false}
+        variant="outline"
+        render={<Link href="/dashboard" />}
+      >
         Ir para o painel
       </Button>
     </>

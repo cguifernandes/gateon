@@ -1,5 +1,4 @@
 import type { PlanId } from "@/lib/zod/plan-schemas";
-import { PLAN_LABELS } from "./limits";
 
 /** keep in sync with apps/api/src/lib/plan/plan-features.ts */
 
@@ -77,64 +76,14 @@ export type PlanCatalogEntry = {
   featureBullets: string[];
 };
 
-export const PLAN_CATALOG: Record<PlanId, PlanCatalogEntry> = {
-  free: {
-    id: "free",
-    label: PLAN_LABELS.free,
-    description: "Valide seu primeiro grupo pago sem custo.",
-    priceLabel: "R$ 0",
-    priceCents: null,
-    highlighted: false,
-    featureBullets: [
-      "1 grupo conectado",
-      "Até 75 membros por grupo",
-      "1 produto Stripe vinculado",
-      "Alertas de entrada e saída",
-      "Sync Stripe manual",
-      "Até 2 modelos de alerta",
-    ],
-  },
-  starter: {
-    id: "starter",
-    label: PLAN_LABELS.starter,
-    description: "Automatize cobrança, alertas e remoção de inadimplentes.",
-    priceLabel: "R$ 49/mês",
-    priceCents: 4900,
-    highlighted: true,
-    featureBullets: [
-      "3 grupos conectados",
-      "Até 150 membros por grupo",
-      "Checkout no bot (/start)",
-      "Webhook Stripe em tempo real",
-      "Alertas Stripe completos",
-      "Remoção automática ao expirar",
-      "Ações em massa de membros",
-      "Modelos de alerta ilimitados",
-    ],
-  },
-  pro: {
-    id: "pro",
-    label: PLAN_LABELS.pro,
-    description: "Escale várias comunidades e produtos com prioridade.",
-    priceLabel: "R$ 129/mês",
-    priceCents: 12900,
-    highlighted: false,
-    featureBullets: [
-      "20 grupos conectados",
-      "Até 300 membros por grupo",
-      "15 grupos monetizados no /start",
-      "Tudo do Starter",
-      "Alertas em tópicos de fórum",
-      "Suporte prioritário",
-    ],
-  },
-};
-
 export function getMinPlanForFeature(feature: PlanFeatureId): PlanId {
   return PLAN_FEATURE_MIN_PLAN[feature];
 }
 
-export function hasPlanFeature(planId: PlanId, feature: PlanFeatureId): boolean {
+export function hasPlanFeature(
+  planId: PlanId,
+  feature: PlanFeatureId,
+): boolean {
   return PLAN_RANK[planId] >= PLAN_RANK[PLAN_FEATURE_MIN_PLAN[feature]];
 }
 

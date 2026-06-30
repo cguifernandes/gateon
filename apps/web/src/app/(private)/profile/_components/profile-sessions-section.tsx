@@ -67,7 +67,9 @@ export function ProfileSessionsSection({
         throw new Error(message);
       }
 
-      toast.success("Sessão encerrada");
+      toast.success("Sessão encerrada", {
+        description: "A sessão foi encerrada com sucesso!",
+      });
       router.refresh();
     } catch (error) {
       toast.error("Falha ao encerrar sessão", {
@@ -112,6 +114,12 @@ export function ProfileSessionsSection({
           revokedCount > 0
             ? `${revokedCount} sessão(ões) encerrada(s)`
             : "Nenhuma outra sessão ativa",
+          {
+            description:
+              revokedCount > 0
+                ? "Os outros dispositivos precisarão fazer login novamente."
+                : "Apenas esta sessão está conectada à sua conta.",
+          },
         );
         router.refresh();
       } catch (error) {

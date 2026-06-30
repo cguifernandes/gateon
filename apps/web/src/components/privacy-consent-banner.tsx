@@ -40,7 +40,7 @@ export function PrivacyConsentBanner() {
   return (
     <section
       aria-label="Consentimento de privacidade"
-      className="fixed right-4 bottom-4 left-4 z-50 mx-auto max-w-3xl rounded-2xl border border-border bg-card p-4 text-card-foreground shadow-2xl sm:left-auto"
+      className="fixed right-4 bottom-4 left-4 z-50 mx-auto max-w-3xl rounded-2xl border border-border bg-secondary p-4 text-card-foreground shadow-2xl sm:left-auto"
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-2">

@@ -319,8 +319,12 @@ export function StripeConnectedCard({
       const response = await fetch(`/api/stripe-billing/${connectionId}`, {
         method: "DELETE",
       });
+
       await refreshFromResponse(response);
-      toast.success("Plano desconectado");
+
+      toast.success("Plano desconectado", {
+        description: "O Plano foi desconectado com sucesso",
+      });
     } catch (error) {
       toast.error("Falha ao desconectar", {
         description:

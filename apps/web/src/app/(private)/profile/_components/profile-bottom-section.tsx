@@ -1,5 +1,6 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
-import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -16,6 +17,7 @@ import {
   isPaidPlan,
   PLAN_LABELS,
 } from "@/lib/plan/limits";
+import { cn } from "@/lib/utils";
 import type { UserProfileDto } from "@/lib/zod/auth-schemas";
 import type { PlanId } from "@/lib/zod/plan-schemas";
 
@@ -87,18 +89,27 @@ export function ProfileBottomSection({ profile }: ProfileBottomSectionProps) {
       <CardContent className="space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="font-heading font-semibold text-2xl">
-                {PLAN_LABELS[user.planId]}
-              </p>
-              <Badge variant={isFree ? "outline" : "default"}>
-                {isFree ? "Plano atual" : "Ativo"}
-              </Badge>
-            </div>
+            <p className="font-heading font-semibold text-2xl">
+              {PLAN_LABELS[user.planId]}
+            </p>
             <p className="text-muted-foreground text-sm">
-              {isFree
-                ? "Faça upgrade em Assinatura para liberar mais grupos, membros e integrações."
-                : "Seu plano está ativo com os limites abaixo."}
+              {isFree ? (
+                <>
+                  Faça upgrade para a{" "}
+                  <Link
+                    href="/subscription"
+                    className={cn(
+                      buttonVariants({ variant: "link" }),
+                      "w-fit p-0 h-fit text-sm!",
+                    )}
+                  >
+                    Assinatura
+                  </Link>{" "}
+                  e libere mais grupos, membros e integrações.
+                </>
+              ) : (
+                "Seu plano está ativo com os limites abaixo."
+              )}
             </p>
           </div>
         </div>

@@ -570,9 +570,7 @@ export class AuthService {
 
     if (input.image !== undefined) {
       data.image =
-        input.image === '' || input.image === null
-          ? null
-          : input.image.trim();
+        input.image === '' || input.image === null ? null : input.image.trim();
     }
 
     if (Object.keys(data).length === 0) {
@@ -716,9 +714,7 @@ export class AuthService {
     return { ok: true, message: PASSWORD_RESET_GENERIC_MESSAGE };
   }
 
-  async resetPassword(
-    dto: PasswordResetConfirmInput,
-  ): Promise<{ ok: true }> {
+  async resetPassword(dto: PasswordResetConfirmInput): Promise<{ ok: true }> {
     const tokenHash = hashPasswordResetToken(dto.token.trim());
     const record = await this.prisma.passwordResetTokens.findUnique({
       where: { tokenHash },

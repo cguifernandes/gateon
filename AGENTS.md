@@ -923,6 +923,7 @@ Server Action → lib/server/*.action.ts → API Nest (auth forms, logout)
 - Evitar dependência de serviços instáveis
 - Arquivos > 200–300 linhas: considerar divisão
 - Não sobrescrever `.env` sem confirmação do usuário
+- **Prisma:** qualquer alteração no `schema.prisma` deve gerar migration com `npx prisma migrate dev --name <nome>`; nunca usar `prisma db push`
 - **API:** novo módulo Nest → incluir testes unitários Jest no padrão de `AGENTS.md` → Testes unitários da API; rodar `npm test` em `apps/api` antes de concluir
 - **Web:** nova feature → preencher checklist em **`AGENTS.md` → DRY e reutilização de código (Web)**; rodar `npm run lint` em `apps/web` antes de concluir
 

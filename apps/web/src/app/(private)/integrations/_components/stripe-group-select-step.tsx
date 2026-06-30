@@ -63,6 +63,7 @@ export function StripeGroupSelectStep({
           <Button
             type="button"
             className="w-40!"
+            nativeButton={false}
             render={<Link href="/groups" />}
           >
             Ir para Grupos

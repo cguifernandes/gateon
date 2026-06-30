@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { PricingPlansSection } from "@/components/pricing-plans-section";
+import { StripePricingSection } from "@/components/stripe-pricing-section";
 import { getSessionUser } from "@/lib/server/data/get-session";
 
 export const metadata: Metadata = {
@@ -13,7 +13,7 @@ export default async function SubscriptionPage() {
 
   return (
     <div className="space-y-6">
-      <PricingPlansSection mode="account" currentPlanId={planId} />
+      <StripePricingSection currentPlanId={planId} />
     </div>
   );
 }

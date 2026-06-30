@@ -51,7 +51,11 @@ export function PlanFeatureGate({
         <p className="max-w-xs text-sm font-medium leading-relaxed text-foreground">
           {overlayMessage}
         </p>
-        <Button size="sm" render={<Link href="/subscription" />}>
+        <Button
+          nativeButton={false}
+          size="sm"
+          render={<Link href="/subscription" />}
+        >
           Ver planos
         </Button>
       </div>

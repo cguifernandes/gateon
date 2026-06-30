@@ -11,7 +11,7 @@ export function resolveAccountPlanCta(planId: PlanId): AccountPlanCta {
   if (!isPaidPlan(planId)) {
     return {
       href: "/subscription",
-      label: "Melhorar seu plano",
+      label: "Melhore seu plano",
       isUpgrade: true,
     };
   }

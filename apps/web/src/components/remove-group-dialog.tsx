@@ -36,7 +36,9 @@ export function RemoveGroupDialog({
       const formData = new FormData();
       formData.set("groupId", groupId);
       await removeTelegramGroupAction(formData);
-      toast.success(`Grupo "${groupTitle}" desconectado com sucesso.`);
+      toast.success(`Grupo "${groupTitle}" desconectado com sucesso.`, {
+        description: "O grupo não receberá mais mensagens nem sincronizações.",
+      });
       onOpenChange(false);
       onRemoved?.();
     });

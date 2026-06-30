@@ -33,7 +33,9 @@ async function copyTelegramUserId(telegramUserId: string) {
     await navigator.clipboard.writeText(telegramUserId);
     toast.success("ID copiado", { description: telegramUserId });
   } catch {
-    toast.error("Não foi possível copiar o ID.");
+    toast.error("Não foi possível copiar o ID.", {
+      description: "Ocorreu um erro ao copiar o ID.",
+    });
   }
 }
 

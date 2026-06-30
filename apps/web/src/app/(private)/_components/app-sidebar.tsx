@@ -34,7 +34,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { resolveAccountPlanCta } from "@/lib/plan/account-cta";
 import { cn, getUserInitials } from "@/lib/utils";
 import type { PublicUserDto } from "@/lib/zod/auth-schemas";
 
@@ -306,7 +305,6 @@ type SidebarUserFooterProps = {
 function SidebarUserFooter({ user, isCollapsed }: SidebarUserFooterProps) {
   const label = user.name ?? user.email;
   const sublabel = user.name ? user.email : null;
-  const planCta = resolveAccountPlanCta(user.planId);
 
   const linkClassName = cn(
     "block rounded-lg outline-none transition-colors",
@@ -348,12 +346,6 @@ function SidebarUserFooter({ user, isCollapsed }: SidebarUserFooterProps) {
             <p className="font-medium">{label}</p>
             {sublabel ? <p className="text-xs">{sublabel}</p> : null}
           </div>
-          <Link
-            href={planCta.href}
-            className="text-primary text-xs font-medium underline-offset-4 hover:underline"
-          >
-            {planCta.label}
-          </Link>
         </TooltipContent>
       </Tooltip>
     );

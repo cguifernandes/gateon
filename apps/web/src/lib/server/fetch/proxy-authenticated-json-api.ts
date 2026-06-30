@@ -54,6 +54,7 @@ export async function proxyAuthenticatedJsonApi({
   const upstreamHeaders = buildUpstreamApiHeaders(request.headers);
 
   let upstream: Response;
+
   try {
     upstream = await fetch(`${base}${upstreamPath}${search}`, {
       ...init,

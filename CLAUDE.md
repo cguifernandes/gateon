@@ -75,6 +75,10 @@ Client Component + `react-hook-form` + `zodResolver` + schema Zod + `defaultValu
 
 Sincronizar entre apps: `plan/limits`, `telegram/admin-rights`, `bot-start/message-builder`, `bot-start/subscribe-steps`, schemas Zod espelhados. Lista completa em **`AGENTS.md` → Código sincronizado**.
 
+### Ao alterar o banco de dados (Prisma)
+
+Após qualquer alteração no `schema.prisma`, gerar migration obrigatoriamente com `npx prisma migrate dev --name <nome>`. Nunca usar `prisma db push` em produção.
+
 ### Antes de implementar na API
 
 1. Ler **`AGENTS.md` → DRY e reutilização de código (API)** e preencher o checklist.

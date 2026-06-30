@@ -643,8 +643,6 @@ export class TelegramService {
   }): Promise<TelegramMemberBulkActionResult> {
     const { group, groupId, telegramUserIds } = input;
 
-    console.log({ group, groupId, telegramUserIds });
-
     const trackedMembers = await this.prisma.telegramGroupMembers.findMany({
       where: {
         telegramGroupId: groupId,
@@ -690,8 +688,6 @@ export class TelegramService {
         });
         continue;
       }
-
-      console.log('bate aqui');
 
       const actionResult = await this.executeGroupMemberAction({
         action: input.input.action,

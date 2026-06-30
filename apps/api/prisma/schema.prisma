@@ -42,6 +42,7 @@ model Users {
   stripeTelegramMemberLinks      StripeTelegramMemberLinks[]
   stripeTelegramCheckoutSessions StripeTelegramCheckoutSessions[]
   passwordResetTokens            PasswordResetTokens[]
+  stripeSubscriptions            StripeSubscriptions?
 }
 
 model Accounts {
@@ -561,4 +562,49 @@ model StripeTelegramMemberLinks {
   @@index([userId, telegramGroupId])
   @@index([stripeCustomerId])
   @@index([telegramUserId, status])
+}
+
+// Stripe Subscriptions (pagamentos do Gateon)
+enum SubscriptionStatus {
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+  PAUSED
+}
+
+model StripeSubscriptions {
+  id                   String             @id @default(cuid())
+  userId               String             @unique
+  stripeCustomerId     String?
+  stripeSubscriptionId String             @unique
+  stripePriceId        String
+  status               SubscriptionStatus @default(INCOMPLETE)
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  canceledAt           DateTime?
+  trialStart           DateTime?
+  trialEnd             DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([userId])
+}
+
+model StripeWebhookEvents {
+  id            String    @id @default(cuid())
+  stripeEventId String    @unique
+  type          String
+  data          Json
+  processedAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([processedAt])
 }

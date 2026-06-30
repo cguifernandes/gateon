@@ -36,9 +36,6 @@ async function bootstrap() {
   });
   app.useGlobalPipes(new ZodValidationPipe());
 
-  console.log(process.execArgv);
-  console.log(process.env.NODE_OPTIONS);
-
   await app.listen(process.env.PORT ?? 4000);
 }
 

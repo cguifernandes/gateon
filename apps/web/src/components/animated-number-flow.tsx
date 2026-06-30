@@ -9,6 +9,7 @@ interface AnimatedNumberFlowProps {
   finalValue: number;
   className?: string;
   suffix?: string;
+  roundNumber?: boolean;
 }
 
 export function AnimatedNumberFlow({
@@ -16,6 +17,7 @@ export function AnimatedNumberFlow({
   finalValue,
   className,
   suffix,
+  roundNumber = false,
 }: AnimatedNumberFlowProps) {
   const [displaySubs, setDisplaySubs] = useState(startValue);
 
@@ -25,7 +27,11 @@ export function AnimatedNumberFlow({
   });
 
   springSubCount.on("change", (value) => {
-    setDisplaySubs(Math.round(value));
+    const formattedValue = roundNumber
+      ? Math.round(value)
+      : Number(value.toFixed(2));
+
+    setDisplaySubs(formattedValue);
   });
 
   useEffect(() => {

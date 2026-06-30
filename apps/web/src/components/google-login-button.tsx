@@ -20,7 +20,7 @@ export function GoogleLoginButton() {
           return;
         }
 
-        window.location.assign(`${base}/auth/google`);
+        window.location.assign(`${base}auth/google`);
       }}
     >
       <Image src={GoogleIcon} alt="Google" width={16} height={16} />
