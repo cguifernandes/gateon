@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { resolveAccountPlanCta } from "@/lib/plan/account-cta";
 import { cn } from "@/lib/utils";
 import type { PlanId } from "@/lib/zod/plan-schemas";
@@ -16,12 +16,18 @@ export function AccountPlanCtaButton({
   const cta = resolveAccountPlanCta(planId);
 
   return (
-    <Button
-      size="sm"
-      variant={cta.isUpgrade ? "default" : "outline"}
-      className={cn("w-full", className)}
+    <Link
+      className={cn(
+        buttonVariants({
+          variant: cta.isUpgrade ? "default" : "outline",
+          size: "sm",
+        }),
+        "w-full",
+        className,
+      )}
+      href={cta.href}
     >
-      <Link href={cta.href}>{cta.label}</Link>
-    </Button>
+      {cta.label}
+    </Link>
   );
 }
