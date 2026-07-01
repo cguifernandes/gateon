@@ -445,6 +445,12 @@ export class AuthService {
   async logout(req: Request, res: Response): Promise<{ ok: true }> {
     const token = req.cookies?.[SESSION_COOKIE_NAME] as string | undefined;
     await this.revokeByToken(token);
+    const options = this.sessionCookieOptions();
+
+    console.log('Clear cookie options:');
+    console.dir(options);
+
+    res.clearCookie(SESSION_COOKIE_NAME, options);
     res.clearCookie(SESSION_COOKIE_NAME, this.sessionCookieOptions());
     return { ok: true };
   }
@@ -470,6 +476,12 @@ export class AuthService {
       res.clearCookie(SESSION_COOKIE_NAME, this.sessionCookieOptions());
       throw new UnauthorizedException('Session expired');
     }
+
+    const options = this.sessionCookieOptions(rotated.session.expiresAt);
+
+    console.log('Set cookie options:');
+    console.dir(options);
+
     res.cookie(
       SESSION_COOKIE_NAME,
       rotated.rawToken,
