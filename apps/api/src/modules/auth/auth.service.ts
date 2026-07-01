@@ -822,14 +822,25 @@ export class AuthService {
       domain: process.env.COOKIE_DOMAIN || undefined,
     });
     const accessToken = await this.exchangeCodeForAccessToken(code);
+    console.log('Access token OK');
+
     const profile = await this.fetchGoogleUserProfile(accessToken);
+    console.log('Profile:', profile.email);
+
     const user = await this.linkOrCreateGoogleUser(profile);
+    console.log('User:', user.id);
+
     const { session, rawToken } = await this.createSession(user.id, req);
-    res.cookie(
-      SESSION_COOKIE_NAME,
-      rawToken,
-      this.sessionCookieOptions(session.expiresAt),
-    );
+    console.log('Session criada:', session.id);
+
+    const cookieOptions = this.sessionCookieOptions(session.expiresAt);
+
+    console.log('Cookie options:');
+    console.dir(cookieOptions, { depth: null });
+
+    res.cookie(SESSION_COOKIE_NAME, rawToken, cookieOptions);
+
+    console.log('Cookie enviado.');
   }
 
   private async linkOrCreateGoogleUser(
