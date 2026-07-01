@@ -86,7 +86,7 @@ export class AuthService {
     return {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: 'lax',
       path: '/',
       ...(expires ? { expires } : {}),
       domain: process.env.COOKIE_DOMAIN || undefined,
