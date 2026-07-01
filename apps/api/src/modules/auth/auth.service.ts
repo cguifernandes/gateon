@@ -242,13 +242,21 @@ export class AuthService {
   }
 
   buildGoogleAuthorizationUrl(state: string): string {
+    console.log('=== buildGoogleAuthorizationUrl ===');
+    console.log('state:', state);
+
     const clientId = this.config.get<string>('GOOGLE_CLIENT_ID');
     const redirectUri = this.config.get<string>('GOOGLE_REDIRECT_URI');
+
+    console.log('clientId:', clientId);
+    console.log('redirectUri:', redirectUri);
+
     if (!clientId || !redirectUri) {
       throw new BadRequestException(
         'Google OAuth is not configured (GOOGLE_CLIENT_ID / GOOGLE_REDIRECT_URI).',
       );
     }
+
     const params = new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirectUri,
@@ -285,11 +293,20 @@ export class AuthService {
     init: RequestInit,
     context: string,
   ): Promise<globalThis.Response> {
+    console.log('=== fetchGoogleOAuth ===');
+    console.log('context:', context);
+    console.log('url:', url);
+
     try {
-      return await fetch(url, {
+      const response = await fetch(url, {
         ...init,
         signal: AbortSignal.timeout(10_000),
       });
+
+      console.log('status:', response.status);
+      console.log('statusText:', response.statusText);
+
+      return response;
     } catch (error: unknown) {
       const detail = this.getFetchErrorDetail(error);
       throw new UnauthorizedException(
@@ -818,6 +835,9 @@ export class AuthService {
   private async linkOrCreateGoogleUser(
     profile: GoogleUserProfile,
   ): Promise<Users> {
+    console.log('=== linkOrCreateGoogleUser ===');
+    console.dir(profile, { depth: null });
+
     const existingAccount = await this.prisma.accounts.findUnique({
       where: {
         providerId_accountId: {
@@ -827,6 +847,10 @@ export class AuthService {
       },
       include: { user: true },
     });
+
+    console.log('existingAccount:');
+    console.dir(existingAccount, { depth: null });
+
     if (existingAccount) {
       return this.prisma.users.update({
         where: { id: existingAccount.userId },
