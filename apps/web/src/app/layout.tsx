@@ -19,9 +19,36 @@ const fontInter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Gateon — Receita recorrente no Telegram",
+  metadataBase: new URL("https://gateon.com.br"),
+
+  title: {
+    default: "Gateon",
+    template: "%s | Gateon",
+  },
+
   description:
-    "Automatize cobranças, acesso a grupos e retenção no Telegram com os gateways que você já usa.",
+    "Automatize seu WhatsApp e Telegram com uma plataforma completa para empresas.",
+
+  openGraph: {
+    title: "Gateon — Receita recorrente no Telegram",
+    description:
+      "Automatize seu WhatsApp e Telegram com uma plataforma completa para empresas.",
+    url: "https://gateon.com.br",
+    siteName: "Gateon",
+    locale: "pt_BR",
+    type: "website",
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    title: "Gateon — Receita recorrente no Telegram",
+    description:
+      "Automatize seu WhatsApp e Telegram com uma plataforma completa para empresas.",
+  },
+
+  icons: {
+    icon: [{ url: "/favicon.ico" }, { url: "/icon.png", type: "image/png" }],
+  },
 };
 
 interface RootLayoutProps {

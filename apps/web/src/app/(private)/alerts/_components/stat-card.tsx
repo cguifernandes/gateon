@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { AnimatedNumberFlow } from "@/components/animated-number-flow";
 import { cn } from "@/lib/utils";
 
@@ -9,6 +10,7 @@ type StatCardProps = {
   className?: string;
   textClassName?: string;
   showDescription?: boolean;
+  prefix?: string | ReactNode;
 };
 
 export function StatCard({
@@ -19,6 +21,7 @@ export function StatCard({
   className,
   textClassName,
   showDescription = true,
+  prefix,
 }: StatCardProps) {
   return (
     <div
@@ -34,6 +37,7 @@ export function StatCard({
         <AnimatedNumberFlow
           startValue={0}
           finalValue={Number(value)}
+          prefix={prefix}
           suffix={suffix}
           className={cn("text-3xl font-bold text-foreground", textClassName)}
         />

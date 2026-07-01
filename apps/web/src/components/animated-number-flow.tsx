@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useSpring } from "motion/react";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 interface AnimatedNumberFlowProps {
@@ -9,7 +9,7 @@ interface AnimatedNumberFlowProps {
   finalValue: number;
   className?: string;
   suffix?: string;
-  roundNumber?: boolean;
+  prefix?: string | ReactNode;
 }
 
 export function AnimatedNumberFlow({
@@ -17,7 +17,7 @@ export function AnimatedNumberFlow({
   finalValue,
   className,
   suffix,
-  roundNumber = false,
+  prefix,
 }: AnimatedNumberFlowProps) {
   const [displaySubs, setDisplaySubs] = useState(startValue);
 
@@ -27,7 +27,10 @@ export function AnimatedNumberFlow({
   });
 
   springSubCount.on("change", (value) => {
-    const formattedValue = roundNumber
+    const shouldAnimateAsInteger =
+      Number.isInteger(startValue) && Number.isInteger(finalValue);
+
+    const formattedValue = shouldAnimateAsInteger
       ? Math.round(value)
       : Number(value.toFixed(2));
 
@@ -46,6 +49,7 @@ export function AnimatedNumberFlow({
       )}
     >
       <span>
+        {prefix}
         {displaySubs}
         {suffix}
       </span>

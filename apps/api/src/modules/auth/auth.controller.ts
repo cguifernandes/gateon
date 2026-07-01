@@ -183,12 +183,6 @@ export class AuthController {
   ) {
     const base = this.auth.getWebBaseUrl();
 
-    console.log('========== GOOGLE CALLBACK ==========');
-    console.log('Base URL:', base);
-    console.log('Code:', code);
-    console.log('State:', state);
-    console.log('OAuth Error:', oauthError);
-
     if (oauthError) {
       return res.redirect(`${base}/login?error=oauth_denied`);
     }
@@ -198,11 +192,7 @@ export class AuthController {
     }
 
     try {
-      console.log('Chamando signInWithGoogle...');
-
       await this.auth.signInWithGoogle(req, res, code, state);
-
-      console.log('signInWithGoogle finalizado com sucesso');
 
       return res.redirect(`${base}/dashboard`);
     } catch (err: unknown) {

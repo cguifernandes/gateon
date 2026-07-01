@@ -242,14 +242,8 @@ export class AuthService {
   }
 
   buildGoogleAuthorizationUrl(state: string): string {
-    console.log('=== buildGoogleAuthorizationUrl ===');
-    console.log('state:', state);
-
     const clientId = this.config.get<string>('GOOGLE_CLIENT_ID');
     const redirectUri = this.config.get<string>('GOOGLE_REDIRECT_URI');
-
-    console.log('clientId:', clientId);
-    console.log('redirectUri:', redirectUri);
 
     if (!clientId || !redirectUri) {
       throw new BadRequestException(
@@ -293,19 +287,11 @@ export class AuthService {
     init: RequestInit,
     context: string,
   ): Promise<globalThis.Response> {
-    console.log('=== fetchGoogleOAuth ===');
-    console.log('context:', context);
-    console.log('url:', url);
-
     try {
       const response = await fetch(url, {
         ...init,
         signal: AbortSignal.timeout(10_000),
       });
-
-      console.log('status:', response.status);
-      console.log('statusText:', response.statusText);
-
       return response;
     } catch (error: unknown) {
       const detail = this.getFetchErrorDetail(error);
@@ -447,9 +433,6 @@ export class AuthService {
     await this.revokeByToken(token);
     const options = this.sessionCookieOptions();
 
-    console.log('Clear cookie options:');
-    console.dir(options);
-
     res.clearCookie(SESSION_COOKIE_NAME, this.sessionCookieOptions());
     return { ok: true };
   }
@@ -477,9 +460,6 @@ export class AuthService {
     }
 
     const options = this.sessionCookieOptions(rotated.session.expiresAt);
-
-    console.log('Set cookie options:');
-    console.dir(options);
 
     res.cookie(
       SESSION_COOKIE_NAME,
@@ -833,33 +813,16 @@ export class AuthService {
       domain: process.env.COOKIE_DOMAIN || undefined,
     });
     const accessToken = await this.exchangeCodeForAccessToken(code);
-    console.log('Access token OK');
-
     const profile = await this.fetchGoogleUserProfile(accessToken);
-    console.log('Profile:', profile.email);
-
     const user = await this.linkOrCreateGoogleUser(profile);
-    console.log('User:', user.id);
-
     const { session, rawToken } = await this.createSession(user.id, req);
-    console.log('Session criada:', session.id);
-
     const cookieOptions = this.sessionCookieOptions(session.expiresAt);
-
-    console.log('Cookie options:');
-    console.dir(cookieOptions, { depth: null });
-
     res.cookie(SESSION_COOKIE_NAME, rawToken, cookieOptions);
-
-    console.log('Cookie enviado.');
   }
 
   private async linkOrCreateGoogleUser(
     profile: GoogleUserProfile,
   ): Promise<Users> {
-    console.log('=== linkOrCreateGoogleUser ===');
-    console.dir(profile, { depth: null });
-
     const existingAccount = await this.prisma.accounts.findUnique({
       where: {
         providerId_accountId: {
@@ -869,9 +832,6 @@ export class AuthService {
       },
       include: { user: true },
     });
-
-    console.log('existingAccount:');
-    console.dir(existingAccount, { depth: null });
 
     if (existingAccount) {
       return this.prisma.users.update({

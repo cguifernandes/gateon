@@ -5,7 +5,6 @@ import { StatCard } from "@/app/(private)/alerts/_components/stat-card";
 import { Badge } from "@/components/ui/badge";
 import type { StripeBillingStatusDto } from "@/lib/zod/stripe-billing-schemas";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
-import { IntegrationStatCard } from "./integration-stat-card";
 import { IntegrationsPanel } from "./integrations-panel";
 import { StripeTelegramLinkingGuide } from "./stripe-telegram-linking-guide";
 
@@ -14,13 +13,6 @@ type IntegrationsClientProps = {
   loadError: string | null;
   groups: TelegramGroupSummaryDto[];
 };
-
-function formatCurrency(cents: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(cents / 100);
-}
 
 export function IntegrationsClient({
   initialStatus,
@@ -61,9 +53,10 @@ export function IntegrationsClient({
           value={String(totals.customerCount)}
           description="Clientes importados dos gateways para automações e alertas."
         />
-        <IntegrationStatCard
+        <StatCard
+          prefix={<span className="mr-1">R$</span>}
           title="Receita mensal"
-          value={formatCurrency(totals.monthlyRevenueCents)}
+          value={String(totals.monthlyRevenueCents / 100)}
           description="Faturas pagas no mês corrente, conforme a sincronização."
         />
       </div>

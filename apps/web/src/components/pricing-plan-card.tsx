@@ -289,7 +289,6 @@ export function PricingPlanCard({
                 startValue={0}
                 finalValue={plan.price}
                 className="font-semibold tracking-tight"
-                roundNumber={false}
               />
             </span>
             {plan.intervalLabel ? (
