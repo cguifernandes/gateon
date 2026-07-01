@@ -57,6 +57,13 @@ export async function logoutAction(): Promise<void> {
     }
   }
 
-  cookieStore.delete(SESSION_COOKIE_NAME);
+  cookieStore.set(SESSION_COOKIE_NAME, "", {
+    expires: new Date(0),
+    path: "/",
+    domain: ".gateon.app",
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+  });
   redirect("/");
 }

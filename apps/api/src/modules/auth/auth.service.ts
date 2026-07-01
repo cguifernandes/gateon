@@ -450,7 +450,6 @@ export class AuthService {
     console.log('Clear cookie options:');
     console.dir(options);
 
-    res.clearCookie(SESSION_COOKIE_NAME, options);
     res.clearCookie(SESSION_COOKIE_NAME, this.sessionCookieOptions());
     return { ok: true };
   }
