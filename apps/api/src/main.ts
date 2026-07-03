@@ -11,6 +11,7 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { AppModule } from './app.module';
+import { Request, Response, NextFunction } from 'express';
 
 async function bootstrap() {
   if (
@@ -23,17 +24,34 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true,
   });
+
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const start = Date.now();
+
+    res.on('finish', () => {
+      console.log(
+        `${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - start}ms`,
+      );
+    });
+
+    next();
+  });
+
   app.use(
     helmet({
       crossOriginResourcePolicy: { policy: 'same-site' },
     }),
   );
+
   app.use(cookieParser());
+
   const webBaseUrl = process.env.WEB_BASE_URL ?? 'http://localhost:3000';
+
   app.enableCors({
     origin: webBaseUrl,
     credentials: true,
   });
+
   app.useGlobalPipes(new ZodValidationPipe());
 
   await app.listen(process.env.PORT ?? 4000);

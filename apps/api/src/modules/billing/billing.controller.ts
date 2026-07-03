@@ -69,6 +69,15 @@ export class BillingController {
     @Req() req: RawBodyRequest<Request>,
     @Headers('stripe-signature') signature: string,
   ) {
+    console.log('[billing-webhook] recebido', {
+      method: req.method,
+      url: req.url,
+      hasSignature: Boolean(signature),
+      rawBodyLength: req.rawBody?.length ?? 0,
+      contentType: req.headers['content-type'],
+      host: req.headers['host'],
+    });
+
     if (!signature) {
       throw new BadRequestException('stripe-signature header ausente');
     }

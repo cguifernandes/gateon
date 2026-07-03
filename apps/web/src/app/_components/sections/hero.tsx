@@ -213,11 +213,7 @@ function HeroIllustration() {
                 aria-hidden
               />
 
-              <motion.div
-                animate={{ y: [0, 7, 0] }}
-                transition={{ ...floatTransition, delay: 0.2 }}
-                className="relative z-10 rounded-[2.15rem] bg-linear-to-b from-zinc-700 via-zinc-900 to-zinc-950 p-1.5 ring-1 ring-inset ring-white/15 sm:p-2"
-              >
+              <div className="relative z-10 rounded-[2.15rem] bg-linear-to-b from-zinc-700 via-zinc-900 to-zinc-950 p-1.5 ring-1 ring-inset ring-white/15 sm:p-2">
                 <div className="relative overflow-hidden rounded-[1.85rem] bg-black ring-1 ring-black/60">
                   <div className="relative aspect-[9/19.3] w-full">
                     <Image
@@ -231,7 +227,7 @@ function HeroIllustration() {
                     />
                   </div>
                 </div>
-              </motion.div>
+              </div>
             </div>
           </div>
         </div>

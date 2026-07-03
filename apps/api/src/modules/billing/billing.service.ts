@@ -178,10 +178,16 @@ export class BillingService {
     rawBody: Buffer,
     signature: string,
   ): Promise<{ received: boolean }> {
+    console.log('[billing-webhook] handleStripeWebhook', {
+      rawBodyLength: rawBody.length,
+      signaturePrefix: signature.slice(0, 20),
+    });
+
     const webhookSecret = this.configService.get<string>(
       'STRIPE_WEBHOOK_SECRET',
     );
     if (!webhookSecret) {
+      console.log('[billing-webhook] STRIPE_WEBHOOK_SECRET não configurada');
       throw new InternalServerErrorException(
         'STRIPE_WEBHOOK_SECRET não configurada',
       );
@@ -194,7 +200,14 @@ export class BillingService {
         signature,
         webhookSecret,
       );
+      console.log('[billing-webhook] evento construído', {
+        id: event.id,
+        type: event.type,
+      });
     } catch (err) {
+      console.log('[billing-webhook] erro na assinatura', {
+        error: err instanceof Error ? err.message : err,
+      });
       this.logger.error(`Assinatura do webhook inválida`, err);
       throw new BadRequestException('Assinatura do webhook inválida');
     }
@@ -204,6 +217,7 @@ export class BillingService {
     });
 
     if (existing?.processedAt) {
+      console.log('[billing-webhook] evento já processado', { id: event.id });
       return { received: true };
     }
 
@@ -220,21 +234,25 @@ export class BillingService {
     try {
       switch (event.type) {
         case 'checkout.session.completed':
+          console.log('[billing-webhook] processando checkout.session.completed');
           await this.handleCheckoutCompleted(
             event.data.object as Stripe.Checkout.Session,
           );
           break;
         case 'customer.subscription.updated':
+          console.log('[billing-webhook] processando customer.subscription.updated');
           await this.handleSubscriptionUpdated(
             event.data.object as Stripe.Subscription,
           );
           break;
         case 'customer.subscription.deleted':
+          console.log('[billing-webhook] processando customer.subscription.deleted');
           await this.handleSubscriptionDeleted(
             event.data.object as Stripe.Subscription,
           );
           break;
         case 'invoice.paid':
+          console.log('[billing-webhook] processando invoice.paid');
           await this.handleInvoicePaid(event.data.object as Stripe.Invoice);
           break;
       }
@@ -243,7 +261,14 @@ export class BillingService {
         where: { stripeEventId: event.id },
         data: { processedAt: new Date() },
       });
+
+      console.log('[billing-webhook] processado com sucesso', { id: event.id, type: event.type });
     } catch (err) {
+      console.log('[billing-webhook] erro ao processar', {
+        id: event.id,
+        type: event.type,
+        error: err instanceof Error ? err.message : err,
+      });
       this.logger.error(`Erro ao processar webhook ${event.type}: ${err}`);
     }
 
@@ -252,6 +277,14 @@ export class BillingService {
 
   private async handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     const userId = session.metadata?.userId ?? session.client_reference_id;
+    console.log('[billing-webhook] handleCheckoutCompleted', {
+      userId,
+      customerId: session.customer,
+      subscriptionId: session.subscription,
+      metadata: session.metadata,
+      clientReferenceId: session.client_reference_id,
+    });
+
     if (!userId) {
       this.logger.warn('Checkout completed sem userId');
       return;
@@ -274,7 +307,14 @@ export class BillingService {
       cancel_at_period_end: boolean;
     };
 
+    console.log('[billing-webhook] subscription retrieved', {
+      status: raw.status,
+      priceId: raw.items.data[0]?.price.id,
+    });
+
     const planId = await this.resolvePlanFromSubscription(sub);
+
+    console.log('[billing-webhook] plan resolved', { planId });
 
     await this.prisma.stripeSubscriptions.upsert({
       where: { userId },
@@ -312,6 +352,7 @@ export class BillingService {
         where: { id: userId },
         data: { planId },
       });
+      console.log('[billing-webhook] user plan updated', { userId, planId });
     }
   }
 
