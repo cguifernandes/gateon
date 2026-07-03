@@ -234,19 +234,25 @@ export class BillingService {
     try {
       switch (event.type) {
         case 'checkout.session.completed':
-          console.log('[billing-webhook] processando checkout.session.completed');
+          console.log(
+            '[billing-webhook] processando checkout.session.completed',
+          );
           await this.handleCheckoutCompleted(
             event.data.object as Stripe.Checkout.Session,
           );
           break;
         case 'customer.subscription.updated':
-          console.log('[billing-webhook] processando customer.subscription.updated');
+          console.log(
+            '[billing-webhook] processando customer.subscription.updated',
+          );
           await this.handleSubscriptionUpdated(
             event.data.object as Stripe.Subscription,
           );
           break;
         case 'customer.subscription.deleted':
-          console.log('[billing-webhook] processando customer.subscription.deleted');
+          console.log(
+            '[billing-webhook] processando customer.subscription.deleted',
+          );
           await this.handleSubscriptionDeleted(
             event.data.object as Stripe.Subscription,
           );
@@ -262,7 +268,10 @@ export class BillingService {
         data: { processedAt: new Date() },
       });
 
-      console.log('[billing-webhook] processado com sucesso', { id: event.id, type: event.type });
+      console.log('[billing-webhook] processado com sucesso', {
+        id: event.id,
+        type: event.type,
+      });
     } catch (err) {
       console.log('[billing-webhook] erro ao processar', {
         id: event.id,
