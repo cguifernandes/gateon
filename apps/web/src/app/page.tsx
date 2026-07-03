@@ -1,14 +1,18 @@
+import type { Metadata } from "next";
 import { Footer } from "./_components/footer";
 import { Header } from "./_components/header";
+import { ComparisonSection } from "./_components/sections/comparison";
+import { CtaSection } from "./_components/sections/cta-card";
 import { FaqSection } from "./_components/sections/faq";
 import { FeaturesSection } from "./_components/sections/features";
 import { Hero } from "./_components/sections/hero";
 import { IntegrationsSection } from "./_components/sections/integrations";
-import { ManagementSection } from "./_components/sections/management";
-import { MetricsSection } from "./_components/sections/metrics";
 import { PricingSection } from "./_components/sections/pricing";
-import { StepsSection } from "./_components/sections/steps";
-import { TestimonialsSection } from "./_components/sections/testimonials";
+
+export const metadata: Metadata = {
+  title: "Home — Gateon",
+  description: "Automatize sua Receita Recorrente no Telegram.",
+};
 
 export default function Home() {
   return (
@@ -18,12 +22,10 @@ export default function Home() {
         <Hero />
         <FeaturesSection />
         <IntegrationsSection />
+        <ComparisonSection />
         <PricingSection />
-        {/* <ManagementSection />
-        <MetricsSection />
-        <TestimonialsSection />
-        <StepsSection />
-        <FaqSection /> */}
+        <CtaSection />
+        <FaqSection />
       </main>
       <Footer />
     </div>

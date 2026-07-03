@@ -43,6 +43,7 @@ import {
   getIntegrationProvider,
   INTEGRATION_PROVIDERS,
 } from "@/lib/integrations/config";
+import { getStripeError } from "@/lib/stripe/stripe-error";
 import type { GatewayId } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import {
@@ -59,7 +60,6 @@ import { StripeApiKeyStep } from "./stripe-api-key-step";
 import { StripeConsentStep } from "./stripe-consent-step";
 import { StripeGroupSelectStep } from "./stripe-group-select-step";
 import { StripePriceSelectStep } from "./stripe-price-select-step";
-import { StripeWebhookGuideStep } from "./stripe-webhook-guide-step";
 
 type ConnectIntegrationDialogProps = {
   open: boolean;
@@ -89,7 +89,6 @@ const dialogProgressSteps = [
   { id: "api-key", label: "Chave API" },
   { id: "plan", label: "Plano" },
   { id: "group", label: "Grupo" },
-  { id: "webhook", label: "Webhook" },
   { id: "confirm", label: "Confirmar" },
 ] as const;
 
@@ -192,11 +191,13 @@ function CatalogNextButton({
       onCatalogLoaded(parsed.data.prices);
       goNext();
     } catch (error) {
-      onCatalogError(
-        error instanceof Error
-          ? error.message
-          : "Não foi possível listar os planos da Stripe.",
-      );
+      const stripeError = getStripeError(error);
+
+      onCatalogError(stripeError.description);
+
+      toast.error(stripeError.title, {
+        description: stripeError.description,
+      });
     } finally {
       setIsLoading(false);
       onCatalogLoadingChange(false);
@@ -480,20 +481,6 @@ export function ConnectIntegrationDialog({
           disabled={!canProceedFromGroupStep}
           arrowRightIconRefs={arrowRightIconRefs}
           iconIndex={3}
-        />
-      ),
-    },
-    {
-      title: "Webhook para alertas em tempo real",
-      description:
-        "Entenda por que o webhook é necessário e como configurá-lo após conectar.",
-      content: <StripeWebhookGuideStep />,
-      showPreviousButton: true,
-      nextButton: (
-        <PlanNextButton
-          disabled={false}
-          arrowRightIconRefs={arrowRightIconRefs}
-          iconIndex={4}
         />
       ),
     },

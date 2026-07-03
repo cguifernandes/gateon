@@ -102,11 +102,39 @@ export function StripeWebhookSetup({
         <AccordionContent className="space-y-4 px-1.5 pt-0.5 pb-4">
           <PlanFeatureGate feature="stripeWebhook">
             <div className="space-y-4">
-              {!connection.webhookConfigured ? (
-                guideExpanded ? (
-                  <div className="space-y-3">
-                    <StripeWebhookGuideContent />
-                    <div className="flex w-full justify-center">
+              {!connection.webhookConfigured && (
+                <div className="space-y-3">
+                  <div className="relative">
+                    <div
+                      className={cn(
+                        !guideExpanded && "max-h-36 overflow-hidden",
+                      )}
+                    >
+                      <StripeWebhookGuideContent />
+                    </div>
+
+                    {!guideExpanded && (
+                      <>
+                        <div
+                          aria-hidden
+                          className="pointer-events-none absolute inset-x-0 bottom-0 h-12 rounded-b-xl bg-linear-to-t from-background via-background/80 to-transparent backdrop-blur-[2px]"
+                        />
+                        <div className="absolute inset-x-0 bottom-0 flex justify-center pb-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setGuideExpanded(true)}
+                          >
+                            Ver mais
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {guideExpanded && (
+                    <div className="flex justify-center">
                       <Button
                         type="button"
                         variant="ghost"
@@ -116,51 +144,9 @@ export function StripeWebhookSetup({
                         Ver menos
                       </Button>
                     </div>
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <section
-                      className={cn(
-                        "space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-4",
-                      )}
-                    >
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-heading font-medium text-foreground text-sm">
-                          Por que configurar o webhook?
-                        </p>
-                        <Badge variant="outline" className="text-[10px]">
-                          Recomendado
-                        </Badge>
-                      </div>
-                      <p className="text-muted-foreground text-xs leading-relaxed">
-                        A chave consulta dados na sincronização; o webhook avisa
-                        o Gateon na hora. Na Stripe, crie o endpoint com a URL
-                        abaixo e selecione os eventos de assinatura, fatura e
-                        checkout.
-                      </p>
-                      <p className="text-muted-foreground text-xs leading-relaxed">
-                        Sem webhook, alertas automáticos só disparam ao
-                        sincronizar. Com webhook ativo, chegam em tempo real ao
-                        Telegram.
-                      </p>
-                    </section>
-                    <div
-                      aria-hidden
-                      className="pointer-events-none absolute inset-x-0 bottom-0 h-14 rounded-b-xl bg-linear-to-t from-background via-background/80 to-transparent backdrop-blur-[2px]"
-                    />
-                    <div className="absolute inset-x-0 bottom-0 flex justify-center pb-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setGuideExpanded(true)}
-                      >
-                        Ver mais
-                      </Button>
-                    </div>
-                  </div>
-                )
-              ) : null}
+                  )}
+                </div>
+              )}
 
               <div className="space-y-1">
                 <Label className="text-muted-foreground text-xs">

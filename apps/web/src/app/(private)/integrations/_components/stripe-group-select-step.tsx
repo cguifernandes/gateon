@@ -18,7 +18,6 @@ import { cn, withCacheBuster } from "@/lib/utils";
 import type { StripePaymentGroupLimit } from "@/lib/zod/stripe-payment-group-schemas";
 import { getSelectableStripeLinkGroupIds } from "@/lib/zod/stripe-payment-group-schemas";
 import type { TelegramGroupSummaryDto } from "@/lib/zod/telegram-group-connection-schemas";
-import { StripePaymentGroupLimitBadge } from "./stripe-payment-group-limit-badge";
 
 type StripeGroupSelectStepProps = {
   groups: TelegramGroupSummaryDto[];
@@ -75,8 +74,6 @@ export function StripeGroupSelectStep({
 
   return (
     <div className="space-y-4">
-      <StripePaymentGroupLimitBadge limit={stripePaymentGroupLimit} />
-
       {selectableGroups.length > 0 ? (
         <div className="grid gap-3 sm:grid-cols-2">
           {selectableGroups.map((group, index) => {

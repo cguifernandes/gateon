@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
@@ -206,7 +207,7 @@ export class StripeBillingSyncService {
   ): Promise<{ label: string | null; refreshed: boolean }> {
     try {
       const price = await client.getPrice(monitoredPriceId);
-      const mapped = client.mapCatalogPrice(price);
+      const mapped = client.mapCatalogPrice(price.price);
 
       await this.prisma.stripeBillingConnections.update({
         where: { id: connectionId },
@@ -1019,7 +1020,7 @@ export class StripeBillingService {
     input: StripeBillingPreviewCatalogInput,
   ) {
     const client = new StripeBillingStripeClient(input.apiKey.trim());
-    await client.getAccount();
+
     const prices = await client.listRecurringPrices();
 
     const catalog = prices
@@ -1044,18 +1045,20 @@ export class StripeBillingService {
   ) {
     const apiKey = input.apiKey.trim();
     const client = new StripeBillingStripeClient(apiKey);
-    const [account, selectedPrice] = await Promise.all([
-      client.getAccount(),
-      client.getPrice(input.stripePriceId),
-    ]);
 
-    if (selectedPrice.active === false || selectedPrice.type !== 'recurring') {
+    const selectedPrice = await client.getPrice(input.stripePriceId);
+
+    if (
+      selectedPrice.price.active === false ||
+      selectedPrice.price.type !== 'recurring'
+    ) {
       throw new BadRequestException(
         'O plano selecionado não está disponível para monitoramento.',
       );
     }
 
-    const mappedPrice = client.mapCatalogPrice(selectedPrice);
+    const mappedPrice = client.mapCatalogPrice(selectedPrice.price);
+
     if (!mappedPrice.productId) {
       throw new BadRequestException(
         'Não foi possível identificar o produto do plano selecionado.',
@@ -1071,10 +1074,12 @@ export class StripeBillingService {
     }
 
     const consentAcceptedAt = new Date();
+
     const connectionData = {
-      stripeAccountId: account.id,
+      // ❌ removido stripeAccountId (não depende mais de /account)
       encryptedApiKey: encryptSecretValue(apiKey),
       apiKeyLast4: apiKey.slice(-4),
+
       ...(input.webhookSigningSecret
         ? {
             encryptedWebhookSigningSecret: encryptSecretValue(
@@ -1082,12 +1087,15 @@ export class StripeBillingService {
             ),
           }
         : {}),
+
       status: StripeBillingConnectionStatus.CONNECTED,
       consentAcceptedAt,
       disconnectedAt: null,
+
       monitoredStripePriceId: mappedPrice.id,
       monitoredStripeProductId: mappedPrice.productId,
       monitoredPlanLabel: mappedPrice.label,
+
       telegramGroupId: input.telegramGroupId,
     };
 
@@ -1099,7 +1107,10 @@ export class StripeBillingService {
           userId,
           ...connectionData,
         },
-        select: { id: true, apiKeyLast4: true },
+        select: {
+          id: true,
+          apiKeyLast4: true,
+        },
       });
     } catch (error) {
       if (
@@ -1107,22 +1118,23 @@ export class StripeBillingService {
         error.code === 'P2002'
       ) {
         throw new ConflictException(
-          'Este plano já possui uma chave Stripe ativa. Desconecte a integração do plano antes de conectar outra chave para ele.',
+          'Este plano já possui uma chave Stripe ativa. Desconecte a integração antes de conectar outra chave.',
         );
       }
+
       throw error;
     }
 
     await this.sync.recordAudit(userId, connection.id, 'CONSENT_ACCEPTED', {
-      stripeAccountId: account.id,
       stripePriceId: mappedPrice.id,
     });
+
     await this.sync.recordAudit(userId, connection.id, 'CONNECTION_CREATED', {
-      stripeAccountId: account.id,
       apiKeyLast4: connection.apiKeyLast4,
       stripePriceId: mappedPrice.id,
       monitoredPlanLabel: mappedPrice.label,
     });
+
     await this.sync.syncConnection(userId, connection.id);
 
     return this.getStatus(userId, requestHeaders);
@@ -1167,14 +1179,48 @@ export class StripeBillingService {
     return this.getStatus(userId, requestHeaders);
   }
 
+  private handleStripeError(error: unknown): never {
+    if (!(error instanceof Error)) {
+      throw new InternalServerErrorException(
+        'Ocorreu um erro ao comunicar com a Stripe.',
+      );
+    }
+
+    const message = error.message;
+
+    if (
+      message.includes('Expired API Key') ||
+      message.includes('Invalid API Key') ||
+      message.includes('No API key provided')
+    ) {
+      throw new BadRequestException(
+        'A chave de API da Stripe é inválida ou expirou. Atualize a integração com uma chave válida.',
+      );
+    }
+
+    if (message.includes('Permission denied')) {
+      throw new BadRequestException(
+        'A chave da Stripe não possui todas as permissões necessárias para esta operação.',
+      );
+    }
+
+    throw error;
+  }
+
   async syncNow(
     userId: string,
     connectionId: string,
     requestHeaders?: IncomingHttpHeaders,
   ) {
     await this.getOwnedConnection(userId, connectionId);
-    await this.sync.syncConnection(userId, connectionId);
-    await this.reconcilePendingSessions(connectionId);
+
+    try {
+      await this.sync.syncConnection(userId, connectionId);
+      await this.reconcilePendingSessions(connectionId);
+    } catch (error) {
+      this.handleStripeError(error);
+    }
+
     return this.getStatus(userId, requestHeaders);
   }
 
@@ -1193,17 +1239,21 @@ export class StripeBillingService {
     let failedCount = 0;
 
     for (const connection of connections) {
-      const result = await this.sync.refreshConnectionProductMetadata(
-        userId,
-        connection.id,
-      );
+      try {
+        const result = await this.sync.refreshConnectionProductMetadata(
+          userId,
+          connection.id,
+        );
 
-      if (result === 'refreshed') {
-        refreshedCount += 1;
-      } else if (result === 'skipped') {
-        skippedCount += 1;
-      } else {
-        failedCount += 1;
+        if (result === 'refreshed') {
+          refreshedCount += 1;
+        } else if (result === 'skipped') {
+          skippedCount += 1;
+        } else {
+          failedCount += 1;
+        }
+      } catch (error) {
+        this.handleStripeError(error);
       }
     }
 
@@ -1225,6 +1275,18 @@ export class StripeBillingService {
     requestHeaders?: IncomingHttpHeaders,
   ) {
     const connection = await this.getOwnedConnection(userId, connectionId);
+
+    const settings = await this.prisma.telegramUserSettings.findUnique({
+      where: { userId },
+      select: {
+        paymentButtonConnectionIds: true,
+      },
+    });
+
+    const paymentButtonConnectionIds =
+      settings?.paymentButtonConnectionIds.filter(
+        (id) => id !== connection.id,
+      ) ?? [];
 
     if (connection.status !== StripeBillingConnectionStatus.CONNECTED) {
       return this.getStatus(userId, requestHeaders);
@@ -1253,7 +1315,22 @@ export class StripeBillingService {
       this.prisma.stripeBillingCustomers.deleteMany({
         where: { connectionId: connection.id },
       }),
+      this.prisma.telegramUserSettings.update({
+        where: { userId },
+        data: {
+          paymentButtonConnectionIds,
+        },
+      }),
+      this.prisma.telegramAlerts.deleteMany({
+        where: {
+          triggerConfig: {
+            path: ['stripeConnectionId'],
+            equals: connection.id,
+          },
+        },
+      }),
     ]);
+
     await this.sync.recordAudit(userId, connection.id, 'CONNECTION_REMOVED');
 
     return this.getStatus(userId, requestHeaders);

@@ -147,6 +147,7 @@ export function BotStartSettingsForm({
   ) {
     setIsSaving(true);
     setSavingAction(action);
+
     try {
       const response = await fetch("/api/bot-start-settings", {
         method: "PATCH",
@@ -495,17 +496,17 @@ export function BotStartSettingsForm({
               onClick={() => {
                 void handleRestoreDefaults();
               }}
+              loading={savingAction === "restore"}
             >
-              {savingAction === "restore"
-                ? "Restaurando..."
-                : "Restaurar padrão"}
+              Restaurar padrão
             </Button>
             <Button
               type="submit"
               className="w-full sm:w-40"
               disabled={isSaving}
+              loading={savingAction === "save"}
             >
-              {savingAction === "save" ? "Salvando..." : "Salvar"}
+              Salvar
             </Button>
           </div>
         </CardFooter>

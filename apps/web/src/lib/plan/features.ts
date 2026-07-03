@@ -76,6 +76,53 @@ export type PlanCatalogEntry = {
   featureBullets: string[];
 };
 
+export const PLAN_CATALOG: Record<PlanId, PlanCatalogEntry> = {
+  free: {
+    id: "free",
+    label: "Gratuito",
+    description: "Teste o Gateon sem compromisso.",
+    priceLabel: "R$ 0",
+    priceCents: null,
+    highlighted: false,
+    featureBullets: [
+      "1 grupo conectado",
+      "Até 75 membros gerenciados",
+      "Alertas de entrada e saída de membros",
+    ],
+  },
+  starter: {
+    id: "starter",
+    label: "Starter",
+    description: "Para comunidades em crescimento.",
+    priceLabel: "R$ 49",
+    priceCents: 4900,
+    highlighted: true,
+    featureBullets: [
+      "3 grupos conectados",
+      "Até 150 membros por grupo",
+      "Webhook Stripe em tempo real",
+      "Remoção automática de inadimplentes",
+      "Checkout no bot (/start)",
+      "Alertas Stripe",
+      "Ações em massa de membros",
+    ],
+  },
+  pro: {
+    id: "pro",
+    label: "Pro",
+    description: "Para operações em escala.",
+    priceLabel: "R$ 129",
+    priceCents: 12900,
+    highlighted: false,
+    featureBullets: [
+      "20 grupos conectados",
+      "Até 300 membros por grupo",
+      "Tudo do plano Starter",
+      "Alertas em tópicos de fórum",
+    ],
+  },
+};
+
 export function getMinPlanForFeature(feature: PlanFeatureId): PlanId {
   return PLAN_FEATURE_MIN_PLAN[feature];
 }

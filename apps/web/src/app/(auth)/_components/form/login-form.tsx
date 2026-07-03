@@ -7,8 +7,9 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { FormField } from "@/components/form-field";
 import { notifyNavigationStart } from "@/components/navigation-progress-bar";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { loginAction } from "@/lib/server/actions/login.action";
+import { cn } from "@/lib/utils";
 import { type AuthFormValues, createAuthSchema } from "@/lib/zod/auth-schemas";
 
 export function LoginForm() {
@@ -65,27 +66,60 @@ export function LoginForm() {
           autoComplete="current-password"
         />
 
-        <Link
-          className="text-primary text-sm w-fit font-medium hover:underline"
-          href="/forgot-password"
-        >
-          Esqueceu a senha?
-        </Link>
+        <p className="text-muted-foreground text-center text-xs leading-relaxed">
+          Ao continuar, você concorda com nossos{" "}
+          <Link
+            className={cn(
+              buttonVariants({ variant: "link" }),
+              "w-fit h-fit p-0 text-xs",
+            )}
+            href="/terms"
+            target="_blank"
+          >
+            Termos de Serviço
+          </Link>{" "}
+          e{" "}
+          <Link
+            className={cn(
+              buttonVariants({ variant: "link" }),
+              "w-fit h-fit p-0 text-xs",
+            )}
+            href="/privacy"
+            target="_blank"
+          >
+            Política de Privacidade
+          </Link>
+          , conforme a Lei Geral de Proteção de Dados (LGPD).
+        </p>
 
         <Button loading={isSubmitting} disabled={isSubmitting} type="submit">
           Entrar
         </Button>
       </form>
 
-      <p className="mt-5 text-center text-sm text-muted-foreground">
-        Ainda não tem conta?{" "}
+      <div className="flex w-full justify-center items-center flex-col gap-y-2">
+        <p className="mt-5 text-center text-sm text-muted-foreground">
+          Ainda não tem conta?{" "}
+          <Link
+            className={cn(
+              buttonVariants({ variant: "link" }),
+              "w-fit h-fit p-0 text-sm",
+            )}
+            href="/register"
+          >
+            Criar conta
+          </Link>
+        </p>
         <Link
-          className="font-semibold text-primary hover:underline"
-          href="/register"
+          className={cn(
+            buttonVariants({ variant: "link" }),
+            "w-fit h-fit text-center p-0 text-sm",
+          )}
+          href="/forgot-password"
         >
-          Criar conta
+          Esqueceu a senha?
         </Link>
-      </p>
+      </div>
     </>
   );
 }

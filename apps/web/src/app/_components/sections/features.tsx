@@ -36,13 +36,13 @@ const featureRows: FeatureRow[] = [
         items: [
           {
             title: "Controle total dos membros",
-            desc: "O acesso ao seu grupo é concedido ou revogado automaticamente conforme o status de cada pagamento. Sem aprovação manual, sem erro humano — cada membro sempre com o acesso exatamente no estado que deveria estar.",
+            desc: "O acesso ao seu grupo é concedido ou revogado automaticamente conforme o status de cada pagamento no Stripe. Sem aprovação manual, sem erro humano — cada membro sempre com o acesso exatamente no estado que deveria estar.",
             layout: "split",
             Art: FeatureCardArtMembersFlow,
           },
           {
-            title: "Recupere cancelamentos automaticamente",
-            desc: "Antes que um atraso vire cancelamento, o Gateon entra em ação automaticamente: envia uma mensagem personalizada, no momento ideal. Você recupera receita sem precisar acompanhar cada renovação manualmente.",
+            title: "Recupere assinaturas automaticamente",
+            desc: "Antes que um atraso vire cancelamento, o Gateon entra em ação: envia um lembrete personalizado no Telegram no momento ideal. Você recupera receita sem precisar acompanhar cada renovação manualmente.",
             layout: "split",
             Art: FeatureCardArtRocket,
           },
@@ -54,7 +54,7 @@ const featureRows: FeatureRow[] = [
         items: [
           {
             title: "Reduza suporte manual",
-            desc: 'Liberações, remoções e renovações acontecem sem intervenção sua. Isso elimina a fila de mensagens do tipo "já paguei, me adiciona" e libera seu tempo para o que realmente importa: crescer o negócio.',
+            desc: 'Liberações, remoções e renovações acontecem sem intervenção sua via webhook Stripe. Elimine a fila de mensagens do tipo "já paguei, me adiciona" e libere seu tempo para o que realmente importa: crescer o negócio.',
             layout: "stack",
             Art: FeatureCardArtSalesGrowth,
           },
@@ -71,7 +71,7 @@ const featureRows: FeatureRow[] = [
         items: [
           {
             title: "Automação confiável",
-            desc: "Cada evento de pagamento dispara uma ação precisa e auditável. O Gateon processa liberações e revogações com consistência total, independente do volume — sem atrasos, sem falhas silenciosas.",
+            desc: "Cada evento do Stripe dispara uma ação precisa e auditável. O Gateon processa liberações e revogações com consistência total, independente do volume — sem atrasos, sem falhas silenciosas.",
             layout: "split",
             Art: FeatureCardArtReliability,
           },
@@ -83,7 +83,7 @@ const featureRows: FeatureRow[] = [
         items: [
           {
             title: "Comece em minutos",
-            desc: "Conecte seu gateway de pagamento, vincule o bot ao seu grupo do Telegram e defina as regras de acesso. Sem código, sem configurações complexas — em poucos passos sua operação já está rodando no piloto automático.",
+            desc: "Conecte sua conta Stripe, vincule o bot ao grupo do Telegram e defina as regras de acesso. Sem código, sem configurações complexas — em poucos passos sua operação já está rodando no piloto automático.",
             layout: "split",
             Art: FeatureCardArtSetup,
           },

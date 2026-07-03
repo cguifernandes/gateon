@@ -1,23 +1,21 @@
-import type { StaticImageData } from "next/image";
-import pagarme from "@/assets/gateway/pagarme.svg";
-import pagseguro from "@/assets/gateway/pagseguro.svg";
-import stripe from "@/assets/gateway/stripe-4.svg";
-import { Container } from "@/components/container";
-import type { GatewayId } from "@/lib/utils";
-import { PAYMENT_GATEWAYS } from "@/lib/utils";
-import { GatewayCard } from "../gateway-card";
+"use client";
 
-const gatewayLogos: Record<GatewayId, StaticImageData> = {
-  pagarme,
-  pagseguro,
-  stripe,
-};
+import { Container } from "@/components/container";
+import { CheckIcon } from "@/components/icons/check";
+import { Card } from "@/components/ui/card";
+
+const stripePoints = [
+  "Suporte a cartões internacionais",
+  "Cobranças recorrentes nativas",
+  "Alta taxa de aprovação global",
+  "Perfeito para escalar fora do Brasil",
+];
 
 const steps = [
   {
     n: "01",
-    label: "Conecte o gateway",
-    desc: "Configure a chave de API e URL de webhook no painel do seu provedor.",
+    label: "Conecte o Stripe",
+    desc: "Configure a chave de API e URL de webhook no painel do Stripe.",
   },
   {
     n: "02",
@@ -37,18 +35,44 @@ export function IntegrationsSection() {
       <Container>
         <div className="mb-12 flex flex-col items-center gap-3 text-center">
           <h2 className="font-bold max-w-2xl leading-[1.08] tracking-tight text-2xl text-foreground sm:text-3xl">
-            Conecte seu gateway favorito em minutos
+            Conecte o Stripe em minutos
           </h2>
           <p className="text-center max-w-2xl text-base font-light text-muted-foreground">
-            Escolha o provedor de pagamento e o Gateon cuida de tudo.
+            Conecte seu gateway de pagamento e o Gateon cuida de tudo.
           </p>
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-3">
-          {PAYMENT_GATEWAYS.map((gw) => {
-            const logo = gatewayLogos[gw.id];
-            return <GatewayCard key={gw.id} gateway={gw} logo={logo} />;
-          })}
+        <div className="mx-auto max-w-sm">
+          <Card className="group h-full rounded-2xl border border-border bg-card py-0 ring-0 gap-0">
+            <div className="flex h-28 items-center justify-center border-b border-border px-6">
+              <span className="text-2xl font-bold text-foreground tracking-tight">
+                Stripe
+              </span>
+            </div>
+            <div className="flex flex-1 flex-col gap-4 p-5">
+              <div className="flex flex-col gap-1">
+                <p className="font-bold font-heading text-sm text-foreground">
+                  Stripe
+                </p>
+                <p className="text-xs font-light leading-snug text-muted-foreground">
+                  Ideal para vendas globais com foco em assinaturas e alta escala internacional.
+                </p>
+              </div>
+              <ul className="flex flex-col gap-2.5">
+                {stripePoints.map((point) => (
+                  <li
+                    key={point}
+                    className="flex items-start gap-2 text-sm text-foreground"
+                  >
+                    <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                      <CheckIcon className="text-primary" size={10} aria-hidden />
+                    </span>
+                    {point}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Card>
         </div>
 
         <div className="mt-14">

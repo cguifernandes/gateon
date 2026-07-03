@@ -5,6 +5,8 @@ export function buildStartWithoutTokenMessage(): string {
     "Para vincular um grupo ao seu painel, abra o cadastro no site e use o link seguro que o assistente gera. Esse link já traz o código certo — não use /start aqui sem ele.",
     "",
     "Quer ver o passo a passo e o que o bot faz? Envie /help.",
+    "",
+    "Ficou interessado? Visite o Gateon em https://www.gateon.app/.",
   ].join("\n");
 }
 
@@ -34,7 +36,7 @@ export function buildHelpMessage(chatType: string | undefined): string {
     "Como conectar um grupo:",
     "1. Entre no painel web do Gateon e inicie o cadastro do grupo.",
     "2. Abra o link seguro que o assistente mostrar (ele abre este chat com o código certo).",
-    "3. Toque em \"Selecionar grupo\" e escolha o grupo no Telegram.",
+    '3. Toque em "Selecionar grupo" e escolha o grupo no Telegram.',
     "4. Promova o bot a administrador com as permissões obrigatórias do painel.",
     "",
     "Comandos:",

@@ -13,6 +13,7 @@ import { CircleCheckIcon } from "@/components/icons/circle-check";
 import { MessageCircleIcon } from "@/components/icons/message-circle";
 import { RefreshCWIcon } from "@/components/icons/refresh-cw";
 import { UsersIcon } from "@/components/icons/users";
+import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import ImageTelegram from "../../../../public/hero-telegram-iphone.png";
@@ -26,7 +27,7 @@ const floatTransition = {
 function HeroIllustration() {
   return (
     <div
-      className="relative mx-auto w-full max-w-md overflow-visible lg:max-w-none"
+      className="relative w-md overflow-visible hidden lg:inline lg:max-w-none"
       aria-hidden
     >
       <div className="pointer-events-none absolute inset-0 -z-10">
@@ -107,7 +108,7 @@ function HeroIllustration() {
           </svg>
 
           <motion.div
-            className="absolute -left-50 bottom-28 z-20 w-52 rounded-2xl border border-border bg-card shadow-sm sm:w-56"
+            className="absolute -left-44 bottom-28 z-20 w-52 rounded-2xl border border-border bg-card shadow-sm sm:w-56"
             animate={{ y: [0, -6, 0] }}
             transition={{ ...floatTransition, delay: 0.2 }}
           >
@@ -245,14 +246,15 @@ export function Hero() {
   return (
     <section className="py-20 md:py-24" id={useId()}>
       <Container>
-        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
+        <div className="flex items-center gap-12 justify-between lg:gap-20">
           <div className="max-w-md flex flex-col gap-4">
+            <Badge>Cobranças 100% automatizadas</Badge>
             <h1 className="text-3xl font-extrabold leading-[1.08] tracking-tight text-foreground sm:text-4xl sm:leading-[1.06] lg:text-5xl lg:leading-[1.05]">
               Automatize sua Receita Recorrente no Telegram.
             </h1>
             <p className="text-base font-light text-muted-foreground">
               Cobranças, acesso a grupos e retenção em um só fluxo. Menos
-              planilhas, mais previsibilidade — integrado com os gateways que
+              planilhas, mais previsibilidade. Integrado com os gateways que
               você utiliza no dia a dia.
             </p>
             <Link
@@ -264,7 +266,7 @@ export function Hero() {
                 "group h-12 w-fit gap-3 rounded-full pl-6 pr-2 shadow-lg",
               )}
             >
-              <span>Começar Gratuitamente</span>
+              Começar Gratuitamente
               <span className="ml-0 flex size-8 items-center justify-center rounded-full bg-white text-slate-900">
                 <ArrowUpRightIcon ref={arrowUpRightIcon} />
               </span>

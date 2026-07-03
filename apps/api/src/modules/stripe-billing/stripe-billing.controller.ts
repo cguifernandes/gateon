@@ -77,10 +77,7 @@ export class StripeBillingController {
   @Post('products/sync')
   @UseGuards(AuthGuard)
   syncAllProducts(@Req() req: Request) {
-    return this.stripeBilling.syncAllProducts(
-      this.getUserId(req),
-      req.headers,
-    );
+    return this.stripeBilling.syncAllProducts(this.getUserId(req), req.headers);
   }
 
   @Post(':connectionId/sync')

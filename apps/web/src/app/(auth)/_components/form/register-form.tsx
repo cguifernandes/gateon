@@ -7,8 +7,9 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { FormField } from "@/components/form-field";
 import { notifyNavigationStart } from "@/components/navigation-progress-bar";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { registerAction } from "@/lib/server/actions/register.action";
+import { cn } from "@/lib/utils";
 import { type AuthFormValues, createAuthSchema } from "@/lib/zod/auth-schemas";
 
 export function RegisterForm() {
@@ -83,6 +84,32 @@ export function RegisterForm() {
           type="password"
           autoComplete="new-password"
         />
+
+        <p className="text-muted-foreground text-center text-xs leading-relaxed">
+          Ao criar sua conta, você concorda com nossos{" "}
+          <Link
+            className={cn(
+              buttonVariants({ variant: "link" }),
+              "w-fit h-fit p-0 text-xs",
+            )}
+            href="/terms"
+            target="_blank"
+          >
+            Termos de Serviço
+          </Link>{" "}
+          e{" "}
+          <Link
+            className={cn(
+              buttonVariants({ variant: "link" }),
+              "w-fit h-fit p-0 text-xs",
+            )}
+            href="/privacy"
+            target="_blank"
+          >
+            Política de Privacidade
+          </Link>
+          , conforme a Lei Geral de Proteção de Dados (LGPD).
+        </p>
 
         <Button loading={isSubmitting} disabled={isSubmitting} type="submit">
           Registrar

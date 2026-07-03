@@ -12,34 +12,38 @@ import type { StripeBillingConnectInput } from "@/lib/zod/stripe-billing-schemas
 
 const restrictedKeyPermissions = [
   {
-    label: "Conta — Leitura",
+    label: "Core → Basic Business Contact Information (Leitura)",
     description:
-      "Confirma que a chave pertence à conta correta antes de salvar a integração.",
+      "Permite validar as informações básicas da conta Stripe durante a configuração da integração.",
   },
   {
-    label: "Clientes — Leitura",
+    label: "Access Management → Accounts v2 (Leitura)",
     description:
-      "Identifica quem assina o plano (nome e e-mail) para cruzar com membros do grupo.",
+      "Permite validar que a chave pertence à conta Stripe correta antes de salvar a integração.",
   },
   {
-    label: "Assinaturas — Leitura",
+    label: "Core → Customers (Leitura)",
     description:
-      "Verifica se a assinatura está ativa, vencida ou cancelada — base das automações de acesso.",
+      "Permite identificar os clientes (nome e e-mail) para relacionar assinantes aos membros do grupo.",
   },
   {
-    label: "Faturas — Leitura",
+    label: "Billing → Subscriptions (Leitura)",
     description:
-      "Acompanha pagamentos recebidos ou falhos e calcula a receita mensal no painel.",
+      "Permite verificar se uma assinatura está ativa, cancelada ou vencida para controlar o acesso automaticamente.",
   },
   {
-    label: "Produtos — Leitura",
+    label: "Billing → Invoices (Leitura)",
     description:
-      "Exibe o nome do produto ao listar os planos disponíveis para você escolher.",
+      "Permite acompanhar o status das faturas e pagamentos para calcular métricas como receita recorrente.",
   },
   {
-    label: "Preços — Leitura",
+    label: "Core → Products (Leitura)",
+    description: "Permite listar os produtos disponíveis na conta Stripe.",
+  },
+  {
+    label: "Billing → Prices (Leitura)",
     description:
-      "Lista os preços recorrentes da conta e valida qual plano você selecionou para monitorar.",
+      "Permite listar os preços recorrentes associados aos produtos e selecionar quais serão monitorados.",
   },
 ] as const;
 
@@ -67,7 +71,7 @@ export function StripeApiKeyStep({
           data-1p-ignore
           data-lpignore="true"
           data-form-type="other"
-          placeholder="sk_..."
+          placeholder="sk_ ou rk_live..."
           className="font-mono [-webkit-text-security:disc]"
           {...form.register("apiKey")}
         />
@@ -151,8 +155,8 @@ export function StripeApiKeyStep({
               </li>
               <li>
                 Crie a chave, copie o valor que começa com{" "}
-                <span className="font-mono text-foreground">sk_</span> e cole no
-                campo acima. A Stripe só exibe a chave completa uma vez.
+                <span className="font-mono text-foreground">rk_live_</span> e
+                cole no campo acima. A Stripe só exibe a chave completa uma vez.
               </li>
             </ol>
           </div>

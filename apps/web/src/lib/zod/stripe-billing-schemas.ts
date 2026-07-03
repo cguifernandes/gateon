@@ -1,13 +1,18 @@
 import { z } from "zod";
 import { stripePaymentGroupLimitSchema } from "./stripe-payment-group-schemas";
 
+const STRIPE_API_KEY_PREFIXES = ["sk_test_", "sk_live_", "rk_test_", "rk_live_"];
+
 const stripeApiKeySchema = z
   .string()
   .trim()
   .min(1, "Informe a chave secreta da Stripe.")
-  .refine((value) => value.startsWith("sk_"), {
-    message: "Informe uma chave secreta válida da Stripe.",
-  });
+  .refine(
+    (value) => STRIPE_API_KEY_PREFIXES.some((prefix) => value.startsWith(prefix)),
+    {
+      message: "Informe uma chave secreta válida da Stripe.",
+    },
+  );
 
 const stripePriceIdSchema = z
   .string()

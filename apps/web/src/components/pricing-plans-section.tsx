@@ -5,6 +5,7 @@ import {
   PricingPlanCard,
   toPlanCardPlan,
 } from "@/components/pricing-plan-card";
+import { PLAN_CATALOG } from "@/lib/plan/features";
 import { cn } from "@/lib/utils";
 import type { PlanId } from "@/lib/zod/plan-schemas";
 
@@ -40,7 +41,7 @@ export function PricingPlansSection({
         </div>
       )}
 
-      {/* <div className="grid gap-6 overflow-visible pt-1 lg:grid-cols-3">
+      <div className="grid gap-6 overflow-visible pt-1 lg:grid-cols-3">
         {PLAN_ORDER.map((planId) => (
           <PricingPlanCard
             key={planId}
@@ -49,7 +50,7 @@ export function PricingPlansSection({
             currentPlanId={currentPlanId}
           />
         ))}
-      </div> */}
+      </div>
     </section>
   );
 }

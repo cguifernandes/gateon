@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 
   title: {
     default: "Gateon",
-    template: "%s | Gateon",
+    template: "%s",
   },
 
   description:

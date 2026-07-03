@@ -1,16 +1,10 @@
 import { BadRequestException } from '@nestjs/common';
-import {
-  formatStripePlanLabel,
-  formatStripePriceAmount,
-} from './price-label';
+import { formatStripePlanLabel, formatStripePriceAmount } from './price-label';
+import { StripePrice } from '../zod/billing-schemas';
 
 type StripeListResponse<T> = {
   data?: T[];
   has_more?: boolean;
-};
-
-type StripeAccount = {
-  id: string;
 };
 
 export type StripeCustomerRecord = {
@@ -88,10 +82,6 @@ export class StripeBillingStripeClient {
 
   constructor(private readonly apiKey: string) {}
 
-  async getAccount(): Promise<StripeAccount> {
-    return this.request<StripeAccount>('/account');
-  }
-
   async listRecurringPrices(): Promise<StripePriceRecord[]> {
     return this.listAll<StripePriceRecord>('/prices', {
       limit: '100',
@@ -101,10 +91,41 @@ export class StripeBillingStripeClient {
     });
   }
 
-  async getPrice(priceId: string): Promise<StripePriceRecord> {
-    return this.request<StripePriceRecord>(`/prices/${priceId}`, {
-      'expand[]': ['product'],
+  async requestWithResponse<T>(
+    path: string,
+  ): Promise<{ data: T; headers: Headers }> {
+    const res = await fetch(`https://api.stripe.com/v1${path}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+      },
     });
+
+    if (!res.ok) {
+      const error = await res.text();
+      throw new Error(error);
+    }
+
+    const data = (await res.json()) as T;
+
+    return {
+      data,
+      headers: res.headers,
+    };
+  }
+
+  async getPrice(id: string): Promise<{
+    price: StripePrice;
+    stripeAccountId?: string;
+  }> {
+    const response = await this.requestWithResponse<StripePrice>(
+      `/prices/${id}?expand[]=product`,
+    );
+
+    return {
+      price: response.data,
+      stripeAccountId: response.headers.get('stripe-account') ?? undefined,
+    };
   }
 
   async listCustomers(): Promise<StripeCustomerRecord[]> {
@@ -245,6 +266,42 @@ export class StripeBillingStripeClient {
     return rows;
   }
 
+  private mapStripeError(message: string): string {
+    if (
+      message.includes('Expired API Key') ||
+      message.includes('Invalid API Key') ||
+      message.includes('No API key provided')
+    ) {
+      return 'A chave de API da Stripe é inválida, expirou ou foi revogada. Gere uma nova chave restrita e atualize a integração.';
+    }
+
+    if (message.includes('Permission denied')) {
+      const permissionMap: Record<string, string> = {
+        accounts_kyc_basic_read:
+          'Core → Basic Business Contact Information (Leitura)',
+        customers_read: 'Core → Customers (Leitura)',
+        products_read: 'Core → Products (Leitura)',
+        prices_read: 'Billing → Prices (Leitura)',
+        subscriptions_read: 'Billing → Subscriptions (Leitura)',
+        invoices_read: 'Billing → Invoices (Leitura)',
+      };
+
+      const match = message.match(/'([^']+_read)'/);
+
+      if (match) {
+        const permission = permissionMap[match[1]];
+
+        if (permission) {
+          return `A chave da Stripe não possui a permissão "${permission}". Atualize as permissões da chave restrita e tente novamente.`;
+        }
+      }
+
+      return 'A chave da Stripe não possui as permissões necessárias para esta operação.';
+    }
+
+    return message;
+  }
+
   private async request<T>(
     path: string,
     params?: StripeRequestParams,
@@ -272,7 +329,8 @@ export class StripeBillingStripeClient {
         typeof body.error?.message === 'string'
           ? body.error.message
           : 'Não foi possível comunicar com a Stripe.';
-      throw new BadRequestException(message);
+
+      throw new BadRequestException(this.mapStripeError(message));
     }
 
     return body as T;

@@ -364,19 +364,11 @@ export function DashboardGroupInsights({
           </Select>
           <Select value={selectedGroup.id} onValueChange={setSelectedGroupId}>
             <SelectTrigger className="w-full xl:w-48">
-              <SelectValue
-                className="bg-red-500"
-                style={{ backgroundColor: "#fff" }}
-                placeholder="Selecionar grupo"
-              />
+              <SelectValue placeholder="Selecionar grupo" />
             </SelectTrigger>
             <SelectContent>
               {groups.map((g) => (
-                <SelectItem
-                  style={{ backgroundColor: "#fff" }}
-                  key={g.id}
-                  value={g.id}
-                >
+                <SelectItem key={g.id} value={g.id}>
                   <span className="truncate min-w-0 flex-1 block w-full">
                     {g.title?.trim() || g.telegramChatId}
                   </span>

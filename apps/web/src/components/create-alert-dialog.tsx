@@ -155,6 +155,8 @@ function getStripeConnectionsLinkedToGroups(
     return [];
   }
 
+  console.log({ connections, groupIds });
+
   const groupIdSet = new Set(groupIds);
   return connections.filter((connection) => {
     const linkedGroupId =
@@ -548,15 +550,12 @@ function lockDestinationFields(
   return {
     ...values,
     destinationType: locked.destinationType,
-    telegramGroupId: locked.telegramGroupId,
     messageThreadId: locked.messageThreadId,
     targetTelegramUserIds: locked.targetTelegramUserIds,
     triggerType: locked.triggerType,
     triggerConfig: {
       ...(values.triggerConfig ?? {}),
-      targetTelegramGroupIds: locked.triggerConfig?.targetTelegramGroupIds,
       targetMessageThreadIds: locked.triggerConfig?.targetMessageThreadIds,
-      stripeConnectionId: locked.triggerConfig?.stripeConnectionId,
     },
   };
 }
@@ -714,6 +713,8 @@ function validateAlertDetailsStep(
     },
     status: values.status ?? "DRAFT",
   });
+
+  console.log({ result });
 
   if (result.success) {
     form.clearErrors();
@@ -1144,6 +1145,7 @@ function StripePlanSelectField({
   fieldIds,
   error,
 }: StripePlanSelectFieldProps) {
+  console.log({ stripeConnections, hasAnyStripeConnection });
   const selectedConnectionId = useWatch({
     control: form.control,
     name: "triggerConfig.stripeConnectionId",
@@ -1412,22 +1414,6 @@ type DetailsStepProps = {
   readOnlyDestination?: boolean;
 };
 
-function DestinationReadOnlyBanner({
-  destinationType,
-}: {
-  destinationType: AlertDestinationType;
-}) {
-  return (
-    <div className="rounded-2xl border border-border bg-muted/40 p-4">
-      <p className="font-medium text-sm">Destino do alerta</p>
-      <p className="text-muted-foreground text-sm">
-        {destinationLabels[destinationType]}. O tipo de destino e o público não
-        podem ser alterados na edição.
-      </p>
-    </div>
-  );
-}
-
 function DetailsStep({
   form,
   groups,
@@ -1532,8 +1518,11 @@ function DetailsStep({
       ),
     [stripeConnections, selectedDestinationGroupIds],
   );
+  console.log({ linkedStripeConnections });
 
   useEffect(() => {
+    if (readOnlyDestination) return;
+
     if (!isStripeTrigger) {
       if (selectedStripeConnectionId) {
         form.setValue("triggerConfig.stripeConnectionId", undefined, {
@@ -1584,6 +1573,7 @@ function DetailsStep({
     form,
     isStripeTrigger,
     linkedStripeConnections,
+    readOnlyDestination,
     selectedDestinationGroupIds.length,
     selectedStripeConnectionId,
   ]);
@@ -1591,8 +1581,38 @@ function DetailsStep({
   return (
     <div>
       <FieldGroup className="gap-6">
-        {readOnlyDestination ? (
-          <DestinationReadOnlyBanner destinationType={destinationType} />
+        {readOnlyDestination && isAutomation ? (
+          <FieldSet className="rounded-2xl border border-border p-4">
+            <FieldLegend id={`${fieldIds}-destination-edit-legend`}>
+              Grupos monitorados
+            </FieldLegend>
+            <FieldDescription id={`${fieldIds}-destination-edit-desc`}>
+              Altere os grupos onde esta automação será disparada.{isStripeTrigger ? " Para automações Stripe, você também pode alterar o plano vinculado." : ""}
+            </FieldDescription>
+            <FieldGroup
+              className="gap-4"
+              aria-labelledby={`${fieldIds}-destination-edit-legend`}
+              aria-describedby={`${fieldIds}-destination-edit-desc`}
+            >
+              <GroupSelectField
+                form={form}
+                groups={groups}
+                destinationType={destinationType}
+                selectedGroupIds={selectedDestinationGroupIds}
+                error={groupError}
+                fieldIds={fieldIds}
+              />
+              {isStripeTrigger && selectedDestinationGroupIds.length > 0 ? (
+                <StripePlanSelectField
+                  form={form}
+                  stripeConnections={linkedStripeConnections}
+                  hasAnyStripeConnection={stripeConnections.length > 0}
+                  fieldIds={fieldIds}
+                  error={stripeConnectionError}
+                />
+              ) : null}
+            </FieldGroup>
+          </FieldSet>
         ) : null}
 
         {!readOnlyDestination && destinationType !== "QUICK_ALERT" && (
@@ -2524,7 +2544,7 @@ export function CreateAlertDialog({
         {
           title: "Editar alerta",
           description:
-            "Atualize o conteúdo, botões e opções de envio. O destino permanece o mesmo.",
+            "Atualize o conteúdo, botões e opções de envio. Grupos e plano Stripe (se aplicável) podem ser alterados.",
           content: (
             <DetailsStep
               form={form}

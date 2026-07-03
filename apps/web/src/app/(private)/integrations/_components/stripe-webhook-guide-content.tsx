@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 /** Keep in sync with StripeBillingWebhookService.processEvent (apps/api). */
@@ -51,8 +50,8 @@ export function StripeWebhookGuideContent({
 }: StripeWebhookGuideContentProps) {
   return (
     <div className={cn("space-y-4", className)}>
-      <section className="space-y-3 rounded-xl border border-border p-4">
-        <p className="font-heading mb-0! font-medium text-foreground text-sm">
+      <section className="space-y-2 rounded-xl border border-border p-4">
+        <p className="font-heading font-medium text-foreground text-sm">
           Como a integração funciona
         </p>
         <ol className="list-decimal space-y-2 pl-4 text-muted-foreground text-xs leading-relaxed">
@@ -73,10 +72,6 @@ export function StripeWebhookGuideContent({
             na sincronização manual.
           </li>
         </ol>
-        <p className="text-muted-foreground text-xs leading-relaxed">
-          As duas partes são complementares: a chave traz o histórico; o webhook
-          mantém tudo em tempo real.
-        </p>
       </section>
 
       <section className="space-y-2 rounded-xl border border-border p-4">
@@ -101,7 +96,7 @@ export function StripeWebhookGuideContent({
         </p>
       </section>
 
-      <section className="space-y-3 rounded-xl border border-border p-4">
+      <section className="space-y-2 rounded-xl border border-border p-4">
         <p className="font-heading font-medium text-foreground text-sm">
           Como configurar na Stripe
         </p>

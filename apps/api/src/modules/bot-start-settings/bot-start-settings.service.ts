@@ -88,6 +88,7 @@ export class BotStartSettingsService {
   ): Promise<TelegramBotStartSettingsResponseDto> {
     const settings = await this.ensureForUser(userId);
     const availableStripeConnections = await this.listStripeConnections(userId);
+
     return this.toResponse(userId, settings, availableStripeConnections);
   }
 

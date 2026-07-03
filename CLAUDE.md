@@ -1,86 +1,22 @@
-@AGENTS.md
+# Gateon
 
-## Gateon (Claude / Cursor) — regras rápidas
+Sempre seguir:
 
-Documento canônico completo: **`AGENTS.md`**. Este arquivo resume o essencial para agentes no Cursor.
+- docs/conventions.md
+- docs/api.md
+- docs/web.md
 
-### Convenções de código
+Leia também quando necessário:
 
-1. **UI só de uma rota** → `_components` da página; **compartilhada** → `src/components/`.
-2. **Inglês** em filenames, tipos, variáveis e comentários; UI do produto pode ser `pt-BR`.
-3. **Zod** → `apps/web/src/lib/zod/` (web) ou `apps/api/src/lib/zod/` (API).
-4. **Nest API** → `modules/<name>/` com **apenas** `<name>.module.ts`, `<name>.controller.ts`, `<name>.service.ts`, `<name>.spec.ts`; testes de `lib/` usados pelo módulo ficam **dentro** desse `<name>.spec.ts` (nunca em `lib/**/*.spec.ts`); registrar em `app.module.ts` — ver `AGENTS.md`.
-5. **DRY (API)** → antes de função/endpoint/service/helper novo: buscar existente, reutilizar ou estender; checklist obrigatório em **`AGENTS.md` → DRY e reutilização de código (API)**.
-6. **DRY (Web)** → antes de componente/hook/fetch/helper novo: buscar existente; checklist em **`AGENTS.md` → DRY e reutilização de código (Web)**.
-7. **Lint:** Biome (web/bot), ESLint+Prettier (api).
+- docs/design-system.md
+- docs/database.md
+- docs/business.md
+- docs/security.md
+- docs/testing.md
 
-### Monorepo (3 apps)
+Antes de qualquer implementação:
 
-| App | Stack | Porta |
-|-----|-------|-------|
-| `apps/web` | Next.js 16, React 19, Tailwind 4, shadcn v4 | 3000 |
-| `apps/api` | NestJS 11, Prisma 7, PostgreSQL | 4000 |
-| `apps/bot` | Grammy, ESM | — |
-
-- `npm run dev` → web + api; `npm run dev:bot` → bot separado.
-- Web → API via cookie `gateon.session`; Bot → API via `x-gateon-bot-secret`.
-- Sem `packages/shared` — código duplicado entre apps deve ficar em sync (ver AGENTS.md).
-
-### Produto (estado atual)
-
-Automação de acesso a grupos Telegram pagos via Stripe:
-
-- Conexão de grupos via bot (`/start` com token)
-- Stripe read-only: sync, métricas, checkout via bot, vínculo grupo↔plano
-- Alertas automatizados (Telegram + Stripe)
-- Bot start settings: mensagem `/start` personalizada com planos e botões de pagamento
-- Dashboard, membros, limites de plano (`free`/`starter`/`pro` — todos em `free` hoje)
-
-**Não faz:** processar pagamentos, criar assinaturas, armazenar dados sensíveis.
-
-### Rotas privadas principais
-
-`/dashboard` · `/groups` · `/groups/[id]/bot` · `/members` · `/alerts` · `/integrations` · `/settings`
-
-### Design system (resumo)
-
-| Item | Valor |
-|------|-------|
-| shadcn style | `base-nova`, base color `neutral` |
-| Tailwind | v4, config em `globals.css` (sem tailwind.config.js) |
-| Primitivos | Base UI (`@base-ui/react`) |
-| Fontes | Inter (corpo) + Geist Sans (títulos) |
-| Primary | `oklch(0.55 0.2 255)` ≈ `#3b82f6` |
-| Tokens extras | Paleta `surface-*` (Material-like) |
-| Ícones | Animados custom (`src/components/icons/`) > Lucide; Lucide só em `ui/*` ou sem equivalente |
-| Layout | Sidebar colapsável + header; `Container max-w-7xl` |
-| Cards | `rounded-xl shadow-sm ring-1 ring-foreground/10` |
-| Tema | next-themes; privado = system/light/dark; auth = light forçado |
-| Toasts | Sonner; formulários = RHF + Zod + `FormField`/`Field` |
-
-Detalhes completos de tokens, componentes ui/, padrões de botão/badge/tabela/dialog: **`AGENTS.md` → Design System**.
-
-### Formulários
-
-Client Component + `react-hook-form` + `zodResolver` + schema Zod + `defaultValues` + erros via `formState.errors` + tokens shadcn (`border-input`, `bg-background`, `ring-primary/*`).
-
-### Antes de implementar na Web
-
-1. Ler **`AGENTS.md` → DRY e reutilização de código (Web)** e preencher o checklist.
-2. Buscar componente/hook/util em `components/`, `hooks/`, `lib/` antes de criar novo.
-3. Ícones: `components/icons/` primeiro; `lucide-react` só como exceção documentada.
-4. Dialogs pesados: considerar `next/dynamic`; manter arquivos < ~300 linhas.
-
-### Ao alterar regras compartilhadas
-
-Sincronizar entre apps: `plan/limits`, `telegram/admin-rights`, `bot-start/message-builder`, `bot-start/subscribe-steps`, schemas Zod espelhados. Lista completa em **`AGENTS.md` → Código sincronizado**.
-
-### Ao alterar o banco de dados (Prisma)
-
-Após qualquer alteração no `schema.prisma`, gerar migration obrigatoriamente com `npx prisma migrate dev --name <nome>`. Nunca usar `prisma db push` em produção.
-
-### Antes de implementar na API
-
-1. Ler **`AGENTS.md` → DRY e reutilização de código (API)** e preencher o checklist.
-2. Não criar `getUserId`, `isInternalSecretValid` ou ownership de grupo sem checar helpers centralizados.
-3. Preferir `lib/<domínio>/` + spec no módulo dono; listagem de grupos em `lib/telegram/groups-list/`; evitar services monolíticos > ~300 linhas por responsabilidade.
+- Reutilizar código.
+- Não duplicar lógica.
+- Seguir DRY.
+- Validar com Zod.

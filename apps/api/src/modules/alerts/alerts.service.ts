@@ -1248,6 +1248,8 @@ export class AlertsService {
       );
     }
 
+    console.log({ connectionId });
+
     const connection = await this.prisma.stripeBillingConnections.findFirst({
       where: {
         id: connectionId,
@@ -1256,6 +1258,8 @@ export class AlertsService {
       },
       select: { id: true },
     });
+
+    console.log({ connection });
 
     if (!connection) {
       throw new BadRequestException(

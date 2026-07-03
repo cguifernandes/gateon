@@ -20,28 +20,4 @@ export const PAYMENT_GATEWAYS: Gateway[] = [
       "Perfeito para escalar fora do Brasil",
     ],
   },
-  {
-    id: "pagarme",
-    name: "Pagar.me",
-    description:
-      "Infraestrutura robusta para quem precisa de controle total e integrações avançadas.",
-    points: [
-      "Fluxos de pagamento customizáveis via API",
-      "Gestão completa de assinaturas recorrentes",
-      "Webhooks em tempo real para automações",
-      "Controle de antifraude e regras avançadas",
-    ],
-  },
-  {
-    id: "pagseguro",
-    name: "PagSeguro",
-    description:
-      "Solução prática para vender no Brasil com rapidez e alta taxa de conversão.",
-    points: [
-      "Pix, boleto e cartão integrados",
-      "Parcelamento facilitado para vendas",
-      "Alta confiança do público brasileiro",
-      "Integração simples e rápida",
-    ],
-  },
 ];

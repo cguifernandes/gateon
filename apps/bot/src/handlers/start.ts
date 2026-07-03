@@ -123,6 +123,7 @@ export function registerStartCommand(
       }
 
       const settings = await fetchBotStartPublicSettings(config, token);
+
       if (!settings) {
         await ctx.reply(
           "Este link de /start não é válido ou foi desativado. Peça um novo link ao criador.",
