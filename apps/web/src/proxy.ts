@@ -2,13 +2,6 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/lib/utils";
 
-const AUTH_PATHS = [
-  "/login",
-  "/register",
-  "/forgot-password",
-  "/reset-password",
-] as const;
-
 const PRIVATE_PATH_PREFIXES = [
   "/dashboard",
   "/groups",
@@ -18,10 +11,6 @@ const PRIVATE_PATH_PREFIXES = [
   "/settings",
   "/profile",
 ] as const;
-
-function isAuthPath(pathname: string): boolean {
-  return AUTH_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-}
 
 function isPrivatePath(pathname: string): boolean {
   return PRIVATE_PATH_PREFIXES.some(
@@ -47,10 +36,6 @@ export function proxy(request: NextRequest) {
       return NextResponse.redirect(url);
     }
     return NextResponse.next();
-  }
-
-  if (isAuthPath(pathname) && session) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   return NextResponse.next();

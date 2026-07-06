@@ -7,10 +7,6 @@ const SESSION_VALIDATION_INTERVAL_MS = 60_000;
 export function SessionValidator() {
   const isCheckingRef = useRef(false);
 
-  const redirectToLogin = useCallback(() => {
-    window.location.assign("/login");
-  }, []);
-
   const validateSession = useCallback(async () => {
     if (isCheckingRef.current) {
       return;
@@ -24,14 +20,19 @@ export function SessionValidator() {
       });
 
       if (response.status === 401 || response.status === 403) {
-        redirectToLogin();
+        await fetch("/api/auth/logout", {
+          method: "POST",
+          cache: "no-store",
+        });
+
+        window.location.replace("/login");
       }
     } catch {
       // Keep the current page on transient network failures; the next check retries.
     } finally {
       isCheckingRef.current = false;
     }
-  }, [redirectToLogin]);
+  }, []);
 
   useEffect(() => {
     void validateSession();
