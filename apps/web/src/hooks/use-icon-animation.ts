@@ -47,7 +47,7 @@ export function useIconAnimation<T extends IconAnimationHandle>(
   const shouldAnimateOnView = isAnimateOnView;
   const isInView = useInView(refElement, {
     once: true,
-    amount: 0.1,
+    amount: 0.3,
     margin: shouldAnimateOnView ? "0px" : "-100000px 0px",
   });
 

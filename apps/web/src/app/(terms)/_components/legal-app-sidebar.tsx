@@ -110,11 +110,7 @@ function SidebarNavLink({
   onMouseLeave,
   children,
 }: SidebarNavLinkProps) {
-  const linkClassName = cn(
-    sidebarMenuButtonVariants({ isActive }),
-    "group",
-    isActive && "font-semibold",
-  );
+  const linkClassName = cn(sidebarMenuButtonVariants({ isActive }), "group");
 
   if (!isCollapsed) {
     return (
@@ -283,7 +279,7 @@ export function LegalAppSidebar() {
                     triggerProps.className,
                   )}
                 >
-                  <GateonLogo showWordmark={false} className="gap-0" />
+                  <GateonLogo className="gap-0" />
                 </Link>
               )}
             />
@@ -292,11 +288,8 @@ export function LegalAppSidebar() {
             </TooltipContent>
           </Tooltip>
         ) : (
-          <Link
-            href="/"
-            className="flex h-full min-h-0 w-full min-w-0 items-center rounded-lg outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-          >
-            <GateonLogo showWordmark />
+          <Link href="/" className="flex items-center justify-center w-full">
+            <GateonLogo />
           </Link>
         )}
       </SidebarHeader>

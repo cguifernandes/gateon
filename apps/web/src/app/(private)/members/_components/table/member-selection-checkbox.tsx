@@ -8,6 +8,7 @@ type MemberSelectionCheckboxProps = {
   indeterminate?: boolean;
   disabled?: boolean;
   onCheckedChange: (checked: boolean) => void;
+  className?: string;
 };
 
 export function MemberSelectionCheckbox({
@@ -16,6 +17,7 @@ export function MemberSelectionCheckbox({
   indeterminate = false,
   disabled = false,
   onCheckedChange,
+  className,
 }: MemberSelectionCheckboxProps) {
   return (
     <Checkbox
@@ -23,6 +25,7 @@ export function MemberSelectionCheckbox({
       indeterminate={indeterminate}
       disabled={disabled}
       aria-label={label}
+      className={className}
       onCheckedChange={onCheckedChange}
     />
   );

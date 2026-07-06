@@ -47,12 +47,6 @@ export const GATEON_PLAN_STRIPE_LOOKUP_KEYS: Record<
   pro: "gateon_pro_monthly",
 };
 
-export const GATEON_PLAN_PRICE_CENTS: Record<PlanId, number | null> = {
-  free: null,
-  starter: 4900,
-  pro: 12900,
-};
-
 export const PLAN_MAX_ALERT_TEMPLATES: Record<PlanId, number | null> = {
   free: 2,
   starter: null,
@@ -80,45 +74,50 @@ export const PLAN_CATALOG: Record<PlanId, PlanCatalogEntry> = {
   free: {
     id: "free",
     label: "Gratuito",
-    description: "Teste o Gateon sem compromisso.",
+    description: "Comece a automatizar seu primeiro grupo pago sem custo.",
     priceLabel: "R$ 0",
     priceCents: null,
     highlighted: false,
     featureBullets: [
       "1 grupo conectado",
       "Até 75 membros gerenciados",
-      "Alertas de entrada e saída de membros",
+      "Alertas de entrada e saída",
+      "Até 2 modelos de alerta",
+      "1 Produto da Stripe vinculado",
+      "Sincronização manual dos produtos Stripe",
     ],
   },
   starter: {
     id: "starter",
     label: "Starter",
-    description: "Para comunidades em crescimento.",
-    priceLabel: "R$ 49",
-    priceCents: 4900,
+    description: "Automatize cobrança, alertas e remoção de inadimplentes.",
+    priceLabel: "R$ 29",
+    priceCents: 2999,
     highlighted: true,
     featureBullets: [
       "3 grupos conectados",
       "Até 150 membros por grupo",
+      "Checkout de pagamento (/start)",
       "Webhook Stripe em tempo real",
-      "Remoção automática de inadimplentes",
-      "Checkout no bot (/start)",
-      "Alertas Stripe",
+      "Alertas Stripe completos",
+      "Remoção automática ao expirar",
       "Ações em massa de membros",
     ],
   },
   pro: {
     id: "pro",
     label: "Pro",
-    description: "Para operações em escala.",
-    priceLabel: "R$ 129",
-    priceCents: 12900,
+    description: "Escale várias comunidades e produtos com prioridade.",
+    priceLabel: "R$ 49",
+    priceCents: 4999,
     highlighted: false,
     featureBullets: [
       "20 grupos conectados",
       "Até 300 membros por grupo",
-      "Tudo do plano Starter",
+      "15 grupos monetizados no /start",
       "Alertas em tópicos de fórum",
+      "Suporte prioritário",
+      "Tudo do Plano Starter",
     ],
   },
 };

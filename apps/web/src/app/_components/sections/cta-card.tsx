@@ -6,9 +6,9 @@ import { cn } from "@/lib/utils";
 
 export function CtaSection() {
   return (
-    <section className="border-t border-border/60 bg-white py-16 md:py-24">
+    <section className="bg-white py-16 md:py-24">
       <Container>
-        <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-primary via-primary to-blue-700 px-6 py-16 text-center shadow-xl shadow-primary/20 sm:px-12 md:py-20">
+        <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-primary via-primary dark:to-primary/50 to-primary/60 px-6 py-16 text-center shadow-xl shadow-primary/20 sm:px-12 md:py-20">
           <div
             className="pointer-events-none absolute inset-0 -z-10"
             aria-hidden
@@ -21,8 +21,8 @@ export function CtaSection() {
             Pronto para automatizar sua receita?
           </h2>
           <p className="mx-auto mt-3 max-w-lg text-base font-light text-white/80">
-            Conecte seu Stripe, vincule ao Telegram e comece em minutos. Sem
-            código, sem complicação.
+            Setup em menos de 5 minutos. Sem cartão de crédito. Cancele quando
+            quiser.
           </p>
           <Link
             href="/register"

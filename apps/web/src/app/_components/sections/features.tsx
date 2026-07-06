@@ -1,19 +1,19 @@
 import type { ComponentType } from "react";
 import { Container } from "@/components/container";
+import { cn } from "@/lib/utils";
 import {
-  FeatureCardArtMembersFlow,
-  FeatureCardArtReliability,
-  FeatureCardArtRocket,
+  FeatureCardArtEvents,
+  FeatureCardArtMembersTable,
   FeatureCardArtSetup,
 } from "../arts";
-import { FeatureCardArtSalesGrowth } from "../charts/art-sales-growth";
 import { FeatureCard } from "../feature-card";
 
 type FeatureItem = {
   title: string;
   desc: string;
   layout: "split" | "stack";
-  Art: ComponentType;
+  Art?: ComponentType;
+  className?: string;
 };
 
 type FeatureColumn = {
@@ -36,27 +36,26 @@ const featureRows: FeatureRow[] = [
         items: [
           {
             title: "Controle total dos membros",
-            desc: "O acesso ao seu grupo é concedido ou revogado automaticamente conforme o status de cada pagamento no Stripe. Sem aprovação manual, sem erro humano — cada membro sempre com o acesso exatamente no estado que deveria estar.",
+            desc: "Gerencie automaticamente quem entra ou sai dos seus grupos no Telegram. O acesso é liberado após a confirmação do pagamento e revogado quando a assinatura é cancelada.",
             layout: "split",
-            Art: FeatureCardArtMembersFlow,
           },
           {
             title: "Recupere assinaturas automaticamente",
-            desc: "Antes que um atraso vire cancelamento, o Gateon entra em ação: envia um lembrete personalizado no Telegram no momento ideal. Você recupera receita sem precisar acompanhar cada renovação manualmente.",
+            desc: "Envie lembretes automáticos no Telegram antes da renovação da assinatura para incentivar a atualização do pagamento, reduzir cancelamentos involuntários.",
             layout: "split",
-            Art: FeatureCardArtRocket,
           },
         ],
       },
       {
         id: "col-right",
-        flex: "lg:basis-[40%]",
+        flex: "lg:basis-[40%] h-full",
         items: [
           {
-            title: "Reduza suporte manual",
-            desc: 'Liberações, remoções e renovações acontecem sem intervenção sua via webhook Stripe. Elimine a fila de mensagens do tipo "já paguei, me adiciona" e libere seu tempo para o que realmente importa: crescer o negócio.',
+            title: "Conectar seu grupo é simples",
+            desc: "Em poucos passos, seu grupo estará conectado e automatizado.",
             layout: "stack",
-            Art: FeatureCardArtSalesGrowth,
+            Art: FeatureCardArtSetup,
+            className: "h-full static",
           },
         ],
       },
@@ -70,10 +69,11 @@ const featureRows: FeatureRow[] = [
         flex: "lg:basis-[40%]",
         items: [
           {
-            title: "Automação confiável",
-            desc: "Cada evento do Stripe dispara uma ação precisa e auditável. O Gateon processa liberações e revogações com consistência total, independente do volume — sem atrasos, sem falhas silenciosas.",
+            title: "Nunca perca um evento importante",
+            desc: "Receba alertas automáticos das principais automações.",
             layout: "split",
-            Art: FeatureCardArtReliability,
+            Art: FeatureCardArtEvents,
+            className: "h-full static",
           },
         ],
       },
@@ -82,10 +82,11 @@ const featureRows: FeatureRow[] = [
         flex: "lg:basis-[60%]",
         items: [
           {
-            title: "Comece em minutos",
-            desc: "Conecte sua conta Stripe, vincule o bot ao grupo do Telegram e defina as regras de acesso. Sem código, sem configurações complexas — em poucos passos sua operação já está rodando no piloto automático.",
+            title: "Acompanhe tudo em tempo real",
+            desc: "Visualize membros ativos, acessos liberados, remoções automáticas e métricas da sua comunidade.",
             layout: "split",
-            Art: FeatureCardArtSetup,
+            Art: FeatureCardArtMembersTable,
+            className: "relative h-96 lg:h-full",
           },
         ],
       },
@@ -95,13 +96,13 @@ const featureRows: FeatureRow[] = [
 
 export function FeaturesSection() {
   return (
-    <section className="bg-white py-16 md:py-20" id="criadores">
+    <section className="bg-white scroll-mt-24 py-16 md:py-20" id="criadores">
       <Container>
         <div className="flex flex-col gap-4 md:gap-6">
           {featureRows.map((row) => (
             <div
               key={row.id}
-              className="flex flex-col gap-4 md:gap-6 lg:flex-row lg:items-stretch"
+              className="flex flex-col gap-4 md:gap-6 lg:flex-row"
             >
               {row.columns.map((col) => (
                 <div
@@ -110,22 +111,26 @@ export function FeaturesSection() {
                 >
                   {col.items.map((item) => {
                     const Art = item.Art;
+
                     return (
                       <FeatureCard
                         key={item.title}
                         title={item.title}
                         description={item.desc}
                         layout={item.layout}
-                        className="h-full min-h-[300px] lg:min-h-[320px]"
+                        className={cn(
+                          "relative h-full overflow-hidden",
+                          item.className,
+                        )}
                       >
-                        <Art />
+                        {Art && <Art />}
                       </FeatureCard>
                     );
                   })}
                 </div>
               ))}
             </div>
-          ))}
+          ))}{" "}
         </div>
       </Container>
     </section>

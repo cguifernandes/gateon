@@ -343,7 +343,7 @@ export function StripeConnectedCard({
 
   return (
     <Card className="gap-0">
-      <CardHeader className="flex flex-col gap-3 border-border border-b bg-linear-to-br from-card via-card to-primary/20 sm:flex-row sm:items-start sm:justify-between">
+      <CardHeader className="flex flex-col gap-3 border-border border-b bg-linear-to-br from-card via-card to-primary/30 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-20 shrink-0 items-center justify-center rounded-lg border border-border bg-background px-4">
             <Image

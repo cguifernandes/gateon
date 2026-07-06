@@ -9,7 +9,8 @@
         "noLabelWithoutControl": "off"
       },
       "correctness": {
-        "noUnusedImports": "warn"
+        "noUnusedImports": "warn",
+        "useUniqueElementIds": "off"
       },
       "suspicious": {
         "noUnknownAtRules": "off"

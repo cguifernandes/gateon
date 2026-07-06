@@ -207,10 +207,15 @@ body {
   );
 }
 
+* {
+  scroll-behavior: smooth;
+}
+
 @layer base {
   body {
     @apply text-foreground;
   }
+
   html {
     @apply font-sans;
   }
@@ -221,13 +226,13 @@ body {
     font-family: var(--font-heading);
   }
 
-  *,
-  *::before,
-  *::after {
+  /* Firefox */
+  * {
     scrollbar-width: thin;
     scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   }
 
+  /* Chrome, Edge, Safari, Opera */
   *::-webkit-scrollbar {
     width: var(--scrollbar-size);
     height: var(--scrollbar-size);
@@ -241,8 +246,8 @@ body {
   *::-webkit-scrollbar-thumb {
     background-color: var(--scrollbar-thumb);
     border: 2px solid transparent;
-    border-radius: var(--radius);
     background-clip: padding-box;
+    border-radius: var(--radius);
   }
 
   *::-webkit-scrollbar-thumb:hover {

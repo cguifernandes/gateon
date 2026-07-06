@@ -20,23 +20,18 @@ export function FeatureCard({
   const isStack = layout === "stack";
 
   return (
-    <Card
-      className={cn(
-        "h-full min-h-0 rounded-3xl border border-border bg-card p-6 ring-0 md:p-8",
-        isStack ? "gap-6" : "gap-8",
-        className,
-      )}
-    >
+    <Card className={cn("h-full p-5", isStack ? "gap-6" : "gap-8", className)}>
       <div
         className={cn(
-          "flex min-h-0 flex-1 gap-6",
-          isStack ? "flex-col" : "flex-col lg:flex-row lg:items-start lg:gap-8",
+          "flex min-h-0 flex-1 gap-4",
+          isStack ? "flex-col" : "flex-col lg:flex-row lg:items-start lg:gap-4",
         )}
       >
         <div
           className={cn(
             "flex shrink-0 flex-col gap-4",
-            !isStack && "lg:max-w-[46%] lg:justify-center",
+            !isStack && children && "lg:max-w-[46%] lg:justify-center",
+            !isStack && !children && "w-full",
           )}
         >
           <div className="space-y-2">
@@ -48,7 +43,9 @@ export function FeatureCard({
             </p>
           </div>
         </div>
-        <div className={cn("relative h-full min-w-0 flex-1")}>{children}</div>
+        {children ? (
+          <div className={cn("h-full min-w-0 flex-1")}>{children}</div>
+        ) : null}
       </div>
     </Card>
   );

@@ -21,7 +21,7 @@ export function DataRefreshIndicator({
   return (
     <div
       className={cn(
-        "pointer-events-none absolute top-1/2 right-1/2 translate-x-1/2 translate-y-1/2 z-10 inline-flex items-center gap-2 rounded-full border border-border bg-background/95 px-3 py-1.5 text-muted-foreground text-xs shadow-sm backdrop-blur-sm",
+        "pointer-events-none absolute bottom-1/2 right-1/2 translate-x-1/2 translate-y-1/2 z-10 inline-flex items-center gap-2 rounded-full border border-border bg-background/95 px-3 py-1.5 text-muted-foreground text-xs shadow-sm backdrop-blur-sm",
         className,
       )}
       aria-live="polite"

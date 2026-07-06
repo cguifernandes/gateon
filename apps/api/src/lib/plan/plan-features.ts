@@ -51,12 +51,6 @@ export const GATEON_PLAN_STRIPE_LOOKUP_KEYS: Record<
   pro: 'gateon_pro_monthly',
 };
 
-export const GATEON_PLAN_PRICE_CENTS: Record<PlanId, number | null> = {
-  free: null,
-  starter: 4900,
-  pro: 12900,
-};
-
 export const PLAN_MAX_ALERT_TEMPLATES: Record<PlanId, number | null> = {
   free: 2,
   starter: null,

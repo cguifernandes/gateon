@@ -47,10 +47,10 @@ export default function PrivacyPage() {
   return (
     <div className="space-y-8 pb-10!">
       <div className="space-y-2">
-        <h1 className="font-heading font-semibold text-3xl tracking-tight">
+        <h1 className="font-heading text-3xl font-extrabold leading-[1.08] tracking-tight text-foreground">
           Política de privacidade
         </h1>
-        <p className="text-muted-foreground text-sm leading-relaxed">
+        <p className="font-light text-muted-foreground text-sm">
           Esta página resume como o Gateon trata dados pessoais para automação
           de acesso a grupos, segurança da conta e comunicação com integrações
           externas.

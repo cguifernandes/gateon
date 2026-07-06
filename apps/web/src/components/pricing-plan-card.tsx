@@ -171,23 +171,23 @@ function resolvePlanCta(input: {
       disabled: true,
       variant: plan.highlighted ? "default" : "outline",
     };
-  }
+  } else {
+    if (plan.planId === "free") {
+      return {
+        label: "Começar grátis",
+        href: "/login",
+        disabled: false,
+        variant: "outline",
+      };
+    }
 
-  if (plan.planId === "free") {
     return {
-      label: "Começar grátis",
-      href: "/register",
+      label: "Selecionar Plano",
+      href: "/login",
       disabled: false,
-      variant: "outline",
+      variant: plan.highlighted ? "default" : "outline",
     };
   }
-
-  return {
-    label: "Selecionar Plano",
-    href: "/register",
-    disabled: false,
-    variant: plan.highlighted ? "default" : "outline",
-  };
 }
 
 export type PricingPlanCtaOverride = {
@@ -242,7 +242,7 @@ export function PricingPlanCard({
         patternClassName,
       )}
     >
-      {isCurrent ? (
+      {isCurrent && mode !== "marketing" ? (
         <Badge
           className={cn(
             "absolute top-[6px] left-1/2 z-10 -translate-x-1/2",
@@ -256,7 +256,7 @@ export function PricingPlanCard({
         className={cn(
           "relative flex h-full flex-col rounded-xl border border-border shadow-sm ring-0",
           plan.highlighted &&
-            "border-0! bg-linear-to-br from-primary via-primary to-primary/50 text-white",
+            "border-0! bg-linear-to-br from-primary via-primary dark:to-primary/50 to-primary/60 text-white",
         )}
       >
         <CardHeader className="space-y-2">

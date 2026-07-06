@@ -1,80 +1,162 @@
+"use client";
+
+import { motion } from "motion/react";
 import { Container } from "@/components/container";
-import { Card, CardContent } from "@/components/ui/card";
-import { FeatureCardArtSalesGrowth } from "../charts/art-sales-growth";
+import { CheckIcon } from "@/components/icons/check";
+import { XIcon } from "@/components/icons/x";
+import { Badge } from "@/components/ui/badge";
 
 const comparisons = [
   {
-    label: "Liberação de acesso",
-    without: "Manual após confirmação",
-    with: "Automática via webhook Stripe",
+    label: "Controle de pagamentos",
+    without: "Conferir pagamentos manualmente",
+    with: "Pagamentos reconciliados em tempo real",
   },
   {
-    label: "Remoção por inadimplência",
-    without: "Manual ou nunca",
-    with: "Automática e imediata",
+    label: "Convites para o grupo",
+    without: "Enviar links de convite um por um",
+    with: "Convites enviados automaticamente",
   },
   {
-    label: "Lembretes de renovação",
-    without: "Nenhum",
-    with: "Automático no timing certo",
+    label: "Gestão de membros",
+    without: "Remover inadimplentes na mão",
+    with: "Remoção automática por inadimplência",
   },
   {
-    label: "Acompanhamento",
-    without: "Planilhas",
-    with: "Dashboard em tempo real",
+    label: "Atendimento",
+    without: "Responder suporte a cada renovação",
+    with: "Suporte respondido pelo próprio fluxo",
   },
   {
-    label: "Escala",
-    without: "Limitada ao seu tempo",
-    with: "Ilimitada (depende do plano)",
+    label: "Cobranças",
+    without: "Perder receita com falhas de cobrança",
+    with: "Retentativas inteligentes de cobrança",
   },
 ];
 
 export function ComparisonSection() {
   return (
-    <section
-      className="border-t border-border/60 bg-surface py-16 md:py-20"
-      id="comparacao"
-    >
-      <Container>
-        <div className="mb-10 text-center">
-          <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Manual vs <span className="text-primary">Automático</span>
+    <section className="bg-white scroll-mt-24 py-16 md:py-20" id="comparacao">
+      <Container className="flex items-center w-full flex-col">
+        <Badge className="mb-4">Problemas resolvidos</Badge>
+        <div className="mb-12 flex flex-col items-center gap-3 text-center">
+          <h2 className="font-heading text-3xl font-extrabold leading-[1.08] tracking-tight text-foreground">
+            Manual vs Automático
           </h2>
-          <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
+          <p className="text-center max-w-2xl text-base font-light text-muted-foreground">
             Veja como o Gateon transforma a operação do seu grupo pago no
             Telegram.
           </p>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-5">
-          <div className="hidden lg:block" />
+        <div className="mx-auto w-full max-w-5xl">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <motion.div
+              initial={{
+                opacity: 0,
+                y: 20,
+              }}
+              whileInView={{
+                opacity: 1,
+                y: 0,
+              }}
+              viewport={{
+                once: false,
+                amount: 0.3,
+              }}
+              transition={{
+                duration: 0.4,
+                delay: 0 * 0.1,
+                ease: "linear",
+              }}
+              className="rounded-2xl border border-border bg-card p-6"
+            >
+              <div className="mb-6 flex items-center gap-3">
+                <div className="flex size-10 border border-destructive/30 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+                  <XIcon size={18} />
+                </div>
 
-          <div className="rounded-xl border border-border bg-card p-4 text-center lg:col-span-2">
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-              Sem Gateon
-            </p>
+                <div>
+                  <p className="font-semibold font-heading text-foreground">
+                    Antes
+                  </p>
+                  <p className="text-sm font-light text-muted-foreground">
+                    Processos manuais e repetitivos
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {comparisons.map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-xl flex flex-col gap-y-1 border border-border p-4"
+                  >
+                    <p className="text-xs font-semibold font-heading uppercase tracking-wide text-muted-foreground">
+                      {item.label}
+                    </p>
+
+                    <p className="text-sm font-medium text-foreground">
+                      {item.without}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{
+                opacity: 0,
+                y: 20,
+              }}
+              whileInView={{
+                opacity: 1,
+                y: 0,
+              }}
+              viewport={{
+                once: false,
+                amount: 0.3,
+              }}
+              transition={{
+                duration: 0.4,
+                delay: 1 * 0.1,
+                ease: "linear",
+              }}
+              className="rounded-2xl border border-primary/20 bg-primary/10 p-6"
+            >
+              <div className="mb-6 flex items-center gap-3">
+                <div className="flex size-10 border border-primary/20 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <CheckIcon size={18} />
+                </div>
+
+                <div>
+                  <p className="font-semibold font-heading text-foreground">
+                    Depois — com Gateon
+                  </p>
+                  <p className="text-sm font-light text-muted-foreground">
+                    Tudo automatizado
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {comparisons.map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-xl flex flex-col gap-y-1 border border-primary/20 bg-background p-4"
+                  >
+                    <p className="text-xs font-semibold font-heading uppercase tracking-wide text-primary">
+                      {item.label}
+                    </p>
+
+                    <p className="text-sm font-medium text-foreground">
+                      {item.with}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
           </div>
-
-          <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-center lg:col-span-2">
-            <p className="text-xs font-semibold uppercase tracking-widest text-primary">
-              Com Gateon
-            </p>
-          </div>
-
-          {comparisons.map((item) => (
-            <div key={item.label} className="contents">
-              <div className="flex items-center rounded-lg bg-card px-4 py-3 text-sm font-medium text-foreground lg:col-span-1">
-                {item.label}
-              </div>
-              <div className="rounded-lg bg-muted/30 px-4 py-3 text-sm text-muted-foreground lg:col-span-2">
-                {item.without}
-              </div>
-              <div className="rounded-lg bg-primary/5 px-4 py-3 text-sm font-medium text-primary lg:col-span-2">
-                {item.with}
-              </div>
-            </div>
-          ))}
         </div>
       </Container>
     </section>

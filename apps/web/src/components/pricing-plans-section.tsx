@@ -36,7 +36,7 @@ export function PricingPlansSection({
           </h2>
           <p className="mx-auto max-w-2xl font-light tex text-muted-foreground text-sm sm:text-base">
             Comece grátis e faça upgrade quando precisar automatizar cobrança,
-            alertas Stripe e escala. Pagamentos do Gateon via Stripe em breve.
+            alertas com gateway de pagamentos e escala.
           </p>
         </div>
       )}

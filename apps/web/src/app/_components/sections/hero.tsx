@@ -27,7 +27,7 @@ const floatTransition = {
 function HeroIllustration() {
   return (
     <div
-      className="relative w-md overflow-visible hidden lg:inline lg:max-w-none"
+      className="relative hidden md:inline w-xl overflow-visible"
       aria-hidden
     >
       <div className="pointer-events-none absolute inset-0 -z-10">
@@ -47,42 +47,48 @@ function HeroIllustration() {
           >
             <title>Linhas decorativas entre os cards e o celular</title>
             <defs>
-              <linearGradient
-                id={useId()}
-                gradientUnits="userSpaceOnUse"
-                x1="40"
-                y1="40"
-                x2="280"
-                y2="380"
-              >
-                <stop offset="0%" stopColor="currentColor" stopOpacity="0.12" />
+              <linearGradient id="hero-line" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="currentColor" stopOpacity="0.15" />
                 <stop
                   offset="100%"
                   stopColor="currentColor"
-                  stopOpacity="0.42"
+                  stopOpacity="0.5"
                 />
               </linearGradient>
+
+              <marker
+                id="arrow"
+                viewBox="0 0 10 10"
+                refX="8"
+                refY="5"
+                markerWidth="8"
+                markerHeight="8"
+                orient="auto"
+                markerUnits="strokeWidth"
+              >
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" />
+              </marker>
             </defs>
-            {/* Comunidade (bottom-left) → phone left */}
             <path
-              d="M 118 302 Q 108 262 100 220"
-              stroke="url(#hero-connector)"
+              d="M235 65 C235 95 225 120 205 145"
+              stroke="url(#hero-line)"
               strokeWidth="1.5"
-              strokeLinecap="round"
+              fill="none"
+              markerEnd="url(#arrow)"
             />
-            {/* Novo assinante (top-right) → phone upper-right */}
             <path
-              d="M 198 54 Q 208 95 220 136"
-              stroke="url(#hero-connector)"
+              d="M110 305 C120 280 130 250 150 215"
+              stroke="url(#hero-line)"
               strokeWidth="1.5"
-              strokeLinecap="round"
+              fill="none"
+              markerEnd="url(#arrow)"
             />
-            {/* Automação (bottom-right) → phone lower-right */}
             <path
-              d="M 206 328 Q 212 298 222 288"
-              stroke="url(#hero-connector)"
+              d="M215 320 C220 300 220 285 205 255"
+              stroke="url(#hero-line)"
               strokeWidth="1.5"
-              strokeLinecap="round"
+              fill="none"
+              markerEnd="url(#arrow)"
             />
             <circle
               cx="100"
@@ -108,89 +114,63 @@ function HeroIllustration() {
           </svg>
 
           <motion.div
-            className="absolute -left-44 bottom-28 z-20 w-52 rounded-2xl border border-border bg-card shadow-sm sm:w-56"
+            className="hidden xl:block absolute w-fit -left-24 bottom-28 z-20 rounded-2xl p-2.5 border border-border bg-card shadow-sm"
             animate={{ y: [0, -6, 0] }}
             transition={{ ...floatTransition, delay: 0.2 }}
           >
-            <div className="flex flex-col gap-2">
-              <div className="flex items-start justify-between gap-2 p-2.5 pb-0">
-                <div className="min-w-0 flex flex-col">
-                  <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Comunidade
-                  </span>
-                  <p className="text-base font-bold tabular-nums text-foreground sm:text-xl">
-                    248
-                  </p>
-                  <p className="text-[10px] leading-tight text-muted-foreground">
-                    membros com acesso ativo
-                  </p>
-                </div>
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/12">
-                  <UsersIcon
-                    isAnimateOnView
-                    size={16}
-                    className="text-primary"
-                  />
-                </div>
-              </div>
-              <div className="border-t border-border p-2.5">
-                <p className="text-[10px] leading-snug text-muted-foreground">
-                  <span className="font-medium text-emerald-600">
-                    +3 esta semana
-                  </span>{" "}
-                  após a confirmação do pagamento
-                </p>
-              </div>
+            <div className="min-w-0 flex gap-y-1 flex-col">
+              <span className="text-[10px] font-medium uppercase text-muted-foreground">
+                Novo membro
+              </span>
+              <p className="font-bold tabular-nums text-foreground text-sm">
+                João entrou agora
+              </p>
+              <p className="text-[10px] text-emerald-500">
+                Grupo liberado automaticamente
+              </p>
             </div>
           </motion.div>
 
           <motion.div
             animate={{ y: [0, 6, 0] }}
             transition={{ ...floatTransition, delay: 0.4 }}
-            className="absolute -bottom-3 -right-48 z-30 w-52 rounded-2xl border border-border bg-card shadow-sm p-2.5 sm:w-56"
+            className="hidden xl:block absolute -bottom-3 -right-28 z-30 w-52 rounded-2xl border border-border bg-card shadow-sm p-2.5 sm:w-56"
           >
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Automação
-                </p>
-                <p className="mt-0.5 text-xs font-bold leading-snug text-foreground">
-                  Cobrança e acesso no mesmo ritmo
-                </p>
-              </div>
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/12">
-                <RefreshCWIcon
-                  isAnimateOnView
-                  size={16}
-                  className="text-primary"
-                />
-              </div>
+            <div className="flex flex-col gap-y-1">
+              <p className="text-[10px] font-medium uppercase text-muted-foreground">
+                Automação
+              </p>
+
+              <p className="text-[11px] font-semibold">
+                Fluxo executado automaticamente
+              </p>
+
+              <p className="text-[10px] text-muted-foreground">
+                Pagamento → Webhook → Grupo liberado
+              </p>
             </div>
           </motion.div>
 
           <motion.div
-            className="absolute -top-2 h-fit -right-30 z-20 w-[min(100%,11rem)] rounded-2xl border border-border bg-card shadow-sm p-2.5 sm:bottom-32 sm:w-auto sm:max-w-52"
+            className="hidden xl:block absolute -top-2 h-fit -right-24 z-20 w-[min(100%,9rem)] rounded-2xl border border-border bg-card shadow-sm p-2.5 sm:bottom-32 sm:w-auto sm:max-w-52"
             animate={{ y: [0, 7, 0] }}
             transition={{ ...floatTransition, delay: 0.8 }}
           >
-            <div className="flex items-start gap-2">
-              <div className="flex size-6 items-center justify-center rounded-full bg-primary/15">
-                <MessageCircleIcon
-                  isAnimateOnView
-                  size={12}
-                  className="text-primary"
-                />
-              </div>
-              <div className="min-w-0">
+            <div className="flex items-center max-w-44 gap-2">
+              <CircleCheckIcon
+                isAnimateOnView
+                size={20}
+                className="text-emerald-500"
+              />
+
+              <div className="flex flex-col gap-1">
                 <p className="text-[10px] font-semibold leading-tight text-foreground">
-                  Novo assinante
+                  Stripe confirmou o pagamento.
                 </p>
-                <p className="text-[9px] text-muted-foreground">há 2 min</p>
+                <span className="text-[10px] text-emerald-500">
+                  Acesso liberado em segundos.
+                </span>
               </div>
-            </div>
-            <div className="mt-2 flex items-center gap-1 text-[9px] text-emerald-700">
-              <CircleCheckIcon isAnimateOnView size={12} className="shrink-0" />
-              Acesso ao grupo liberado
             </div>
           </motion.div>
 
@@ -242,13 +222,13 @@ export function Hero() {
   return (
     <section className="py-20 md:py-24" id={useId()}>
       <Container>
-        <div className="flex items-center gap-12 justify-between lg:gap-20">
-          <div className="max-w-md flex flex-col gap-4">
+        <div className="flex flex-col gap-16 lg:flex-row items-center lg:justify-between">
+          <div className="lg:max-w-lg max-w-xl flex flex-col lg:items-start items-center gap-y-4">
             <Badge>Cobranças 100% automatizadas</Badge>
-            <h1 className="text-3xl font-extrabold leading-[1.08] tracking-tight text-foreground sm:text-4xl sm:leading-[1.06] lg:text-5xl lg:leading-[1.05]">
+            <h1 className="text-3xl font-extrabold lg:text-start text-center leading-[1.08] tracking-tight text-foreground sm:text-4xl sm:leading-[1.06] lg:text-5xl lg:leading-[1.05]">
               Automatize sua Receita Recorrente no Telegram.
             </h1>
-            <p className="text-base font-light text-muted-foreground">
+            <p className="text-base lg:text-start text-center font-light text-muted-foreground">
               Cobranças, acesso a grupos e retenção em um só fluxo. Menos
               planilhas, mais previsibilidade. Integrado com os gateways que
               você utiliza no dia a dia.

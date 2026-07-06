@@ -2,6 +2,7 @@
 
 import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
+import "./globals.css";
 
 type GlobalErrorProps = {
   error: Error & { digest?: string };

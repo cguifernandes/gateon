@@ -65,7 +65,7 @@ const accordionContentClassName =
 export function StripeTelegramLinkingGuide() {
   return (
     <Card className="gap-0 overflow-hidden pb-0">
-      <CardHeader className="border-border border-b bg-linear-to-br from-card via-card to-primary/20">
+      <CardHeader className="border-border border-b bg-linear-to-br from-card via-card to-primary/30">
         <Badge variant="outline" className="w-fit">
           Stripe + Telegram
         </Badge>
