@@ -10,9 +10,6 @@ import {
   type ArrowUpRightIconHandle,
 } from "@/components/icons/arrow-up-right";
 import { CircleCheckIcon } from "@/components/icons/circle-check";
-import { MessageCircleIcon } from "@/components/icons/message-circle";
-import { RefreshCWIcon } from "@/components/icons/refresh-cw";
-import { UsersIcon } from "@/components/icons/users";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -26,10 +23,7 @@ const floatTransition = {
 
 function HeroIllustration() {
   return (
-    <div
-      className="relative hidden md:inline w-xl overflow-visible"
-      aria-hidden
-    >
+    <div className="relative w-2xl md:w-xl overflow-visible" aria-hidden>
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute -right-6 top-8 h-48 w-48 rounded-full bg-primary/20 blur-3xl" />
         <div className="absolute -left-8 bottom-12 h-56 w-56 rounded-full bg-blue-200/30 blur-3xl" />
