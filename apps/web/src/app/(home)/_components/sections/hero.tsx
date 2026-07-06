@@ -23,13 +23,10 @@ const floatTransition = {
 
 function HeroIllustration() {
   return (
-    <div className="relative w-2xl md:w-xl overflow-visible" aria-hidden>
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute -right-6 top-8 h-48 w-48 rounded-full bg-primary/20 blur-3xl" />
-        <div className="absolute -left-8 bottom-12 h-56 w-56 rounded-full bg-blue-200/30 blur-3xl" />
-        <div className="absolute left-1/2 top-1/2 h-32 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full bg-surface-dim/50 blur-2xl" />
-      </div>
-
+    <div
+      className="relative max-w-2xl w-full hidden md:inline md:max-w-xl overflow-visible"
+      aria-hidden
+    >
       <div className="relative flex min-h-104 w-full justify-center overflow-visible p-4 sm:min-h-120 sm:p-6">
         <div className="relative aspect-320/440 w-[min(280px,calc(100vw-2rem))] shrink-0 sm:w-[320px]">
           <svg
@@ -108,7 +105,7 @@ function HeroIllustration() {
           </svg>
 
           <motion.div
-            className="hidden xl:block absolute w-fit -left-24 bottom-28 z-20 rounded-2xl p-2.5 border border-border bg-card shadow-sm"
+            className="hidden sm:block absolute w-fit -left-24 bottom-28 z-20 rounded-2xl p-2.5 border border-border bg-card shadow-sm"
             animate={{ y: [0, -6, 0] }}
             transition={{ ...floatTransition, delay: 0.2 }}
           >
@@ -128,7 +125,7 @@ function HeroIllustration() {
           <motion.div
             animate={{ y: [0, 6, 0] }}
             transition={{ ...floatTransition, delay: 0.4 }}
-            className="hidden xl:block absolute -bottom-3 -right-28 z-30 w-52 rounded-2xl border border-border bg-card shadow-sm p-2.5 sm:w-56"
+            className="hidden sm:block absolute -bottom-10 xl:-bottom-3 -right-32 lg:-right-12 xl:-right-28 z-30 w-52 rounded-2xl border border-border bg-card shadow-sm p-2.5 sm:w-56"
           >
             <div className="flex flex-col gap-y-1">
               <p className="text-[10px] font-medium uppercase text-muted-foreground">
@@ -146,7 +143,7 @@ function HeroIllustration() {
           </motion.div>
 
           <motion.div
-            className="hidden xl:block absolute -top-2 h-fit -right-24 z-20 w-[min(100%,9rem)] rounded-2xl border border-border bg-card shadow-sm p-2.5 sm:bottom-32 sm:w-auto sm:max-w-52"
+            className="hidden sm:block absolute -top-10 xl:-top-6 h-fit -right-32 lg:-right-12 xl:-right-24 z-20 w-[min(100%,9rem)] rounded-2xl border border-border bg-card shadow-sm p-2.5 sm:bottom-32 sm:w-auto sm:max-w-52"
             animate={{ y: [0, 7, 0] }}
             transition={{ ...floatTransition, delay: 0.8 }}
           >
