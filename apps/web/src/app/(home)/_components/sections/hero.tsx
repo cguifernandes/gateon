@@ -13,7 +13,7 @@ import { CircleCheckIcon } from "@/components/icons/circle-check";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import ImageTelegram from "../../../../public/hero-telegram-iphone.png";
+import ImageTelegram from "../../../../app/hero-telegram-iphone.png";
 
 const floatTransition = {
   duration: 4.5,
