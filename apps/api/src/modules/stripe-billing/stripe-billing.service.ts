@@ -664,6 +664,9 @@ export class StripeBillingSyncService {
         currentPeriodEnd,
         cancelAtPeriodEnd,
       );
+      this.logger.log(
+        `[alert-dispatch] syncSubscriptions decision subId=${subscription.id} existingStatus=${existing?.status ?? 'none'} existingCancelAtPeriodEnd=${existing?.cancelAtPeriodEnd} existingLastEventType=${existing?.lastEventType ?? 'none'} existingLastDedupeKey=${existing?.lastAutomationDedupeKey ?? 'none'} status=${status} currentPeriodEnd=${currentPeriodEnd?.toISOString() ?? 'none'} cancelAtPeriodEnd=${cancelAtPeriodEnd} eventType=${eventType ?? 'none'}`,
+      );
       const automationDedupeKey = eventType
         ? buildSubscriptionAutomationDedupeKey(eventType, {
             stripeSubscriptionId: subscription.id,
