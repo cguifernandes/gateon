@@ -7,6 +7,7 @@ export type SubscriptionSnapshot = {
   currentPeriodEnd: Date | null;
   cancelAtPeriodEnd?: boolean;
   lastEventType?: string | null;
+  canceledAt?: number | null;
 };
 
 export function isSubscriptionExpiringSoon(
@@ -39,8 +40,18 @@ export function resolveSubscriptionStripeTrigger(
   currentPeriodEnd: Date | null,
   cancelAtPeriodEnd = false,
   nowMs: number = Date.now(),
+  canceledAt?: number | null,
 ): AlertTriggerType | null {
   if (!existing && status === 'canceled') {
+    return AlertTriggerType.STRIPE_SUBSCRIPTION_CANCELED;
+  }
+
+  // Cancelamento imediato: canceled_at passou de null/undefined para um valor
+  if (
+    canceledAt != null &&
+    (existing?.canceledAt == null) &&
+    status !== 'canceled'
+  ) {
     return AlertTriggerType.STRIPE_SUBSCRIPTION_CANCELED;
   }
 

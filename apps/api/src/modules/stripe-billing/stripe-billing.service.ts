@@ -677,14 +677,17 @@ export class StripeBillingSyncService {
       const status = subscription.status ?? 'unknown';
       const currentPeriodEnd = this.fromUnix(subscription.current_period_end);
       const cancelAtPeriodEnd = subscription.cancel_at_period_end === true;
+      const canceledAt = subscription.canceled_at ?? null;
       const eventType = resolveSubscriptionStripeTrigger(
         existing,
         status,
         currentPeriodEnd,
         cancelAtPeriodEnd,
+        undefined,
+        canceledAt,
       );
       this.logger.log(
-        `[alert-dispatch] syncSubscriptions decision subId=${subscription.id} existingStatus=${existing?.status ?? 'none'} existingCancelAtPeriodEnd=${existing?.cancelAtPeriodEnd} existingLastEventType=${existing?.lastEventType ?? 'none'} existingLastDedupeKey=${existing?.lastAutomationDedupeKey ?? 'none'} status=${status} currentPeriodEnd=${currentPeriodEnd?.toISOString() ?? 'none'} cancelAtPeriodEnd=${cancelAtPeriodEnd} eventType=${eventType ?? 'none'}`,
+        `[alert-dispatch] syncSubscriptions decision subId=${subscription.id} existingStatus=${existing?.status ?? 'none'} existingCancelAtPeriodEnd=${existing?.cancelAtPeriodEnd} existingLastEventType=${existing?.lastEventType ?? 'none'} existingLastDedupeKey=${existing?.lastAutomationDedupeKey ?? 'none'} status=${status} currentPeriodEnd=${currentPeriodEnd?.toISOString() ?? 'none'} cancelAtPeriodEnd=${cancelAtPeriodEnd} canceledAt=${canceledAt} eventType=${eventType ?? 'none'}`,
       );
       const automationDedupeKey = eventType
         ? buildSubscriptionAutomationDedupeKey(eventType, {
