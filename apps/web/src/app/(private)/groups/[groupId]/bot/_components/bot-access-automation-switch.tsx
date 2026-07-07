@@ -17,8 +17,7 @@ export function BotAccessAutomationSwitch({
       checked={value}
       onCheckedChange={onChange}
       title="Remover automaticamente ao expirar"
-      description="O bot remove o membro quando a assinatura termina de fato na Stripe (cancelada ou inadimplente). Cancelamentos agendados mantêm o acesso até o fim do período."
-      tooltip="Só afeta membros vinculados ao checkout do bot. O bot precisa ser administrador com permissão para remover membros."
+      description="O bot remove automaticamente o membro quando a assinatura é cancelada ou se tiver um cancelamento agendado."
     >
       <p className="text-muted-foreground text-xs leading-relaxed">
         Para a remoção acontecer assim que a Stripe atualizar o status,

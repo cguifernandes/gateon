@@ -37,7 +37,6 @@ const DEFAULT_SUPPORT_HINT =
   'Dúvidas? Fale com o administrador do grupo ou responda neste chat.';
 
 const AUTO_REMOVE_TRIGGER_TYPES = new Set<AlertTriggerType>([
-  AlertTriggerType.STRIPE_SUBSCRIPTION_EXPIRED,
   AlertTriggerType.STRIPE_SUBSCRIPTION_CANCELED,
 ]);
 

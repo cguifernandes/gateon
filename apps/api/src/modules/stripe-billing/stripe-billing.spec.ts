@@ -161,7 +161,7 @@ describe('stripe billing automation dedup', () => {
         },
       );
       const expired = buildSubscriptionAutomationDedupeKey(
-        AlertTriggerType.STRIPE_SUBSCRIPTION_EXPIRED,
+        AlertTriggerType.STRIPE_SUBSCRIPTION_CANCELED,
         {
           stripeSubscriptionId: 'sub_1',
           status: 'canceled',
@@ -438,45 +438,7 @@ describe('resolveSubscriptionStripeTrigger', () => {
     ).toBe(AlertTriggerType.STRIPE_SUBSCRIPTION_CANCELED);
   });
 
-  it('maps scheduled cancel ending to expired', () => {
-    expect(
-      resolveSubscriptionStripeTrigger(
-        {
-          status: 'active',
-          currentPeriodEnd: daysFromSyncNow(1),
-          cancelAtPeriodEnd: true,
-        },
-        'canceled',
-        daysFromSyncNow(1),
-        false,
-        syncNow,
-      ),
-    ).toBe(AlertTriggerType.STRIPE_SUBSCRIPTION_EXPIRED);
-  });
-
-  it('detects transition to unpaid as expired', () => {
-    expect(
-      resolveSubscriptionStripeTrigger(
-        { status: 'active', currentPeriodEnd: daysFromSyncNow(1) },
-        'unpaid',
-        daysFromSyncNow(1),
-        false,
-        syncNow,
-      ),
-    ).toBe(AlertTriggerType.STRIPE_SUBSCRIPTION_EXPIRED);
-  });
-
-  it('detects transition to incomplete_expired as expired', () => {
-    expect(
-      resolveSubscriptionStripeTrigger(
-        { status: 'past_due', currentPeriodEnd: daysFromSyncNow(1) },
-        'incomplete_expired',
-        daysFromSyncNow(1),
-        false,
-        syncNow,
-      ),
-    ).toBe(AlertTriggerType.STRIPE_SUBSCRIPTION_EXPIRED);
-  });
+  // Trigger removido: STRIPE_SUBSCRIPTION_EXPIRED não está mais disponível
 
   it('detects renewal when current period end advances', () => {
     expect(
@@ -1075,7 +1037,6 @@ describeWithDb('Stripe automation alerts (database)', () => {
       'STRIPE_PAYMENT_SUCCEEDED',
       'STRIPE_PAYMENT_FAILED',
       'STRIPE_SUBSCRIPTION_EXPIRING',
-      'STRIPE_SUBSCRIPTION_EXPIRED',
       'STRIPE_SUBSCRIPTION_RENEWED',
       'STRIPE_SUBSCRIPTION_CANCELED',
     ] as const;
@@ -1287,25 +1248,6 @@ describeWithDb('Stripe alert triggers (integration)', () => {
     );
   });
 
-  it('dispatches STRIPE_SUBSCRIPTION_EXPIRED when status becomes unpaid', async () => {
-    await expectTriggerDispatched(
-      AlertTriggerType.STRIPE_SUBSCRIPTION_EXPIRED,
-      () =>
-        processSubscriptionStripeEvent(dispatchDeps, {
-          userId: fixture.userId,
-          connectionId: fixture.connectionId,
-          existing: {
-            status: 'active',
-            currentPeriodEnd: daysFromNow(5),
-          },
-          status: 'unpaid',
-          currentPeriodEnd: daysFromNow(5),
-          stripeSubscriptionId: fixture.testStripeSubscriptionId,
-          stripeCustomerId: fixture.testStripeCustomerId,
-          nowMs: FIXED_NOW,
-        }),
-    );
-  });
 
   it('dispatches STRIPE_SUBSCRIPTION_RENEWED when period end advances', async () => {
     await expectTriggerDispatched(

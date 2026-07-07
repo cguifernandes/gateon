@@ -18,8 +18,6 @@ export function buildSubscriptionAutomationDedupeKey(
       return input.cancelAtPeriodEnd
         ? `subscription:CANCELED:scheduled:${input.stripeSubscriptionId}:${period}`
         : `subscription:CANCELED:immediate:${input.stripeSubscriptionId}`;
-    case AlertTriggerType.STRIPE_SUBSCRIPTION_EXPIRED:
-      return `subscription:EXPIRED:${input.stripeSubscriptionId}:${input.status}`;
     case AlertTriggerType.STRIPE_SUBSCRIPTION_RENEWED:
       return `subscription:RENEWED:${input.stripeSubscriptionId}:${period}`;
     case AlertTriggerType.STRIPE_SUBSCRIPTION_EXPIRING:

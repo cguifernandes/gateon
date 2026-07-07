@@ -347,12 +347,6 @@ const automationTriggerOptions: {
     logo: stripeLogo,
   },
   {
-    value: "STRIPE_SUBSCRIPTION_EXPIRED",
-    title: "Assinatura expirada",
-    description: automationTriggerDescriptions.STRIPE_SUBSCRIPTION_EXPIRED,
-    logo: stripeLogo,
-  },
-  {
     value: "STRIPE_SUBSCRIPTION_RENEWED",
     title: "Assinatura renovada",
     description: automationTriggerDescriptions.STRIPE_SUBSCRIPTION_RENEWED,

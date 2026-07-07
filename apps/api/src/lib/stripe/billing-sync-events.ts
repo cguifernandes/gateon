@@ -85,13 +85,7 @@ export function resolveSubscriptionStripeTrigger(
 
   if (existing?.status !== status) {
     if (status === 'canceled') {
-      if (existing?.cancelAtPeriodEnd) {
-        return AlertTriggerType.STRIPE_SUBSCRIPTION_EXPIRED;
-      }
       return AlertTriggerType.STRIPE_SUBSCRIPTION_CANCELED;
-    }
-    if (status === 'unpaid' || status === 'incomplete_expired') {
-      return AlertTriggerType.STRIPE_SUBSCRIPTION_EXPIRED;
     }
   }
 
@@ -183,7 +177,6 @@ export const STRIPE_SUBSCRIPTION_AUDIT_ACTION_BY_TRIGGER: Partial<
   Record<AlertTriggerType, string>
 > = {
   STRIPE_SUBSCRIPTION_EXPIRING: 'SUBSCRIPTION_EXPIRING',
-  STRIPE_SUBSCRIPTION_EXPIRED: 'SUBSCRIPTION_EXPIRED',
   STRIPE_SUBSCRIPTION_CANCELED: 'SUBSCRIPTION_CANCELED',
   STRIPE_SUBSCRIPTION_RENEWED: 'SUBSCRIPTION_RENEWED',
 };

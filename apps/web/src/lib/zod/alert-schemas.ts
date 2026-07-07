@@ -62,7 +62,6 @@ export const alertTriggerTypeSchema = z.enum(
     "STRIPE_PAYMENT_SUCCEEDED",
     "STRIPE_PAYMENT_FAILED",
     "STRIPE_SUBSCRIPTION_EXPIRING",
-    "STRIPE_SUBSCRIPTION_EXPIRED",
     "STRIPE_SUBSCRIPTION_RENEWED",
     "STRIPE_SUBSCRIPTION_CANCELED",
   ],
@@ -79,8 +78,7 @@ export const alertTriggerLabels = {
   STRIPE_PAYMENT_SUCCEEDED: "Stripe: pagamento recebido",
   STRIPE_PAYMENT_FAILED: "Stripe: pagamento falhou",
   STRIPE_SUBSCRIPTION_EXPIRING: "Stripe: assinatura próxima do vencimento (verificação diária às 7h)",
-  STRIPE_SUBSCRIPTION_EXPIRED: "Stripe: assinatura expirada",
-  STRIPE_SUBSCRIPTION_RENEWED: "Stripe: assinatura renovada",
+    STRIPE_SUBSCRIPTION_RENEWED: "Stripe: assinatura renovada",
   STRIPE_SUBSCRIPTION_CANCELED: "Stripe: assinatura cancelada (no momento do cancelamento)",
 } as const satisfies Record<z.infer<typeof alertTriggerTypeSchema>, string>;
 
@@ -111,8 +109,6 @@ export const automationTriggerDescriptions = {
     "Dispara quando a sincronização identifica uma falha de pagamento na Stripe. Se o assinante estiver vinculado ao Gateon, a mensagem vai para o PV dele.",
   STRIPE_SUBSCRIPTION_EXPIRING:
     "Dispara automaticamente todos os dias às 7h (horário de Brasília) quando uma assinatura monitorada está próxima do vencimento. Se o assinante estiver vinculado ao Gateon, a mensagem vai para o PV dele.",
-  STRIPE_SUBSCRIPTION_EXPIRED:
-    "Dispara quando uma assinatura monitorada expira ou fica sem pagamento. Se o assinante estiver vinculado ao Gateon, a mensagem vai para o PV dele.",
   STRIPE_SUBSCRIPTION_RENEWED:
     "Dispara quando uma assinatura é renovada e ganha novo período de cobrança. Se o assinante estiver vinculado ao Gateon, a mensagem vai para o PV dele.",
   STRIPE_SUBSCRIPTION_CANCELED:
