@@ -725,6 +725,7 @@ export class StripeBillingSyncService {
             monitoredPlanLabel ?? this.getPlanName(subscription, productNames),
           currentPeriodEnd,
           cancelAtPeriodEnd,
+          canceledAt: canceledAt ? new Date(canceledAt * 1000) : null,
           ...(eventType ? { lastEventType: eventType } : {}),
           ...(shouldDispatchAutomation && automationDedupeKey
             ? { lastAutomationDedupeKey: automationDedupeKey }
@@ -740,6 +741,7 @@ export class StripeBillingSyncService {
             monitoredPlanLabel ?? this.getPlanName(subscription, productNames),
           currentPeriodEnd,
           cancelAtPeriodEnd,
+          canceledAt: canceledAt ? new Date(canceledAt * 1000) : null,
           ...(eventType ? { lastEventType: eventType } : {}),
           ...(shouldDispatchAutomation && automationDedupeKey
             ? { lastAutomationDedupeKey: automationDedupeKey }
@@ -1941,6 +1943,7 @@ export class StripeBillingService {
             status: 'active',
             planName: connection?.monitoredPlanLabel ?? null,
             cancelAtPeriodEnd: false,
+            canceledAt: null,
           },
           update: {
             customerId: customer?.id,
@@ -1948,6 +1951,7 @@ export class StripeBillingService {
             status: 'active',
             planName: connection?.monitoredPlanLabel ?? null,
             cancelAtPeriodEnd: false,
+            canceledAt: null,
           },
         });
       }

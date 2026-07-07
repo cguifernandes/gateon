@@ -50,6 +50,7 @@ export async function mapGroupsToResponse(
       connectionId: link.id,
       label,
       cancelAtPeriodEnd: false,
+      canceledAt: null,
     });
     stripePlansByGroupId.set(link.telegramGroupId, current);
   }

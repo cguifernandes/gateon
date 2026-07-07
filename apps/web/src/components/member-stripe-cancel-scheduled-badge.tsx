@@ -19,9 +19,15 @@ export function MemberStripeCancelScheduledBadge({
   plans,
   className,
 }: MemberStripeCancelScheduledBadgeProps) {
-  const cancelScheduledPlans = plans.filter((plan) => plan.cancelAtPeriodEnd);
+  const hasCanceled = plans.some(
+    (plan) => plan.cancelAtPeriodEnd || plan.canceledAt != null,
+  );
+  const hasCancelScheduled = plans.some((plan) => plan.cancelAtPeriodEnd);
+  const hasCancelImmediate = plans.some(
+    (plan) => !plan.cancelAtPeriodEnd && plan.canceledAt != null,
+  );
 
-  if (cancelScheduledPlans.length === 0) {
+  if (!hasCanceled) {
     return null;
   }
 
@@ -48,17 +54,44 @@ export function MemberStripeCancelScheduledBadge({
         sideOffset={8}
         className="max-w-xs flex flex-col gap-1! text-pretty"
       >
-        <p className="font-medium text-xs">Cancelamento agendado</p>
-        <p className="text-xs text-center">
-          A assinatura ainda está ativa na Stripe até o fim do período pago. O
-          membro permanece no grupo até a assinatura expirar de fato.
-        </p>
-        {cancelScheduledPlans.length === 1 ? (
-          <p className="text-xs">{cancelScheduledPlans[0]?.label}</p>
+        {hasCancelScheduled && hasCancelImmediate ? (
+          <>
+            <p className="font-medium text-xs">Cancelamento realizado</p>
+            <p className="text-xs text-center">
+              Algumas assinaturas foram canceladas e outras ainda estão ativas
+              até o fim do período pago.
+            </p>
+          </>
+        ) : hasCancelScheduled ? (
+          <>
+            <p className="font-medium text-xs">Cancelamento agendado</p>
+            <p className="text-xs text-center">
+              A assinatura ainda está ativa na Stripe até o fim do período pago.
+              O membro permanece no grupo até a assinatura expirar de fato.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="font-medium text-xs">Cancelamento imediato</p>
+            <p className="text-xs text-center">
+              A assinatura foi cancelada na Stripe. O membro perdeu o acesso ao
+              plano.
+            </p>
+          </>
+        )}
+        {plans.length === 1 ? (
+          <p className="text-xs">{plans[0]?.label}</p>
         ) : (
           <ul className="space-y-1 text-xs">
-            {cancelScheduledPlans.map((plan) => (
-              <li key={plan.connectionId}>{plan.label}</li>
+            {plans.map((plan) => (
+              <li key={plan.connectionId}>
+                {plan.label}
+                {plan.cancelAtPeriodEnd
+                  ? " · Cancelamento agendado"
+                  : plan.canceledAt
+                    ? " · Cancelado"
+                    : ""}
+              </li>
             ))}
           </ul>
         )}

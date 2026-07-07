@@ -49,6 +49,7 @@ export const linkedStripePlanSummarySchema = z.object({
   connectionId: z.string(),
   label: z.string(),
   cancelAtPeriodEnd: z.boolean().default(false),
+  canceledAt: z.string().nullable().default(null),
 });
 
 export const telegramTrackedMemberStatusSchema = z.enum(["active", "left"]);

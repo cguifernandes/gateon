@@ -16,7 +16,9 @@ type LinkedStripePlansCellProps = {
 };
 
 function PlanBadge({ plan }: { plan: LinkedStripePlan }) {
-  if (!plan.cancelAtPeriodEnd) {
+  const isCanceled = plan.cancelAtPeriodEnd || plan.canceledAt != null;
+
+  if (!isCanceled) {
     return (
       <Badge variant="outline" className="max-w-full truncate text-[10px]">
         {plan.label}
@@ -46,8 +48,9 @@ function PlanBadge({ plan }: { plan: LinkedStripePlan }) {
         sideOffset={8}
         className="max-w-xs text-pretty text-xs"
       >
-        Assinatura ainda ativa até o fim do período pago. Membros com este
-        status permanecem no grupo até a assinatura expirar.
+        {plan.cancelAtPeriodEnd
+          ? "Assinatura ainda ativa até o fim do período pago. Membros com este status permanecem no grupo até a assinatura expirar."
+          : "Assinatura cancelada. O membro perdeu o acesso ao plano."}
       </TooltipContent>
     </Tooltip>
   );
@@ -90,7 +93,11 @@ export function LinkedStripePlansCell({ plans }: LinkedStripePlansCellProps) {
               {hiddenPlans.map((plan) => (
                 <li key={plan.connectionId}>
                   {plan.label}
-                  {plan.cancelAtPeriodEnd ? " · Cancelou" : ""}
+                  {plan.cancelAtPeriodEnd
+                    ? " · Cancelamento agendado"
+                    : plan.canceledAt
+                      ? " · Cancelado"
+                      : ""}
                 </li>
               ))}
             </ul>

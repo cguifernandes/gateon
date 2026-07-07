@@ -46,7 +46,9 @@ export function isStripePayer(member: MemberSummary) {
 }
 
 export function isStripeCancelScheduled(member: MemberSummary) {
-  return member.linkedStripePlans.some((plan) => plan.cancelAtPeriodEnd);
+  return member.linkedStripePlans.some(
+    (plan) => plan.cancelAtPeriodEnd || plan.canceledAt != null,
+  );
 }
 
 export function isMemberRemovable(member: MemberSummary) {

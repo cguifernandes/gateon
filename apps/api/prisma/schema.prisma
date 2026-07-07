@@ -431,6 +431,7 @@ model StripeBillingSubscriptions {
   planName                String?
   currentPeriodEnd        DateTime?
   cancelAtPeriodEnd       Boolean   @default(false)
+  canceledAt              DateTime?
   lastEventType           String?
   lastAutomationDedupeKey String?
   createdAt               DateTime  @default(now())

@@ -271,6 +271,7 @@ export class TelegramService {
               stripeSubscriptionId: true,
               status: true,
               cancelAtPeriodEnd: true,
+              canceledAt: true,
             },
           });
 
@@ -298,6 +299,7 @@ export class TelegramService {
           connectionId: link.connectionId,
           label,
           cancelAtPeriodEnd: subscription.cancelAtPeriodEnd === true,
+          canceledAt: subscription.canceledAt?.toISOString() ?? null,
         });
       }
 

@@ -51,12 +51,19 @@ export type LinkedStripePlanSummary = {
   connectionId: string;
   label: string;
   cancelAtPeriodEnd: boolean;
+  canceledAt: string | null;
 };
 
 export function memberHasStripeCancelScheduled(
   plans: Pick<LinkedStripePlanSummary, 'cancelAtPeriodEnd'>[],
 ): boolean {
   return plans.some((plan) => plan.cancelAtPeriodEnd);
+}
+
+export function memberHasStripeCanceled(
+  plans: Pick<LinkedStripePlanSummary, 'canceledAt'>[],
+): boolean {
+  return plans.some((plan) => plan.canceledAt != null);
 }
 
 export type StripePayerSubscriptionSnapshot =
