@@ -278,6 +278,24 @@ export class StripeBillingSyncService {
     return 'refreshed';
   }
 
+  async dispatchPaymentSucceededFromCheckout(
+    userId: string,
+    connectionId: string,
+    stripeCustomerId: string | null,
+  ) {
+    this.logger.log(
+      `[alert-dispatch] dispatchPaymentSucceededFromCheckout userId=${userId} connectionId=${connectionId} stripeCustomerId=${stripeCustomerId ?? 'none'}`,
+    );
+    await processInvoiceStripeEvent(
+      this.dispatchDeps(),
+      userId,
+      connectionId,
+      'paid',
+      undefined,
+      stripeCustomerId,
+    );
+  }
+
   async recordAudit(
     userId: string,
     connectionId: string | null,
@@ -1929,6 +1947,12 @@ export class StripeBillingService {
       telegramUserId: pending.telegramUserId,
       telegramGroupId,
     });
+
+    await this.sync.dispatchPaymentSucceededFromCheckout(
+      pending.userId,
+      pending.connectionId,
+      stripeCustomerId,
+    );
   }
 
   private async notifySubscriberAccessGranted(input: {

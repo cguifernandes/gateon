@@ -59,7 +59,7 @@ export function AlertActionsToolbar({
       className="flex items-center gap-0.5 rounded-lg bg-background/40 px-1 py-0.5 backdrop-blur-[2px]"
       onPointerDown={(event) => event.stopPropagation()}
     >
-      {!isQuickAlert && (
+      {!isQuickAlert && !isAutomation && (
         <ToolbarIconButton
           label="Executar agora"
           loading={pendingAction === "run"}
