@@ -31,6 +31,8 @@ export function MemberStripeCancelScheduledBadge({
     return null;
   }
 
+  console.log({ plans });
+
   return (
     <Tooltip>
       <TooltipTrigger

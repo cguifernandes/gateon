@@ -47,7 +47,12 @@ export function isStripeSubscriptionCancelScheduled(
 
 export function shouldRevokeStripeTelegramMemberLinkForSubscription(
   subscription: StripeSubscriptionEntitlementSnapshot,
+  canceledAt?: Date | null,
 ): boolean {
+  // Cancelamento imediato: revoked_at definido mesmo com status active
+  if (canceledAt) {
+    return true;
+  }
   return shouldRevokeStripeTelegramMemberLink(subscription.status);
 }
 

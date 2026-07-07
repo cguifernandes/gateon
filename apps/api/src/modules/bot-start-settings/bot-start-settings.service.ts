@@ -218,14 +218,15 @@ export class BotStartSettingsService {
           connectionId: input.connectionId,
           stripeSubscriptionId: input.stripeSubscriptionId,
         },
-        select: { status: true, cancelAtPeriodEnd: true },
+        select: { status: true, cancelAtPeriodEnd: true, canceledAt: true },
       },
     );
 
     if (
       input.triggerType === AlertTriggerType.STRIPE_SUBSCRIPTION_CANCELED &&
       subscription &&
-      (subscription.status === 'active' || subscription.status === 'trialing')
+      (subscription.status === 'active' || subscription.status === 'trialing') &&
+      !subscription.canceledAt
     ) {
       return;
     }

@@ -782,17 +782,23 @@ export class StripeBillingSyncService {
       }
 
       if (
-        shouldRevokeStripeTelegramMemberLinkForSubscription({
-          status,
-          cancelAtPeriodEnd: subscription.cancel_at_period_end === true,
-        })
+        shouldRevokeStripeTelegramMemberLinkForSubscription(
+          {
+            status,
+            cancelAtPeriodEnd: subscription.cancel_at_period_end === true,
+          },
+          canceledAt ? new Date(canceledAt * 1000) : null,
+        )
       ) {
         await revokeStripeTelegramMemberLinks(this.prisma, {
           connectionId,
           stripeSubscriptionId: subscription.id,
           stripeCustomerId,
         });
-      } else if (isEntitledStripeSubscription({ status })) {
+      } else if (
+        isEntitledStripeSubscription({ status }) &&
+        !canceledAt
+      ) {
         await reactivateStripeTelegramMemberLinks(this.prisma, {
           connectionId,
           stripeSubscriptionId: subscription.id,
