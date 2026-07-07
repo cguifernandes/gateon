@@ -81,7 +81,7 @@ export const alertTriggerLabels = {
   STRIPE_SUBSCRIPTION_EXPIRING: "Stripe: assinatura próxima do vencimento",
   STRIPE_SUBSCRIPTION_EXPIRED: "Stripe: assinatura expirada",
   STRIPE_SUBSCRIPTION_RENEWED: "Stripe: assinatura renovada",
-  STRIPE_SUBSCRIPTION_CANCELED: "Stripe: assinatura cancelada",
+  STRIPE_SUBSCRIPTION_CANCELED: "Stripe: assinatura cancelada (no momento do cancelamento)",
 } as const satisfies Record<z.infer<typeof alertTriggerTypeSchema>, string>;
 
 export const memberAutomationTriggerTypes = [
@@ -116,7 +116,7 @@ export const automationTriggerDescriptions = {
   STRIPE_SUBSCRIPTION_RENEWED:
     "Dispara quando uma assinatura é renovada e ganha novo período de cobrança. Se o assinante estiver vinculado ao Gateon, a mensagem vai para o PV dele.",
   STRIPE_SUBSCRIPTION_CANCELED:
-    "Dispara quando uma assinatura monitorada é cancelada na Stripe. Se o assinante estiver vinculado ao Gateon, a mensagem vai para o PV dele.",
+    "Dispara quando o assinante solicita o cancelamento (cancelamento agendado) ou quando o cancelamento é imediato na Stripe. Se o assinante estiver vinculado ao Gateon, a mensagem vai para o PV dele.",
 } as const satisfies Record<z.infer<typeof alertTriggerTypeSchema>, string>;
 
 export const alertTableSelectionSourceSchema = z.enum(["MEMBERS", "GROUPS"], {

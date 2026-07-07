@@ -315,15 +315,34 @@ export class StripeBillingSyncService {
     this.logger.log(
       `[alert-dispatch] applySubscriptionFromWebhook connectionId=${connectionId} subId=${subscription.id} connectionFound=${Boolean(connection)} monitoredPriceId=${connection?.monitoredStripePriceId ?? 'none'}`,
     );
+    this.logger.log(
+      `[alert-dispatch] RAW subscription: ${JSON.stringify({ id: subscription.id, status: subscription.status, current_period_end: subscription.current_period_end, cancel_at_period_end: subscription.cancel_at_period_end, canceled_at: subscription.canceled_at })}`,
+    );
     if (!connection?.monitoredStripePriceId) {
       this.logger.warn(
         `[alert-dispatch] applySubscriptionFromWebhook: no monitoredStripePriceId, skipping`,
       );
       return;
     }
+
+    // Buscar subscription completa da Stripe para obter campos expandidos
+    let enrichedSubscription = subscription;
+    try {
+      const client = this.createClient(connection.encryptedApiKey);
+      const fullSub = await client.getSubscription(subscription.id);
+      enrichedSubscription = fullSub;
+      this.logger.log(
+        `[alert-dispatch] enriched subscription: ${JSON.stringify({ id: fullSub.id, status: fullSub.status, current_period_end: fullSub.current_period_end, cancel_at_period_end: fullSub.cancel_at_period_end })}`,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `[alert-dispatch] could not enrich subscription, using raw data: ${error instanceof Error ? error.message : 'unknown'}`,
+      );
+    }
+
     if (
       !subscriptionIncludesPrice(
-        subscription,
+        enrichedSubscription,
         connection.monitoredStripePriceId,
       )
     ) {
@@ -340,13 +359,13 @@ export class StripeBillingSyncService {
     const customersByStripeId = await this.syncCustomersFromSubscriptions(
       connection.userId,
       connectionId,
-      [subscription],
+      [enrichedSubscription],
     );
-    const productNames = await this.loadProductNames(client, [subscription]);
+    const productNames = await this.loadProductNames(client, [enrichedSubscription]);
     await this.syncSubscriptions(
       connection.userId,
       connectionId,
-      [subscription],
+      [enrichedSubscription],
       customersByStripeId,
       productNames,
       connection.monitoredPlanLabel,

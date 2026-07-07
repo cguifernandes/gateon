@@ -3,7 +3,10 @@
     "allow": [
       "Bash(grep:*)",
       "Bash(npx prisma:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(findstr:*)",
+      "Bash(dir \"E:\\\\Projetos\\\\gateon\\\\apps\\\\web\\\\src\" /S /B)",
+      "Bash(dir:*)"
     ]
   }
 }
