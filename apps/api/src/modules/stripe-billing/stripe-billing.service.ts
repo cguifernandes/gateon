@@ -1896,11 +1896,16 @@ export class StripeBillingService {
       try {
         const client = await this.getClientForConnection(pending.connectionId);
         const fullSub = await client.getSubscription(stripeSubscriptionId);
+        this.logger.log(
+          `[checkout-debug] completeCheckoutRecord: fetched subscription ${stripeSubscriptionId} current_period_end=${fullSub.current_period_end}`,
+        );
         subscriptionPeriodEnd = fullSub.current_period_end
           ? new Date(fullSub.current_period_end * 1000)
           : null;
-      } catch {
-        // fallback: não conseguiu buscar período
+      } catch (error) {
+        this.logger.warn(
+          `[checkout-debug] completeCheckoutRecord: failed to fetch subscription period: ${error instanceof Error ? error.message : 'unknown'}`,
+        );
       }
     }
 
