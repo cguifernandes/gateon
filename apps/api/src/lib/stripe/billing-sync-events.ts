@@ -89,6 +89,15 @@ export function resolveSubscriptionStripeTrigger(
     }
   }
 
+  // Reativação: canceled_at foi limpo (era valor, agora é null) e status é active
+  if (
+    existing?.canceledAt != null &&
+    canceledAt == null &&
+    (status === 'active' || status === 'trialing')
+  ) {
+    return AlertTriggerType.STRIPE_SUBSCRIPTION_RENEWED;
+  }
+
   if (
     cancelAtPeriodEnd &&
     !existing?.cancelAtPeriodEnd &&
