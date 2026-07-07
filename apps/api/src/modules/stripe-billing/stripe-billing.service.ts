@@ -294,7 +294,13 @@ export class StripeBillingSyncService {
     subscription: StripeSubscriptionRecord,
   ): Promise<void> {
     const connection = await this.loadConnectedConnection(connectionId);
+    this.logger.log(
+      `[alert-dispatch] applySubscriptionFromWebhook connectionId=${connectionId} subId=${subscription.id} connectionFound=${Boolean(connection)} monitoredPriceId=${connection?.monitoredStripePriceId ?? 'none'}`,
+    );
     if (!connection?.monitoredStripePriceId) {
+      this.logger.warn(
+        `[alert-dispatch] applySubscriptionFromWebhook: no monitoredStripePriceId, skipping`,
+      );
       return;
     }
     if (
@@ -303,9 +309,15 @@ export class StripeBillingSyncService {
         connection.monitoredStripePriceId,
       )
     ) {
+      this.logger.log(
+        `[alert-dispatch] applySubscriptionFromWebhook: subscription does NOT include monitored price, skipping`,
+      );
       return;
     }
 
+    this.logger.log(
+      `[alert-dispatch] applySubscriptionFromWebhook: will sync subscription and dispatch`,
+    );
     const client = this.createClient(connection.encryptedApiKey);
     const customersByStripeId = await this.syncCustomersFromSubscriptions(
       connection.userId,
@@ -330,7 +342,13 @@ export class StripeBillingSyncService {
     stripeWebhookEventType?: string,
   ): Promise<void> {
     const connection = await this.loadConnectedConnection(connectionId);
+    this.logger.log(
+      `[alert-dispatch] applyInvoiceFromWebhook connectionId=${connectionId} invoiceId=${invoice.id} eventType=${stripeWebhookEventType ?? 'none'} connectionFound=${Boolean(connection)} monitoredPriceId=${connection?.monitoredStripePriceId ?? 'none'}`,
+    );
     if (!connection?.monitoredStripePriceId || !invoice.id) {
+      this.logger.warn(
+        `[alert-dispatch] applyInvoiceFromWebhook: skipping — no connection or no monitoredPriceId or no invoice.id`,
+      );
       return;
     }
 
@@ -344,7 +362,13 @@ export class StripeBillingSyncService {
       scopedConnection,
       invoice,
     );
+    this.logger.log(
+      `[alert-dispatch] applyInvoiceFromWebhook: inScope=${inScope} invoiceId=${invoice.id}`,
+    );
     if (!inScope) {
+      this.logger.warn(
+        `[alert-dispatch] applyInvoiceFromWebhook: invoice NOT in monitored scope — skipping dispatch`,
+      );
       return;
     }
 
@@ -389,22 +413,35 @@ export class StripeBillingSyncService {
     invoice: StripeInvoiceRecord,
   ): Promise<boolean> {
     const subscriptionId = getStripeSubscriptionId(invoice.subscription);
+    this.logger.log(
+      `[alert-dispatch] isInvoiceInMonitoredScope connectionId=${connection.id} invoiceId=${invoice.id} subscriptionId=${subscriptionId ?? 'none'}`,
+    );
     if (subscriptionId) {
       try {
         const subscription = await this.createClient(
           connection.encryptedApiKey,
         ).getSubscription(subscriptionId);
-        return subscriptionIncludesPrice(
+        const includes = subscriptionIncludesPrice(
           subscription,
           connection.monitoredStripePriceId,
         );
-      } catch {
+        this.logger.log(
+          `[alert-dispatch] isInvoiceInMonitoredScope: checked via subscription includes=${includes}`,
+        );
+        return includes;
+      } catch (error) {
+        this.logger.warn(
+          `[alert-dispatch] isInvoiceInMonitoredScope: failed to fetch subscription: ${error instanceof Error ? error.message : 'unknown'}`,
+        );
         return false;
       }
     }
 
     const stripeCustomerId = getStripeCustomerId(invoice.customer);
     if (!stripeCustomerId) {
+      this.logger.warn(
+        `[alert-dispatch] isInvoiceInMonitoredScope: no subscriptionId and no customerId`,
+      );
       return false;
     }
 
@@ -416,6 +453,9 @@ export class StripeBillingSyncService {
         },
         select: { id: true },
       });
+    this.logger.log(
+      `[alert-dispatch] isInvoiceInMonitoredScope: checked via trackedSubscription found=${Boolean(trackedSubscription)}`,
+    );
     return Boolean(trackedSubscription);
   }
 
@@ -665,6 +705,9 @@ export class StripeBillingSyncService {
       });
 
       if (shouldDispatchAutomation && eventType) {
+        this.logger.log(
+          `[alert-dispatch] >>>>> DISPATCHING subscription automation connectionId=${connectionId} subId=${subscription.id} eventType=${eventType} dedupeKey=${automationDedupeKey ?? 'none'}`,
+        );
         await dispatchSubscriptionStripeTrigger(
           this.dispatchDeps(),
           userId,
@@ -811,6 +854,9 @@ export class StripeBillingSyncService {
 
       if (shouldDispatchAutomation && paymentTrigger && automationDedupeKey) {
         const stripeCustomerId = getStripeCustomerId(invoice.customer);
+        this.logger.log(
+          `[alert-dispatch] >>>>> DISPATCHING automation for invoice=${invoice.id} trigger=${paymentTrigger} userId=${userId} stripeCustomerId=${stripeCustomerId ?? 'none'}`,
+        );
         await processInvoiceStripeEvent(
           this.dispatchDeps(),
           userId,
@@ -2349,10 +2395,17 @@ export class StripeBillingWebhookService {
     const type = event.type?.trim();
     const object = event.data?.object;
     if (!type || !object) {
+      this.logger.warn(
+        `[webhook-debug] processEvent: type or object missing connectionId=${connectionId} type=${type}`,
+      );
       return;
     }
 
     const stripeEventId = event.id?.trim();
+    this.logger.log(
+      `[webhook-debug] processEvent: received connectionId=${connectionId} type=${type} eventId=${stripeEventId ?? 'no-id'}`,
+    );
+
     if (stripeEventId) {
       const claimed = await this.claimStripeWebhookEvent(
         connectionId,
@@ -2370,27 +2423,38 @@ export class StripeBillingWebhookService {
       switch (type) {
         case 'customer.subscription.created':
         case 'customer.subscription.updated':
-        case 'customer.subscription.deleted':
+        case 'customer.subscription.deleted': {
+          this.logger.log(
+            `[webhook-debug] processing subscription event type=${type} connectionId=${connectionId}`,
+          );
           await this.sync.applySubscriptionFromWebhook(
             connectionId,
             object as StripeSubscriptionRecord,
           );
           break;
+        }
         case 'invoice.paid':
         case 'invoice.payment_failed':
-        case 'invoice.voided':
+        case 'invoice.voided': {
+          this.logger.log(
+            `[webhook-debug] processing invoice event type=${type} connectionId=${connectionId} invoiceId=${(object as any).id}`,
+          );
           await this.sync.applyInvoiceFromWebhook(
             connectionId,
             object as StripeInvoiceRecord,
             type,
           );
           break;
+        }
         case 'checkout.session.completed': {
           const sessionId =
             typeof object.id === 'string' ? object.id.trim() : '';
           if (!sessionId) {
             break;
           }
+          this.logger.log(
+            `[webhook-debug] processing checkout.session.completed sessionId=${sessionId} connectionId=${connectionId}`,
+          );
           try {
             await this.stripeBilling.finalizeCheckoutSession(sessionId);
           } catch (error) {
@@ -2403,6 +2467,9 @@ export class StripeBillingWebhookService {
           break;
         }
         default:
+          this.logger.log(
+            `[webhook-debug] unhandled event type=${type} connectionId=${connectionId}`,
+          );
           break;
       }
     } catch (error) {

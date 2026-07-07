@@ -155,8 +155,6 @@ function getStripeConnectionsLinkedToGroups(
     return [];
   }
 
-  console.log({ connections, groupIds });
-
   const groupIdSet = new Set(groupIds);
   return connections.filter((connection) => {
     const linkedGroupId =
@@ -1587,7 +1585,10 @@ function DetailsStep({
               Grupos monitorados
             </FieldLegend>
             <FieldDescription id={`${fieldIds}-destination-edit-desc`}>
-              Altere os grupos onde esta automação será disparada.{isStripeTrigger ? " Para automações Stripe, você também pode alterar o plano vinculado." : ""}
+              Altere os grupos onde esta automação será disparada.
+              {isStripeTrigger
+                ? " Para automações Stripe, você também pode alterar o plano vinculado."
+                : ""}
             </FieldDescription>
             <FieldGroup
               className="gap-4"

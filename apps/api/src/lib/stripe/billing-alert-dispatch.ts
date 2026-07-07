@@ -78,11 +78,19 @@ export async function dispatchStripeAutomationTrigger(
     stripeContext,
   );
 
+  console.log(
+    `[alert-dispatch-debug] dispatchStripeAutomationTrigger userId=${userId} connectionId=${connectionId} triggerType=${triggerType} subscriber=${subscriber?.telegramUserId ?? 'none'}`,
+  );
+
   const result = await deps.alerts.triggerAutomationAlertsForUser(
     userId,
     triggerType,
     connectionId,
     subscriber ?? undefined,
+  );
+
+  console.log(
+    `[alert-dispatch-debug] dispatchStripeAutomationTrigger result triggeredCount=${result.triggeredCount}`,
   );
 
   if (result.triggeredCount === 0) {

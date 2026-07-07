@@ -443,6 +443,10 @@ export class AlertsService {
     stripeConnectionId: string,
     subscriber?: { telegramUserId: string; displayName?: string },
   ) {
+    console.log(
+      `[alert-dispatch-debug] triggerAutomationAlertsForUser START userId=${userId} triggerType=${triggerType} stripeConnectionId=${stripeConnectionId}`,
+    );
+
     const automationAlerts = await this.prisma.telegramAlerts.findMany({
       where: {
         userId,
@@ -454,9 +458,25 @@ export class AlertsService {
       take: 100,
     });
 
+    console.log(
+      `[alert-dispatch-debug] triggerAutomationAlertsForUser found ${automationAlerts.length} active automation alerts for triggerType=${triggerType}`,
+    );
+
+    if (automationAlerts.length > 0) {
+      automationAlerts.forEach((a) => {
+        console.log(
+          `[alert-dispatch-debug]   alert id=${a.id} triggerConfig=${JSON.stringify(a.triggerConfig)}`,
+        );
+      });
+    }
+
     const matchingAlerts = filterStripeAutomationAlerts(
       automationAlerts,
       stripeConnectionId,
+    );
+
+    console.log(
+      `[alert-dispatch-debug] triggerAutomationAlertsForUser matchingAlerts=${matchingAlerts.length} after filterStripeAutomationAlerts`,
     );
 
     this.logger.log(
@@ -611,6 +631,10 @@ export class AlertsService {
   }
 
   async runAlert(alertId: string, runOptions?: RunAlertOptions) {
+    console.log(
+      `[alert-dispatch-debug] runAlert START alertId=${alertId} runOptions=${JSON.stringify(runOptions)}`,
+    );
+
     const alert = await this.prisma.telegramAlerts.findUnique({
       where: { id: alertId },
       include: {
@@ -620,10 +644,19 @@ export class AlertsService {
     });
 
     if (!alert) {
+      console.log(`[alert-dispatch-debug] runAlert alert NOT FOUND`);
       throw new NotFoundException('Alert not found.');
     }
 
+    console.log(
+      `[alert-dispatch-debug] runAlert alert found id=${alert.id} destinationType=${alert.destinationType} triggerType=${alert.triggerType}`,
+    );
+
     const targets = await this.resolveDeliveryTargets(alert, runOptions);
+
+    console.log(
+      `[alert-dispatch-debug] runAlert resolved targets count=${targets.length} targets=${JSON.stringify(targets)}`,
+    );
 
     this.logger.log(
       `[alert-dispatch] runAlert alertId=${alertId} destinationType=${alert.destinationType} triggerType=${alert.triggerType ?? 'none'} targets=${targets.length} scopeToTelegramUserId=${runOptions?.scopeToTelegramUserId ?? 'none'}`,
@@ -915,6 +948,9 @@ export class AlertsService {
         options?.scopeToTelegramUserId &&
         isStripeAutomationTriggerType(alert.triggerType)
       ) {
+        console.log(
+          `[alert-dispatch-debug] resolveDeliveryTargets: Stripe automation DM target scopeToTelegramUserId=${options.scopeToTelegramUserId} displayName=${options.scopeToMemberDisplayName ?? 'none'}`,
+        );
         return [
           {
             kind: 'member',
@@ -1248,8 +1284,6 @@ export class AlertsService {
       );
     }
 
-    console.log({ connectionId });
-
     const connection = await this.prisma.stripeBillingConnections.findFirst({
       where: {
         id: connectionId,
@@ -1258,8 +1292,6 @@ export class AlertsService {
       },
       select: { id: true },
     });
-
-    console.log({ connection });
 
     if (!connection) {
       throw new BadRequestException(
