@@ -1,4 +1,8 @@
-import { StripeTelegramMemberLinkStatus, type Prisma, type PrismaClient } from '@prisma/client';
+import {
+  StripeTelegramMemberLinkStatus,
+  type Prisma,
+  type PrismaClient,
+} from '@prisma/client';
 
 export const ENTITLED_STRIPE_SUBSCRIPTION_STATUSES = new Set([
   'active',
@@ -71,6 +75,7 @@ export type StripePayerSubscriptionSnapshot =
     connectionId: string;
     stripeCustomerId: string | null;
     stripeSubscriptionId: string;
+    canceledAt?: Date | null;
   };
 
 export function resolveStripePayerSubscriptionForLink(
