@@ -7,7 +7,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import type { IncomingHttpHeaders } from 'node:http';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -69,6 +69,7 @@ import {
   resolveExpiringWindowMs,
   shouldDispatchInvoicePaymentTrigger,
   STRIPE_EXPIRING_WINDOW_DAYS,
+  SubscriptionSnapshot,
 } from '../../lib/stripe/billing-sync-events';
 import {
   buildInvoiceAutomationDedupeKey,
@@ -677,6 +678,7 @@ export class StripeBillingSyncService {
           cancelAtPeriodEnd: true,
           lastEventType: true,
           lastAutomationDedupeKey: true,
+          canceledAt: true,
         },
       });
       const status = subscription.status ?? 'unknown';
@@ -687,8 +689,16 @@ export class StripeBillingSyncService {
       const expiringWindowMs = resolveExpiringWindowMs(
         billingInterval?.interval,
       );
+
+      const snapshot: SubscriptionSnapshot | null = existing
+        ? {
+            ...existing,
+            canceledAt: existing.canceledAt?.getTime() ?? null,
+          }
+        : null;
+
       const eventType = resolveSubscriptionStripeTrigger(
-        existing,
+        snapshot,
         status,
         currentPeriodEnd,
         cancelAtPeriodEnd,
@@ -696,6 +706,7 @@ export class StripeBillingSyncService {
         canceledAt,
         expiringWindowMs,
       );
+
       this.logger.log(
         `[alert-dispatch] syncSubscriptions decision subId=${subscription.id} existingStatus=${existing?.status ?? 'none'} existingCancelAtPeriodEnd=${existing?.cancelAtPeriodEnd} existingLastEventType=${existing?.lastEventType ?? 'none'} existingLastDedupeKey=${existing?.lastAutomationDedupeKey ?? 'none'} status=${status} currentPeriodEnd=${currentPeriodEnd?.toISOString() ?? 'none'} cancelAtPeriodEnd=${cancelAtPeriodEnd} canceledAt=${canceledAt} billingInterval=${billingInterval?.interval ?? 'none'} expiringWindowMs=${expiringWindowMs} eventType=${eventType ?? 'none'}`,
       );
@@ -795,10 +806,7 @@ export class StripeBillingSyncService {
           stripeSubscriptionId: subscription.id,
           stripeCustomerId,
         });
-      } else if (
-        isEntitledStripeSubscription({ status }) &&
-        !canceledAt
-      ) {
+      } else if (isEntitledStripeSubscription({ status }) && !canceledAt) {
         await reactivateStripeTelegramMemberLinks(this.prisma, {
           connectionId,
           stripeSubscriptionId: subscription.id,
@@ -1046,7 +1054,6 @@ export class StripeBillingSyncService {
       select: { id: true, userId: true, monitoredStripePriceId: true },
     });
 
-    let totalTriggered = 0;
     let totalConnections = 0;
 
     for (const connection of connections) {
@@ -1955,11 +1962,16 @@ export class StripeBillingService {
         if (!subscriptionPeriodEnd) {
           const interval = fullSub.items?.data?.[0]?.price?.recurring?.interval;
           const fallbackDays =
-            interval === 'day' ? 1
-            : interval === 'week' ? 7
-            : interval === 'year' ? 365
-            : 30;
-          subscriptionPeriodEnd = new Date(Date.now() + fallbackDays * 86_400_000);
+            interval === 'day'
+              ? 1
+              : interval === 'week'
+                ? 7
+                : interval === 'year'
+                  ? 365
+                  : 30;
+          subscriptionPeriodEnd = new Date(
+            Date.now() + fallbackDays * 86_400_000,
+          );
           this.logger.log(
             `[checkout-debug] completeCheckoutRecord: fallback currentPeriodEnd=${subscriptionPeriodEnd.toISOString()} interval=${interval ?? 'none'} (${fallbackDays} dias)`,
           );

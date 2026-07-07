@@ -34,6 +34,7 @@ export class AlertsController {
   @UseGuards(AuthGuard)
   listAlerts(@Req() req: Request, @Query() query: unknown) {
     const userId = this.getUserId(req);
+
     return this.alerts.listAlerts(userId, alertListQuerySchema.parse(query));
   }
 

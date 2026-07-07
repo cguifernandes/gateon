@@ -81,6 +81,7 @@ export async function fetchAuthenticatedUpstreamJson<T>(
 ): Promise<UpstreamJsonResult<T>> {
   if (options.requireSessionUser !== false) {
     const session = await resolveUpstreamSession();
+
     if (!session.ok) {
       return { ok: false, error: session.error };
     }
@@ -142,6 +143,7 @@ async function fetchAuthenticatedUpstreamJsonWithContext<T>({
 
     const raw: unknown = await response.json();
     const parsed = schema.safeParse(raw);
+
     if (!parsed.success) {
       return { ok: false, error: UPSTREAM_ERRORS.invalidResponse };
     }

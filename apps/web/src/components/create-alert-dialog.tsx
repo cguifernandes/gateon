@@ -706,8 +706,6 @@ function validateAlertDetailsStep(
     status: values.status ?? "DRAFT",
   });
 
-  console.log({ result });
-
   if (result.success) {
     form.clearErrors();
     return true;
@@ -1137,7 +1135,6 @@ function StripePlanSelectField({
   fieldIds,
   error,
 }: StripePlanSelectFieldProps) {
-  console.log({ stripeConnections, hasAnyStripeConnection });
   const selectedConnectionId = useWatch({
     control: form.control,
     name: "triggerConfig.stripeConnectionId",
@@ -1510,7 +1507,6 @@ function DetailsStep({
       ),
     [stripeConnections, selectedDestinationGroupIds],
   );
-  console.log({ linkedStripeConnections });
 
   useEffect(() => {
     if (readOnlyDestination) return;
