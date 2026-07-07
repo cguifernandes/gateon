@@ -78,7 +78,7 @@ export const alertTriggerLabels = {
   MEMBER_LEFT_PRIVATE_MESSAGE: "Mensagem de despedida",
   STRIPE_PAYMENT_SUCCEEDED: "Stripe: pagamento recebido",
   STRIPE_PAYMENT_FAILED: "Stripe: pagamento falhou",
-  STRIPE_SUBSCRIPTION_EXPIRING: "Stripe: assinatura próxima do vencimento",
+  STRIPE_SUBSCRIPTION_EXPIRING: "Stripe: assinatura próxima do vencimento (verificação diária às 7h)",
   STRIPE_SUBSCRIPTION_EXPIRED: "Stripe: assinatura expirada",
   STRIPE_SUBSCRIPTION_RENEWED: "Stripe: assinatura renovada",
   STRIPE_SUBSCRIPTION_CANCELED: "Stripe: assinatura cancelada (no momento do cancelamento)",
@@ -110,7 +110,7 @@ export const automationTriggerDescriptions = {
   STRIPE_PAYMENT_FAILED:
     "Dispara quando a sincronização identifica uma falha de pagamento na Stripe. Se o assinante estiver vinculado ao Gateon, a mensagem vai para o PV dele.",
   STRIPE_SUBSCRIPTION_EXPIRING:
-    "Dispara quando uma assinatura monitorada está próxima do vencimento. Se o assinante estiver vinculado ao Gateon, a mensagem vai para o PV dele.",
+    "Dispara automaticamente todos os dias às 7h (horário de Brasília) quando uma assinatura monitorada está próxima do vencimento. Se o assinante estiver vinculado ao Gateon, a mensagem vai para o PV dele.",
   STRIPE_SUBSCRIPTION_EXPIRED:
     "Dispara quando uma assinatura monitorada expira ou fica sem pagamento. Se o assinante estiver vinculado ao Gateon, a mensagem vai para o PV dele.",
   STRIPE_SUBSCRIPTION_RENEWED:

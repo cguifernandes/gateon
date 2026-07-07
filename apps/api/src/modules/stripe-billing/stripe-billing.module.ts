@@ -1,4 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AuthModule } from '../auth/auth.module';
 import { AlertsModule } from '../alerts/alerts.module';
 import { BotStartSettingsModule } from '../bot-start-settings/bot-start-settings.module';

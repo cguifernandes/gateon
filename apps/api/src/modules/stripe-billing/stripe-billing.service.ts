@@ -7,6 +7,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import type { IncomingHttpHeaders } from 'node:http';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -1022,6 +1023,47 @@ export class StripeBillingSyncService {
     if (typeof product === 'object' && product?.name) return product.name;
     if (typeof product === 'string') return productNames.get(product) ?? null;
     return null;
+  }
+
+  /**
+   * Cron diário às 7h da manhã para verificar subscriptions próximas do vencimento
+   * e disparar alertas STRIPE_SUBSCRIPTION_EXPIRING automaticamente.
+   */
+  @Cron('0 7 * * *', { timeZone: 'America/Sao_Paulo' })
+  async checkExpiringSubscriptions() {
+    this.logger.log(
+      `[cron] checkExpiringSubscriptions: iniciando verificação diária`,
+    );
+
+    const connections = await this.prisma.stripeBillingConnections.findMany({
+      where: { status: StripeBillingConnectionStatus.CONNECTED },
+      select: { id: true, userId: true, monitoredStripePriceId: true },
+    });
+
+    let totalTriggered = 0;
+    let totalConnections = 0;
+
+    for (const connection of connections) {
+      if (!connection.monitoredStripePriceId) continue;
+
+      try {
+        await this.syncConnection(connection.userId, connection.id);
+        totalConnections++;
+        this.logger.log(
+          `[cron] checkExpiringSubscriptions: sincronizado connectionId=${connection.id} userId=${connection.userId}`,
+        );
+      } catch (error) {
+        this.logger.warn(
+          `[cron] checkExpiringSubscriptions: erro ao sincronizar connectionId=${connection.id}: ${error instanceof Error ? error.message : 'unknown'}`,
+        );
+      }
+    }
+
+    this.logger.log(
+      `[cron] checkExpiringSubscriptions: finalizado — ${totalConnections} conexões processadas`,
+    );
+
+    return { totalConnections };
   }
 
   private fromUnix(value: number | null | undefined): Date | null {

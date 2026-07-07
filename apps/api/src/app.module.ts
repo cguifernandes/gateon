@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -30,6 +31,7 @@ function readPositiveIntegerEnv(name: string, fallback: number): number {
         limit: readPositiveIntegerEnv('RATE_LIMIT_MAX_REQUESTS', 120),
       },
     ]),
+    ScheduleModule.forRoot(),
     PrismaModule,
     GroupLimitsModule,
     AuthModule,
