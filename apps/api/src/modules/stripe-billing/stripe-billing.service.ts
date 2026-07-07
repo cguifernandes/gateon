@@ -1902,9 +1902,23 @@ export class StripeBillingService {
         subscriptionPeriodEnd = fullSub.current_period_end
           ? new Date(fullSub.current_period_end * 1000)
           : null;
+
+        // Fallback: se Stripe não retornou current_period_end, calcular com base no intervalo
+        if (!subscriptionPeriodEnd) {
+          const interval = fullSub.items?.data?.[0]?.price?.recurring?.interval;
+          const fallbackDays =
+            interval === 'day' ? 1
+            : interval === 'week' ? 7
+            : interval === 'year' ? 365
+            : 30;
+          subscriptionPeriodEnd = new Date(Date.now() + fallbackDays * 86_400_000);
+          this.logger.log(
+            `[checkout-debug] completeCheckoutRecord: fallback currentPeriodEnd=${subscriptionPeriodEnd.toISOString()} interval=${interval ?? 'none'} (${fallbackDays} dias)`,
+          );
+        }
       } catch (error) {
         this.logger.warn(
-          `[checkout-debug] completeCheckoutRecord: failed to fetch subscription period: ${error instanceof Error ? error.message : 'unknown'}`,
+          `[checkout-debug] completeCheckoutRecord: failed to fetch subscription: ${error instanceof Error ? error.message : 'unknown'}`,
         );
       }
     }
