@@ -2,6 +2,32 @@ import { AlertTriggerType } from '@prisma/client';
 
 export const STRIPE_EXPIRING_WINDOW_DAYS = 7;
 
+/**
+ * Retorna a janela de "expiring" em ms baseada no período de cobrança.
+ * - Diário: 1 dia antes
+ * - Semanal: 2 dias antes
+ * - Mensal / desconhecido: 7 dias antes
+ * - Anual: 30 dias antes
+ */
+export function resolveExpiringWindowMs(
+  billingInterval?: string | null,
+): number {
+  const dayMs = 86_400_000;
+
+  switch (billingInterval) {
+    case 'day':
+      return dayMs; // 1 dia
+    case 'week':
+      return 2 * dayMs; // 2 dias
+    case 'month':
+      return 7 * dayMs; // 7 dias (padrão)
+    case 'year':
+      return 30 * dayMs; // 30 dias
+    default:
+      return 7 * dayMs; // fallback seguro
+  }
+}
+
 export type SubscriptionSnapshot = {
   status: string;
   currentPeriodEnd: Date | null;
@@ -14,13 +40,14 @@ export function isSubscriptionExpiringSoon(
   status: string,
   currentPeriodEnd: Date | null,
   nowMs: number = Date.now(),
+  expiringWindowMs?: number,
 ): boolean {
   if (!currentPeriodEnd || (status !== 'active' && status !== 'trialing')) {
     return false;
   }
 
   const end = currentPeriodEnd.getTime();
-  const windowMs = STRIPE_EXPIRING_WINDOW_DAYS * 86_400_000;
+  const windowMs = expiringWindowMs ?? resolveExpiringWindowMs();
   return end >= nowMs && end <= nowMs + windowMs;
 }
 
@@ -41,6 +68,7 @@ export function resolveSubscriptionStripeTrigger(
   cancelAtPeriodEnd = false,
   nowMs: number = Date.now(),
   canceledAt?: number | null,
+  expiringWindowMs?: number,
 ): AlertTriggerType | null {
   if (!existing && status === 'canceled') {
     return AlertTriggerType.STRIPE_SUBSCRIPTION_CANCELED;
@@ -49,7 +77,7 @@ export function resolveSubscriptionStripeTrigger(
   // Cancelamento imediato: canceled_at passou de null/undefined para um valor
   if (
     canceledAt != null &&
-    (existing?.canceledAt == null) &&
+    existing?.canceledAt == null &&
     status !== 'canceled'
   ) {
     return AlertTriggerType.STRIPE_SUBSCRIPTION_CANCELED;
@@ -88,7 +116,14 @@ export function resolveSubscriptionStripeTrigger(
     return AlertTriggerType.STRIPE_SUBSCRIPTION_RENEWED;
   }
 
-  if (!isSubscriptionExpiringSoon(status, currentPeriodEnd, nowMs)) {
+  if (
+    !isSubscriptionExpiringSoon(
+      status,
+      currentPeriodEnd,
+      nowMs,
+      expiringWindowMs,
+    )
+  ) {
     return null;
   }
 
@@ -134,9 +169,7 @@ export function shouldDispatchInvoicePaymentTrigger(
     options?.stripeWebhookEventType === 'invoice.payment_failed';
 
   if (isWebhookDispatch) {
-    return (
-      statusChanged || forcedFailedWebhook || previousStatus === undefined
-    );
+    return statusChanged || forcedFailedWebhook || previousStatus === undefined;
   }
 
   if (previousStatus === undefined) {

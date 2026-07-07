@@ -54,6 +54,7 @@ import {
   type StripeSubscriptionRecord,
   subscriptionIncludesPrice,
   getStripeCustomerSnapshot,
+  getSubscriptionBillingInterval,
 } from '../../lib/stripe/billing-stripe-client';
 import { AlertsService } from '../alerts/alerts.service';
 import { BotStartSettingsService } from '../bot-start-settings/bot-start-settings.service';
@@ -64,6 +65,7 @@ import {
 import {
   resolveInvoicePaymentTrigger,
   resolveSubscriptionStripeTrigger,
+  resolveExpiringWindowMs,
   shouldDispatchInvoicePaymentTrigger,
   STRIPE_EXPIRING_WINDOW_DAYS,
 } from '../../lib/stripe/billing-sync-events';
@@ -680,6 +682,10 @@ export class StripeBillingSyncService {
       const currentPeriodEnd = this.fromUnix(subscription.current_period_end);
       const cancelAtPeriodEnd = subscription.cancel_at_period_end === true;
       const canceledAt = subscription.canceled_at ?? null;
+      const billingInterval = getSubscriptionBillingInterval(subscription);
+      const expiringWindowMs = resolveExpiringWindowMs(
+        billingInterval?.interval,
+      );
       const eventType = resolveSubscriptionStripeTrigger(
         existing,
         status,
@@ -687,9 +693,10 @@ export class StripeBillingSyncService {
         cancelAtPeriodEnd,
         undefined,
         canceledAt,
+        expiringWindowMs,
       );
       this.logger.log(
-        `[alert-dispatch] syncSubscriptions decision subId=${subscription.id} existingStatus=${existing?.status ?? 'none'} existingCancelAtPeriodEnd=${existing?.cancelAtPeriodEnd} existingLastEventType=${existing?.lastEventType ?? 'none'} existingLastDedupeKey=${existing?.lastAutomationDedupeKey ?? 'none'} status=${status} currentPeriodEnd=${currentPeriodEnd?.toISOString() ?? 'none'} cancelAtPeriodEnd=${cancelAtPeriodEnd} canceledAt=${canceledAt} eventType=${eventType ?? 'none'}`,
+        `[alert-dispatch] syncSubscriptions decision subId=${subscription.id} existingStatus=${existing?.status ?? 'none'} existingCancelAtPeriodEnd=${existing?.cancelAtPeriodEnd} existingLastEventType=${existing?.lastEventType ?? 'none'} existingLastDedupeKey=${existing?.lastAutomationDedupeKey ?? 'none'} status=${status} currentPeriodEnd=${currentPeriodEnd?.toISOString() ?? 'none'} cancelAtPeriodEnd=${cancelAtPeriodEnd} canceledAt=${canceledAt} billingInterval=${billingInterval?.interval ?? 'none'} expiringWindowMs=${expiringWindowMs} eventType=${eventType ?? 'none'}`,
       );
       const automationDedupeKey = eventType
         ? buildSubscriptionAutomationDedupeKey(eventType, {
@@ -1887,9 +1894,7 @@ export class StripeBillingService {
     let subscriptionPeriodEnd: Date | null = null;
     if (stripeSubscriptionId) {
       try {
-        const client = await this.getClientForConnection(
-          pending.connectionId,
-        );
+        const client = await this.getClientForConnection(pending.connectionId);
         const fullSub = await client.getSubscription(stripeSubscriptionId);
         subscriptionPeriodEnd = fullSub.current_period_end
           ? new Date(fullSub.current_period_end * 1000)

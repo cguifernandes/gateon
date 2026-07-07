@@ -47,6 +47,10 @@ export type StripeSubscriptionRecord = {
         id?: string;
         nickname?: string | null;
         product?: string | { name?: string | null } | null;
+        recurring?: {
+          interval?: string;
+          interval_count?: number;
+        } | null;
       } | null;
     }>;
   };
@@ -392,6 +396,17 @@ export function subscriptionIncludesPrice(
     subscription.items?.data?.some((item) => item.price?.id === priceId) ??
     false
   );
+}
+
+export function getSubscriptionBillingInterval(
+  subscription: StripeSubscriptionRecord,
+): { interval?: string; intervalCount?: number } | null {
+  const price = subscription.items?.data?.[0]?.price;
+  if (!price?.recurring) return null;
+  return {
+    interval: price.recurring.interval,
+    intervalCount: price.recurring.interval_count,
+  };
 }
 
 export function getStripeCustomerId(
