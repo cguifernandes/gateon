@@ -361,7 +361,9 @@ export class StripeBillingSyncService {
       connectionId,
       [enrichedSubscription],
     );
-    const productNames = await this.loadProductNames(client, [enrichedSubscription]);
+    const productNames = await this.loadProductNames(client, [
+      enrichedSubscription,
+    ]);
     await this.syncSubscriptions(
       connection.userId,
       connectionId,
@@ -1881,6 +1883,22 @@ export class StripeBillingService {
       select: { monitoredPlanLabel: true },
     });
 
+    // Buscar subscription completa para obter currentPeriodEnd
+    let subscriptionPeriodEnd: Date | null = null;
+    if (stripeSubscriptionId) {
+      try {
+        const client = await this.getClientForConnection(
+          pending.connectionId,
+        );
+        const fullSub = await client.getSubscription(stripeSubscriptionId);
+        subscriptionPeriodEnd = fullSub.current_period_end
+          ? new Date(fullSub.current_period_end * 1000)
+          : null;
+      } catch {
+        // fallback: não conseguiu buscar período
+      }
+    }
+
     await this.prisma.$transaction(async (tx) => {
       await tx.stripeTelegramCheckoutSessions.update({
         where: { id: pending.id },
@@ -1942,6 +1960,7 @@ export class StripeBillingService {
             stripeCustomerId,
             status: 'active',
             planName: connection?.monitoredPlanLabel ?? null,
+            currentPeriodEnd: subscriptionPeriodEnd,
             cancelAtPeriodEnd: false,
             canceledAt: null,
           },
@@ -1950,6 +1969,7 @@ export class StripeBillingService {
             stripeCustomerId,
             status: 'active',
             planName: connection?.monitoredPlanLabel ?? null,
+            currentPeriodEnd: subscriptionPeriodEnd,
             cancelAtPeriodEnd: false,
             canceledAt: null,
           },
