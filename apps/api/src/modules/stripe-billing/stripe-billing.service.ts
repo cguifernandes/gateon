@@ -300,6 +300,25 @@ export class StripeBillingSyncService {
     );
   }
 
+  async dispatchPaymentFailedFromWebhook(
+    userId: string,
+    connectionId: string,
+    stripeInvoiceId: string,
+    stripeCustomerId: string | null,
+  ) {
+    this.logger.log(
+      `[alert-dispatch] dispatchPaymentFailedFromWebhook userId=${userId} connectionId=${connectionId} invoiceId=${stripeInvoiceId} stripeCustomerId=${stripeCustomerId ?? 'none'}`,
+    );
+    await processInvoiceStripeEvent(
+      this.dispatchDeps(),
+      userId,
+      connectionId,
+      'uncollectible',
+      stripeInvoiceId,
+      stripeCustomerId,
+    );
+  }
+
   async recordAudit(
     userId: string,
     connectionId: string | null,
@@ -2601,6 +2620,27 @@ export class StripeBillingWebhookService {
             object as StripeInvoiceRecord,
             type,
           );
+          break;
+        }
+        case 'payment_intent.payment_failed': {
+          const invoiceId = typeof (object as any).invoice === 'string' ? (object as any).invoice.trim() : null;
+          this.logger.log(
+            `[webhook-debug] processing payment_intent.payment_failed connectionId=${connectionId} paymentIntentId=${(object as any).id} invoiceId=${invoiceId ?? 'none'}`,
+          );
+          if (invoiceId) {
+            const payment = await this.prisma.stripeBillingPayments.findFirst({
+              where: { connectionId, stripeInvoiceId: invoiceId },
+              select: { userId: true, stripeCustomerId: true },
+            });
+            if (payment) {
+              await this.sync.dispatchPaymentFailedFromWebhook(
+                payment.userId,
+                connectionId,
+                invoiceId,
+                payment.stripeCustomerId,
+              );
+            }
+          }
           break;
         }
         case 'checkout.session.completed': {
