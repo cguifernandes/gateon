@@ -11,6 +11,7 @@ import { Cron } from '@nestjs/schedule';
 import type { IncomingHttpHeaders } from 'node:http';
 import { ConfigService } from '@nestjs/config';
 import {
+  AlertTriggerType,
   Prisma,
   StripeBillingAuditAction,
   StripeBillingConnectionStatus,
@@ -1070,7 +1071,7 @@ export class StripeBillingSyncService {
 
     const connections = await this.prisma.stripeBillingConnections.findMany({
       where: { status: StripeBillingConnectionStatus.CONNECTED },
-      select: { id: true, userId: true, monitoredStripePriceId: true },
+      select: { id: true, userId: true, monitoredStripePriceId: true, encryptedApiKey: true },
     });
 
     let totalConnections = 0;
@@ -1079,14 +1080,59 @@ export class StripeBillingSyncService {
       if (!connection.monitoredStripePriceId) continue;
 
       try {
-        await this.syncConnection(connection.userId, connection.id);
+        const subscriptions = await this.prisma.stripeBillingSubscriptions.findMany({
+          where: {
+            connectionId: connection.id,
+            status: { in: ['active', 'trialing'] },
+            currentPeriodEnd: { not: null },
+          },
+          select: {
+            id: true,
+            stripeSubscriptionId: true,
+            stripeCustomerId: true,
+            currentPeriodEnd: true,
+            lastEventType: true,
+          },
+        });
+
+        const nowMs = Date.now();
+
+        for (const sub of subscriptions) {
+          if (!sub.currentPeriodEnd) continue;
+
+          const endMs = sub.currentPeriodEnd.getTime();
+          const expiringWindowMs = resolveExpiringWindowMs();
+
+          if (endMs >= nowMs && endMs <= nowMs + expiringWindowMs) {
+            if (
+              sub.lastEventType === 'STRIPE_SUBSCRIPTION_EXPIRING'
+            ) {
+              continue;
+            }
+
+            await dispatchSubscriptionStripeTrigger(
+              this.dispatchDeps(),
+              connection.userId,
+              connection.id,
+              AlertTriggerType.STRIPE_SUBSCRIPTION_EXPIRING,
+              sub.stripeSubscriptionId,
+              sub.stripeCustomerId,
+            );
+
+            await this.prisma.stripeBillingSubscriptions.update({
+              where: { id: sub.id },
+              data: { lastEventType: AlertTriggerType.STRIPE_SUBSCRIPTION_EXPIRING },
+            });
+          }
+        }
+
         totalConnections++;
         this.logger.log(
-          `[cron] checkExpiringSubscriptions: sincronizado connectionId=${connection.id} userId=${connection.userId}`,
+          `[cron] checkExpiringSubscriptions: processado connectionId=${connection.id} userId=${connection.userId}`,
         );
       } catch (error) {
         this.logger.warn(
-          `[cron] checkExpiringSubscriptions: erro ao sincronizar connectionId=${connection.id}: ${error instanceof Error ? error.message : 'unknown'}`,
+          `[cron] checkExpiringSubscriptions: erro connectionId=${connection.id}: ${error instanceof Error ? error.message : 'unknown'}`,
         );
       }
     }
