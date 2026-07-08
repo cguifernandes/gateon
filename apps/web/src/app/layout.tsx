@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/next";
 import { NavigationProgressBar } from "@/components/navigation-progress-bar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -79,6 +80,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
           <NavigationProgressBar />
           <TooltipProvider>{children}</TooltipProvider>
           <Toaster />
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>
