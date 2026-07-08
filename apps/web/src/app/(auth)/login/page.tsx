@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
-import { getSessionUser } from "@/lib/server/data/get-session";
 import { AuthForm } from "../_components/auth-form";
 
 export const metadata: Metadata = {
@@ -9,12 +7,6 @@ export const metadata: Metadata = {
 };
 
 export default async function LoginPage() {
-  const user = await getSessionUser();
-
-  if (user) {
-    redirect("/dashboard");
-  }
-
   return (
     <AuthForm
       title="Entrar na conta"

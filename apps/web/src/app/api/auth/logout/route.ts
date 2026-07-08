@@ -59,7 +59,9 @@ export async function POST() {
   response.cookies.set(SESSION_COOKIE_NAME, "", {
     expires: new Date(0),
     path: "/",
-    domain: ".gateon.app",
+    ...(process.env.COOKIE_DOMAIN
+      ? { domain: process.env.COOKIE_DOMAIN }
+      : {}),
     httpOnly: true,
     secure: true,
     sameSite: "lax",

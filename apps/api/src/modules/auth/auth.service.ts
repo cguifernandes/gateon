@@ -89,7 +89,9 @@ export class AuthService {
       sameSite: 'lax',
       path: '/',
       ...(expires ? { expires } : {}),
-      domain: process.env.COOKIE_DOMAIN || undefined,
+      ...(process.env.COOKIE_DOMAIN
+        ? { domain: process.env.COOKIE_DOMAIN }
+        : {}),
     };
   }
 
@@ -431,7 +433,6 @@ export class AuthService {
   async logout(req: Request, res: Response): Promise<{ ok: true }> {
     const token = req.cookies?.[SESSION_COOKIE_NAME] as string | undefined;
     await this.revokeByToken(token);
-    const options = this.sessionCookieOptions();
 
     res.clearCookie(SESSION_COOKIE_NAME, this.sessionCookieOptions());
     return { ok: true };
@@ -458,8 +459,6 @@ export class AuthService {
       res.clearCookie(SESSION_COOKIE_NAME, this.sessionCookieOptions());
       throw new UnauthorizedException('Session expired');
     }
-
-    const options = this.sessionCookieOptions(rotated.session.expiresAt);
 
     res.cookie(
       SESSION_COOKIE_NAME,
@@ -801,7 +800,9 @@ export class AuthService {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/',
-        domain: process.env.COOKIE_DOMAIN || undefined,
+        ...(process.env.COOKIE_DOMAIN
+          ? { domain: process.env.COOKIE_DOMAIN }
+          : {}),
       });
       throw new BadRequestException('Invalid OAuth state');
     }
@@ -810,7 +811,9 @@ export class AuthService {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      domain: process.env.COOKIE_DOMAIN || undefined,
+      ...(process.env.COOKIE_DOMAIN
+        ? { domain: process.env.COOKIE_DOMAIN }
+        : {}),
     });
     const accessToken = await this.exchangeCodeForAccessToken(code);
     const profile = await this.fetchGoogleUserProfile(accessToken);

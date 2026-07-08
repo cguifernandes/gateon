@@ -167,7 +167,9 @@ export class AuthController {
       sameSite: 'lax',
       path: '/',
       maxAge: this.auth.getOAuthStateTtlMs(),
-      domain: process.env.COOKIE_DOMAIN || undefined,
+      ...(process.env.COOKIE_DOMAIN
+        ? { domain: process.env.COOKIE_DOMAIN }
+        : {}),
     });
     const url = this.auth.buildGoogleAuthorizationUrl(state);
     return res.redirect(url);

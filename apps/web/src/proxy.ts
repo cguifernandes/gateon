@@ -12,11 +12,25 @@ const PRIVATE_PATH_PREFIXES = [
   "/profile",
 ] as const;
 
+const AUTH_PATHS = [
+  "/login",
+  "/register",
+  "/forget-password",
+  "/reset-password"
+] as const  
+
 function isPrivatePath(pathname: string): boolean {
   return PRIVATE_PATH_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
 }
+
+function isAuthPath(pathname: string): boolean {
+  return AUTH_PATHS.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
 
 /**
  * Edge auth redirects before paint:
@@ -28,6 +42,16 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const session = request.cookies.get(SESSION_COOKIE_NAME)?.value;
 
+  if (isAuthPath(pathname)) {
+    if (session) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      return NextResponse.redirect(url);
+    }
+
+    return NextResponse.next();
+  }
+
   if (isPrivatePath(pathname)) {
     if (!session) {
       const url = request.nextUrl.clone();
@@ -35,6 +59,7 @@ export function proxy(request: NextRequest) {
       url.searchParams.set("next", pathname);
       return NextResponse.redirect(url);
     }
+
     return NextResponse.next();
   }
 
