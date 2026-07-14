@@ -39,6 +39,8 @@ export async function logoutAction(): Promise<void> {
         signal: AbortSignal.timeout(10_000),
       });
 
+      console.log({ response });
+
       if (!response.ok && response.status !== 401) {
         reportServerActionError({
           action: ACTION,
