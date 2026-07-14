@@ -18,6 +18,7 @@ import {
   type PlanId,
 } from '../../lib/zod/billing-schemas';
 import { PLAN_LABELS } from '../../lib/plan/plan-limits';
+import { sendPaymentConfirmationEmail } from '../../lib/billing/payment-confirmation-mail';
 
 @Injectable()
 export class BillingService {
@@ -362,6 +363,21 @@ export class BillingService {
         data: { planId },
       });
       console.log('[billing-webhook] user plan updated', { userId, planId });
+    }
+
+    // Enviar email de confirmação de pagamento
+    const user = await this.prisma.users.findUnique({
+      where: { id: userId },
+      select: { email: true, name: true },
+    });
+
+    if (user?.email) {
+      const planName = planId ? PLAN_LABELS[planId] : 'Gateon';
+      await sendPaymentConfirmationEmail({
+        to: user.email,
+        userName: user.name,
+        planName,
+      });
     }
   }
 

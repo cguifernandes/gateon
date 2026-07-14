@@ -1,9 +1,10 @@
-export type PasswordResetEmailInput = {
-  resetUrl: string;
-  expiresAt: Date;
+export type PaymentConfirmationEmailInput = {
+  userName: string | null;
+  planName: string;
+  supportEmail: string;
 };
 
-export type PasswordResetEmailContent = {
+export type PaymentConfirmationEmailContent = {
   subject: string;
   text: string;
   html: string;
@@ -30,16 +31,10 @@ function escapeHtml(value: string): string {
     .replaceAll("'", '&#39;');
 }
 
-function formatExpiry(expiresAt: Date): string {
-  return new Intl.DateTimeFormat('pt-BR', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  }).format(expiresAt);
-}
-
-function resolveSiteUrl(resetUrl: string): string {
+function resolveSiteUrl(): string {
   try {
-    return new URL(resetUrl).origin;
+    const url = process.env.WEB_BASE_URL ?? 'https://gateon.app';
+    return new URL(url).origin;
   } catch {
     return 'https://gateon.app';
   }
@@ -78,12 +73,12 @@ function buildLogoHtml(): string {
       `.trim();
 }
 
-function buildHtmlTemplate(
-  input: PasswordResetEmailInput,
-  expiryLabel: string,
-): string {
-  const resetUrl = escapeHtml(input.resetUrl);
-  const siteUrl = escapeHtml(resolveSiteUrl(input.resetUrl));
+function buildHtmlTemplate(input: PaymentConfirmationEmailInput): string {
+  const userName = input.userName?.trim() || 'usuário';
+  const displayName = escapeHtml(userName);
+  const planName = escapeHtml(input.planName);
+  const supportEmail = escapeHtml(input.supportEmail);
+  const siteUrl = escapeHtml(resolveSiteUrl());
 
   return `
 <!DOCTYPE html>
@@ -93,7 +88,7 @@ function buildHtmlTemplate(
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light" />
     <meta name="supported-color-schemes" content="light" />
-    <title>Redefinição de senha — Gateon</title>
+    <title>Pagamento confirmado — Gateon</title>
   </head>
   <body style="margin:0;padding:0;background-color:${BRAND.surface};font-family:Inter,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:${BRAND.foreground};-webkit-font-smoothing:antialiased;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.surface};padding:32px 16px;">
@@ -108,46 +103,33 @@ function buildHtmlTemplate(
             <tr>
               <td style="padding:24px 28px 0 28px;">
                 <h1 style="margin:0;font-size:24px;text-align:center;line-height:1.25;font-weight:700;letter-spacing:-0.02em;color:${BRAND.foreground};">
-                  Redefinição de senha
+                  Pagamento confirmado!
                 </h1>
+                <p style="margin:16px 0 0 0;font-size:15px;text-align:center;line-height:1.6;color:${BRAND.muted};">
+                  Olá, <strong style="color:${BRAND.foreground};">${displayName}</strong>!
+                  Seu pagamento do plano <strong style="color:${BRAND.foreground};">${planName}</strong> foi confirmado com sucesso.
+                </p>
                 <p style="margin:12px 0 0 0;font-size:15px;text-align:center;line-height:1.6;color:${BRAND.muted};">
-                  Recebemos uma solicitação para redefinir a senha da sua conta Gateon.
-                  Clique no botão abaixo para criar uma nova senha.
+                  Agradecemos pela confiança! Sua conta já está com acesso liberado.
                 </p>
               </td>
             </tr>
             <tr>
-              <td style="padding:28px 28px 8px 28px;" align="center">
-                <a href="${resetUrl}" style="display:inline-block;background-color:${BRAND.primary};color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;line-height:1;padding:14px 28px;border-radius:10px;box-shadow:0 8px 20px rgba(59,130,246,0.28);">
-                  Redefinir senha
-                </a>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:8px 28px 0 28px;">
+              <td style="padding:20px 28px 0 28px;">
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${BRAND.notice};border:1px solid ${BRAND.border};border-radius:14px;">
                   <tr>
                     <td style="padding:14px 16px;font-size:13px;text-align:center;line-height:1.5;color:${BRAND.muted};">
-                      <strong style="color:${BRAND.foreground};">Validade do link:</strong>
-                      expira em ${escapeHtml(expiryLabel)}.
-                      Por segurança, ele só pode ser usado uma vez.
+                      Precisa de ajuda? Fale com a gente pelo email:<br />
+                      <a href="mailto:${supportEmail}" style="color:${BRAND.primary};font-weight:600;text-decoration:underline;font-size:15px;">${supportEmail}</a>
                     </td>
                   </tr>
                 </table>
               </td>
             </tr>
             <tr>
-              <td style="padding:20px 28px 0 28px;">
+              <td style="padding:18px 28px 28px 28px;">
                 <p style="margin:0;font-size:13px;text-align:center;line-height:1.6;color:${BRAND.muted};">
-                  Se você não solicitou esta alteração, ignore este e-mail. Sua senha atual continuará válida.
-                </p>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:20px 28px 28px 28px;">
-                <p style="margin:0;font-size:12px;text-align:center;line-height:1.6;color:${BRAND.muted};word-break:break-all;">
-                  Se o botão não funcionar, copie e cole este link no navegador:<br />
-                  <a href="${resetUrl}" style="color:${BRAND.primary};text-decoration:underline;">${resetUrl}</a>
+                  Se você não realizou este pagamento, entre em contato conosco imediatamente pelo email <a href="mailto:${supportEmail}" style="color:${BRAND.primary};text-decoration:underline;">${supportEmail}</a>.
                 </p>
               </td>
             </tr>
@@ -168,33 +150,32 @@ function buildHtmlTemplate(
   `.trim();
 }
 
-function buildTextTemplate(
-  input: PasswordResetEmailInput,
-  expiryLabel: string,
-): string {
+function buildTextTemplate(input: PaymentConfirmationEmailInput): string {
+  const userName = input.userName?.trim() || 'usuário';
+  const planName = input.planName;
+  const supportEmail = input.supportEmail;
+
   return [
-    'Gateon — Redefinição de senha',
+    `Gateon — Pagamento confirmado`,
     '',
-    'Recebemos uma solicitação para redefinir a senha da sua conta Gateon.',
+    `Olá, ${userName}!`,
     '',
-    `Redefinir senha: ${input.resetUrl}`,
+    `Seu pagamento do plano ${planName} foi confirmado com sucesso.`,
     '',
-    `Este link expira em ${expiryLabel}.`,
-    'Por segurança, o link só pode ser usado uma vez.',
+    'Agradecemos pela confiança! Sua conta já está com acesso liberado.',
     '',
-    'Se você não solicitou esta alteração, ignore este e-mail.',
-    'Sua senha atual continuará válida.',
+    `Precisa de ajuda? Fale com a gente: ${supportEmail}`,
+    '',
+    `Se você não realizou este pagamento, entre em contato: ${supportEmail}`,
   ].join('\n');
 }
 
-export function buildPasswordResetEmailContent(
-  input: PasswordResetEmailInput,
-): PasswordResetEmailContent {
-  const expiryLabel = formatExpiry(input.expiresAt);
-
+export function buildPaymentConfirmationEmailContent(
+  input: PaymentConfirmationEmailInput,
+): PaymentConfirmationEmailContent {
   return {
-    subject: 'Redefinição de senha — Gateon',
-    text: buildTextTemplate(input, expiryLabel),
-    html: buildHtmlTemplate(input, expiryLabel),
+    subject: 'Pagamento confirmado — Gateon',
+    text: buildTextTemplate(input),
+    html: buildHtmlTemplate(input),
   };
 }
