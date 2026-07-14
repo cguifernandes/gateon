@@ -11,6 +11,10 @@ export async function POST() {
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
+  console.log("===== LOGOUT =====");
+  console.log("COOKIE_DOMAIN:", process.env.COOKIE_DOMAIN);
+  console.log("SESSION ANTES:", sessionToken);
+
   if (!base && sessionToken) {
     reportServerActionError({
       action: ACTION,
@@ -59,13 +63,13 @@ export async function POST() {
   response.cookies.set(SESSION_COOKIE_NAME, "", {
     expires: new Date(0),
     path: "/",
-    ...(process.env.COOKIE_DOMAIN
-      ? { domain: process.env.COOKIE_DOMAIN }
-      : {}),
+    ...(process.env.COOKIE_DOMAIN ? { domain: process.env.COOKIE_DOMAIN } : {}),
     httpOnly: true,
     secure: true,
     sameSite: "lax",
   });
+
+  console.log("COOKIE DE REMOÇÃO:", response.cookies.getAll());
 
   return response;
 }

@@ -16,8 +16,8 @@ const AUTH_PATHS = [
   "/login",
   "/register",
   "/forget-password",
-  "/reset-password"
-] as const  
+  "/reset-password",
+] as const;
 
 function isPrivatePath(pathname: string): boolean {
   return PRIVATE_PATH_PREFIXES.some(
@@ -31,7 +31,6 @@ function isAuthPath(pathname: string): boolean {
   );
 }
 
-
 /**
  * Edge auth redirects before paint:
  * - Private app routes without session cookie → `/login`
@@ -41,6 +40,11 @@ function isAuthPath(pathname: string): boolean {
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const session = request.cookies.get(SESSION_COOKIE_NAME)?.value;
+
+  console.log("MIDDLEWARE", {
+    pathname: request.nextUrl.pathname,
+    cookie: request.cookies.get(SESSION_COOKIE_NAME),
+  });
 
   if (isAuthPath(pathname)) {
     if (session) {

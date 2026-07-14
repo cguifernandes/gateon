@@ -60,9 +60,7 @@ export async function logoutAction(): Promise<void> {
   cookieStore.set(SESSION_COOKIE_NAME, "", {
     expires: new Date(0),
     path: "/",
-    ...(process.env.COOKIE_DOMAIN
-      ? { domain: process.env.COOKIE_DOMAIN }
-      : {}),
+    ...(process.env.COOKIE_DOMAIN ? { domain: process.env.COOKIE_DOMAIN } : {}),
     httpOnly: true,
     secure: true,
     sameSite: "lax",
