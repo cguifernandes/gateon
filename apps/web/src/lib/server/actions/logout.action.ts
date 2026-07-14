@@ -59,13 +59,18 @@ export async function logoutAction(): Promise<void> {
     }
   }
 
+  console.log("ANTES", cookieStore.get(SESSION_COOKIE_NAME));
+
   cookieStore.set(SESSION_COOKIE_NAME, "", {
     expires: new Date(0),
     path: "/",
     ...(process.env.COOKIE_DOMAIN ? { domain: process.env.COOKIE_DOMAIN } : {}),
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
   });
+
+  console.log("DEPOIS", cookieStore.get(SESSION_COOKIE_NAME));
+
   redirect("/");
 }

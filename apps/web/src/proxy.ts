@@ -41,11 +41,6 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const session = request.cookies.get(SESSION_COOKIE_NAME)?.value;
 
-  console.log("MIDDLEWARE", {
-    pathname: request.nextUrl.pathname,
-    cookie: request.cookies.get(SESSION_COOKIE_NAME),
-  });
-
   if (isAuthPath(pathname)) {
     if (session) {
       const url = request.nextUrl.clone();
