@@ -9,6 +9,7 @@ type StatCardProps = {
   suffix?: string;
   className?: string;
   textClassName?: string;
+  titleClassName?: string;
   showDescription?: boolean;
   prefix?: string | ReactNode;
 };
@@ -20,6 +21,7 @@ export function StatCard({
   suffix,
   className,
   textClassName,
+  titleClassName,
   showDescription = true,
   prefix,
 }: StatCardProps) {
@@ -31,7 +33,12 @@ export function StatCard({
       )}
     >
       <div className="flex flex-col gap-1">
-        <p className={cn("font-heading font-medium text-muted-foreground")}>
+        <p
+          className={cn(
+            "font-heading font-medium text-muted-foreground",
+            titleClassName,
+          )}
+        >
           {title}
         </p>
         <AnimatedNumberFlow
@@ -39,7 +46,10 @@ export function StatCard({
           finalValue={Number(value)}
           prefix={prefix}
           suffix={suffix}
-          className={cn("text-3xl font-bold text-foreground", textClassName)}
+          className={cn(
+            "text-3xl font-bold leading-none text-foreground",
+            textClassName,
+          )}
         />
       </div>
       {showDescription && (

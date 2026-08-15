@@ -22,7 +22,7 @@ export default async function AlertsPage() {
   ]);
 
   return (
-    <div className="flex flex-col gap-6 pb-10">
+    <div className="flex flex-col gap-6 pt-4 pb-10">
       {error ? (
         <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-destructive text-sm">
           {error}

@@ -18,7 +18,7 @@ export default function DashboardSettingsPage() {
   );
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-6 pt-4 pb-10">
       <div className="space-y-1">
         <h1 className="font-semibold text-2xl tracking-tight">Configurações</h1>
         <p className="text-muted-foreground font-light text-sm">

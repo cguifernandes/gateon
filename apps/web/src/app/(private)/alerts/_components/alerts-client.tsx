@@ -133,15 +133,9 @@ export function AlertsClient({
       <div className="overflow-hidden rounded-xl border border-border bg-card">
         <div className="flex flex-col gap-3 bg-linear-to-br from-card via-card to-primary/30 p-6">
           <Badge variant="outline">Automação Telegram</Badge>
-          <div className="flex flex-col gap-1">
-            <h1 className="font-heading font-extrabold text-3xl leading-[1.08] tracking-tight text-foreground">
-              Central de Alertas
-            </h1>
-            <p className="max-w-2xl font-light text-muted-foreground text-sm">
-              Crie avisos automáticos e campanhas administrativas para seus
-              grupos e membros.
-            </p>
-          </div>
+          <h1 className="font-heading font-semibold text-3xl leading-[1.08] tracking-tight text-foreground">
+            Central de Alertas
+          </h1>
         </div>
       </div>
 
@@ -151,12 +145,18 @@ export function AlertsClient({
           title="Automações ativas"
           value={stats.activeCount.toString()}
           description="Automações publicadas e prontas para disparo por eventos do grupo."
+          showDescription={false}
+          titleClassName="text-sm"
+          className="border-0 shadow-sm ring-1 ring-foreground/10"
         />
         <StatCard
           key={`sent-${stats.sentToday}`}
           title="Enviadas hoje"
           value={stats.sentToday.toString()}
           description="Mensagens que o bot entregou com sucesso no dia de hoje."
+          showDescription={false}
+          titleClassName="text-sm"
+          className="border-0 shadow-sm ring-1 ring-foreground/10"
         />
         <StatCard
           key={`rate-${stats.deliveryRate}`}
@@ -164,12 +164,18 @@ export function AlertsClient({
           value={stats.deliveryRate.toString()}
           suffix="%"
           description="Percentual de sucesso nas execuções de envio registradas hoje."
+          showDescription={false}
+          titleClassName="text-sm"
+          className="border-0 shadow-sm ring-1 ring-foreground/10"
         />
         <StatCard
           key={`draft-${stats.draftCount}`}
           title="Rascunhos"
           value={stats.draftCount.toString()}
           description="Alertas guardados como rascunho e que ainda não foram publicados."
+          showDescription={false}
+          titleClassName="text-sm"
+          className="border-0 shadow-sm ring-1 ring-foreground/10"
         />
       </div>
 

@@ -25,18 +25,13 @@ export default async function GroupsPage() {
     !error && summary.totalGroups >= getMaxGroupsForPlan(planId);
 
   return (
-    <div className="relative flex flex-col gap-6 pb-10">
+    <div className="relative flex flex-col gap-6 pt-4 pb-10">
       {!error ? <SyncGroupLimit connectedCount={summary.totalGroups} /> : null}
 
       <div className={cn("flex flex-col gap-3", isAtLimit && "mt-[46px]")}>
-        <div className="flex flex-col gap-1">
-          <h1 className="font-heading text-2xl font-extrabold leading-[1.08] tracking-tight text-foreground">
-            Grupos conectados
-          </h1>
-          <p className="font-light text-muted-foreground text-sm">
-            Gerencie todos os grupos conectados ao seu bot.
-          </p>
-        </div>
+        <h1 className="font-heading text-2xl font-semibold leading-[1.08] tracking-tight text-foreground">
+          Grupos
+        </h1>
         {!error ? <GroupsSummaryStats summary={summary} /> : null}
       </div>
 

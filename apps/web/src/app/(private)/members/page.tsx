@@ -23,17 +23,11 @@ export default async function MembersPage() {
   const pageError = error ?? filterGroupsError;
 
   return (
-    <div className="relative flex h-full flex-col gap-6 pb-10">
+    <div className="relative flex h-full flex-col gap-6 pt-4 pb-10">
       <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-1">
-          <h1 className="font-heading text-2xl font-extrabold leading-[1.08] tracking-tight text-foreground">
-            Membros
-          </h1>
-          <p className="font-light text-muted-foreground text-sm">
-            Visualize membros por grupo e selecione vários perfis para ações de
-            gestão.
-          </p>
-        </div>
+        <h1 className="font-heading text-2xl font-semibold leading-[1.08] tracking-tight text-foreground">
+          Membros
+        </h1>
 
         {!error ? <MemberSummaryStats summary={membersSummary} /> : null}
       </div>

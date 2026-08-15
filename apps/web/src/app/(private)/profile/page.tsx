@@ -22,7 +22,7 @@ export default async function ProfilePage() {
   const displayName = profile.user.name ?? profile.user.email;
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-6 pt-4 pb-10">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <Avatar className="size-16 shadow-sm ring-1 ring-border">

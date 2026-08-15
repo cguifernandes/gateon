@@ -15,7 +15,7 @@ export default async function IntegrationsPage() {
   ]);
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-6 pt-4 pb-10">
       <IntegrationsClient
         initialStatus={data}
         loadError={error ?? groupsError}

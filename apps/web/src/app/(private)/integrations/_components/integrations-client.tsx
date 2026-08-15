@@ -27,16 +27,9 @@ export function IntegrationsClient({
       <div className="overflow-hidden rounded-xl border border-border bg-card">
         <div className="flex flex-col gap-3 bg-linear-to-br from-card via-card to-primary/30 p-6">
           <Badge variant="outline">Integrações</Badge>
-          <div className="flex flex-col gap-1">
-            <h1 className="font-heading font-extrabold text-3xl leading-[1.08] tracking-tight text-foreground">
-              Integrações
-            </h1>
-            <p className="font-light text-muted-foreground text-sm">
-              Conecte gateways de pagamento para monitorar assinaturas. Com
-              webhook Stripe configurado, alertas e automações disparam em tempo
-              real.
-            </p>
-          </div>
+          <h1 className="font-heading font-semibold text-3xl leading-[1.08] tracking-tight text-foreground">
+            Integrações
+          </h1>
         </div>
       </div>
 

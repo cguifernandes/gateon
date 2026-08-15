@@ -207,7 +207,7 @@ export function StripePricingSection({
   return (
     <section className={cn("space-y-8 w-full flex-1", className)}>
       <div className="space-y-2 text-center">
-        <h2 className="font-heading text-3xl font-extrabold leading-[1.08] tracking-tight text-foreground">
+        <h2 className="font-heading text-3xl font-semibold leading-[1.08] tracking-tight text-foreground">
           Planos para cada fase do seu negócio
         </h2>
         <p className="mx-auto max-w-2xl font-light text-muted-foreground text-sm sm:text-base">
