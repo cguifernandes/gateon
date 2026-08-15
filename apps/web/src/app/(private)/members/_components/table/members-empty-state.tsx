@@ -11,6 +11,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { cn } from "@/lib/utils";
 
 type MembersEmptyStateProps = {
   hasNoGroups: boolean;
@@ -20,6 +21,7 @@ type MembersEmptyStateProps = {
   embedded?: boolean;
   onClearSearch: () => void;
   onClearPopoverFilters?: () => void;
+  className?: string;
 };
 
 export function MembersEmptyState({
@@ -30,12 +32,14 @@ export function MembersEmptyState({
   embedded = false,
   onClearSearch,
   onClearPopoverFilters,
+  className,
 }: MembersEmptyStateProps) {
   return (
     <Empty
-      className={
-        embedded ? "border-0 py-10" : "rounded-md border border-border"
-      }
+      className={cn(
+        embedded ? "border-0 py-10" : "rounded-md border border-border",
+        className,
+      )}
     >
       <EmptyHeader>
         <EmptyMedia className="size-14 rounded-lg">
@@ -46,7 +50,7 @@ export function MembersEmptyState({
           <>
             <EmptyTitle>Nenhum grupo conectado</EmptyTitle>
             <EmptyDescription className="max-w-sm text-pretty">
-              Use o botão &quot;Cadastrar um novo&quot; para vincular seu
+              Use o botão &quot;Conectar um grupo&quot; para vincular seu
               primeiro grupo do Telegram. Os membros rastreados aparecerão aqui
               quando o bot registrar entradas.
             </EmptyDescription>

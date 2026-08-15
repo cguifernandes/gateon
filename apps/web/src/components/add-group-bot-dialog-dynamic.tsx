@@ -1,14 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import {
-  type ComponentProps,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import { PlusIcon, type PlusIconHandle } from "@/components/icons/plus";
+import { type ComponentProps, useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useGroupLimit } from "@/contexts/group-limit-context";
 import { cn } from "@/lib/utils";
@@ -34,7 +27,6 @@ export function AddGroupBotDialog({
   ...rest
 }: AddGroupBotDialogProps) {
   const { canAddGroup, isAtLimit, maxGroups } = useGroupLimit();
-  const plusIconRef = useRef<PlusIconHandle | null>(null);
   const [internalOpen, setInternalOpen] = useState(false);
   const [dialogLoaded, setDialogLoaded] = useState(false);
 
@@ -92,11 +84,8 @@ export function AddGroupBotDialog({
           title={limitTitle}
           className={cn("w-full sm:w-auto", triggerClassName)}
           onClick={openDialog}
-          onMouseEnter={() => plusIconRef.current?.startAnimation()}
-          onMouseLeave={() => plusIconRef.current?.stopAnimation()}
         >
-          <PlusIcon ref={plusIconRef} size={14} />
-          Conectar Novo Grupo
+          Conectar um grupo
         </Button>
       ) : null}
 

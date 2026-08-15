@@ -1,4 +1,3 @@
-import { AddGroupBotDialog } from "@/components/add-group-bot-dialog-dynamic";
 import { UsersIcon } from "@/components/icons/users";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +17,6 @@ type GroupsEmptyStateProps = {
   embedded?: boolean;
   onClearSearch: () => void;
   onClearPopoverFilters: () => void;
-  onConnectionCompleted?: () => void | Promise<void>;
 };
 
 export function GroupsEmptyState({
@@ -28,7 +26,6 @@ export function GroupsEmptyState({
   embedded = false,
   onClearSearch,
   onClearPopoverFilters,
-  onConnectionCompleted,
 }: GroupsEmptyStateProps) {
   const isNoGroupsFullPage = hasNoGroups && !embedded;
 
@@ -36,7 +33,7 @@ export function GroupsEmptyState({
     <Empty
       className={
         isNoGroupsFullPage
-          ? ""
+          ? "w-full border-0"
           : embedded
             ? "border-0 bg-background py-10"
             : "rounded-md border border-border"
@@ -50,7 +47,7 @@ export function GroupsEmptyState({
           <>
             <EmptyTitle>Nenhum grupo conectado</EmptyTitle>
             <EmptyDescription className="max-w-sm text-pretty">
-              Use o botão &quot;Cadastrar um novo&quot; para vincular seu
+              Use o botão &quot;Cadastrar um grupo&quot; para vincular seu
               primeiro grupo do Telegram. O Gateon cuidará de membros e
               assinaturas por você.
             </EmptyDescription>
@@ -73,31 +70,30 @@ export function GroupsEmptyState({
           </>
         )}
       </EmptyHeader>
-      <EmptyContent className="flex flex-wrap justify-center gap-2">
-        {isSearchEmpty ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onClearSearch}
-          >
-            Limpar busca
-          </Button>
-        ) : null}
-        {isPopoverFilterEmpty ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onClearPopoverFilters}
-          >
-            Limpar filtros
-          </Button>
-        ) : null}
-        {hasNoGroups ? (
-          <AddGroupBotDialog onConnectionCompleted={onConnectionCompleted} />
-        ) : null}
-      </EmptyContent>
+      {(isSearchEmpty || isPopoverFilterEmpty) && (
+        <EmptyContent className="flex flex-wrap justify-center gap-2">
+          {isSearchEmpty ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClearSearch}
+            >
+              Limpar busca
+            </Button>
+          ) : null}
+          {isPopoverFilterEmpty ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClearPopoverFilters}
+            >
+              Limpar filtros
+            </Button>
+          ) : null}
+        </EmptyContent>
+      )}
     </Empty>
   );
 }

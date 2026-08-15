@@ -39,8 +39,6 @@ export async function logoutAction(): Promise<void> {
         signal: AbortSignal.timeout(10_000),
       });
 
-      console.log({ response });
-
       if (!response.ok && response.status !== 401) {
         reportServerActionError({
           action: ACTION,
@@ -59,8 +57,6 @@ export async function logoutAction(): Promise<void> {
     }
   }
 
-  console.log("ANTES", cookieStore.get(SESSION_COOKIE_NAME));
-
   cookieStore.set(SESSION_COOKIE_NAME, "", {
     expires: new Date(0),
     path: "/",
@@ -69,8 +65,6 @@ export async function logoutAction(): Promise<void> {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
   });
-
-  console.log("DEPOIS", cookieStore.get(SESSION_COOKIE_NAME));
 
   redirect("/");
 }

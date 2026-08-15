@@ -358,118 +358,119 @@ export function MembersTable({
 
   return (
     <div className="relative flex flex-col gap-3 pb-10">
-      {showFullPageEmpty ? (
-        <MembersEmptyState
-          hasNoGroups={hasNoGroups}
-          hasNoMembers={hasNoMembers}
-          isSearchEmpty={false}
-          onClearSearch={clearSearch}
-        />
-      ) : (
-        <>
-          <DataTableToolbar
-            search={
-              <>
-                <SearchIcon
-                  ref={searchIconRef}
-                  className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
-                  size={16}
-                />
-                <Input
-                  placeholder="Pesquisar por membro, ID ou grupo"
-                  type="search"
-                  value={search}
-                  className="pl-9"
-                  onFocus={() => searchIconRef.current?.startAnimation()}
-                  onBlur={() => searchIconRef.current?.stopAnimation()}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </>
-            }
-            controls={
-              <MembersFiltersPopover
-                groups={filterGroups}
-                control={filtersPopover}
-              />
-            }
+      <DataTableToolbar
+        search={
+          <>
+            <SearchIcon
+              ref={searchIconRef}
+              className="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
+              size={16}
+            />
+            <Input
+              placeholder="Pesquisar por membro, ID ou grupo"
+              type="search"
+              value={search}
+              className="pl-9"
+              onFocus={() => searchIconRef.current?.startAnimation()}
+              onBlur={() => searchIconRef.current?.stopAnimation()}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </>
+        }
+        controls={
+          <MembersFiltersPopover
+            groups={filterGroups}
+            control={filtersPopover}
           />
-          <div className="relative overflow-x-auto rounded-md border border-border bg-background shadow-xs">
-            <DataRefreshIndicator visible={showDataRefresh} />
-            <div
-              className={cn(
-                "transition-opacity",
-                showDataRefresh && "opacity-50 blur-xs",
-              )}
-            >
-              <Table className="w-full min-w-0 table-auto sm:min-w-4xl sm:table-fixed">
-                <TableHeader>
-                  <TableRow className="bg-muted hover:bg-muted!">
-                    <TableHead className="w-8 min-w-8 px-2 text-center sm:px-3">
-                      <MemberSelectionCheckbox
-                        checked={allVisibleSelected}
-                        indeterminate={
-                          !allVisibleSelected && hasPartialVisibleSelection
-                        }
-                        label="Selecionar grupos exibidos"
-                        onCheckedChange={toggleAllVisible}
-                      />
-                    </TableHead>
-                    <TableHead className="min-w-0 sm:min-w-60">
-                      Membro
-                    </TableHead>
-                    <TableHead className="hidden w-36 min-w-36 whitespace-nowrap px-2 text-center md:table-cell">
-                      Entrada
-                    </TableHead>
-                    <TableHead className="hidden w-36 min-w-36 whitespace-nowrap px-2 text-center md:table-cell">
-                      Saída
-                    </TableHead>
-                    <TableHead className="hidden w-40 min-w-40 whitespace-nowrap px-2 text-center sm:table-cell">
-                      Status
-                    </TableHead>
-                    <TableHead className="w-28 min-w-28 px-2 text-center sm:w-36 sm:min-w-36">
-                      <span className="sr-only">Ações</span>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
+        }
+      />
+      <div className="relative overflow-x-auto rounded-md border border-border bg-background shadow-xs">
+        <DataRefreshIndicator visible={showDataRefresh} />
+        <div
+          className={cn(
+            "transition-opacity",
+            showDataRefresh && "opacity-50 blur-xs",
+          )}
+        >
+          <Table className="w-full min-w-0 table-auto sm:min-w-4xl sm:table-fixed">
+            <TableHeader>
+              <TableRow className="bg-muted hover:bg-muted!">
+                <TableHead className="w-8 min-w-8 px-2 pb-1.5 text-center sm:px-3">
+                  <MemberSelectionCheckbox
+                    checked={allVisibleSelected}
+                    indeterminate={
+                      !allVisibleSelected && hasPartialVisibleSelection
+                    }
+                    label="Selecionar grupos exibidos"
+                    onCheckedChange={toggleAllVisible}
+                  />
+                </TableHead>
+                <TableHead className="min-w-0 sm:min-w-60">Membro</TableHead>
+                <TableHead className="hidden w-36 min-w-36 whitespace-nowrap px-2 text-center md:table-cell">
+                  Entrada
+                </TableHead>
+                <TableHead className="hidden w-36 min-w-36 whitespace-nowrap px-2 text-center md:table-cell">
+                  Saída
+                </TableHead>
+                <TableHead className="hidden w-40 min-w-40 whitespace-nowrap px-2 text-center sm:table-cell">
+                  Status
+                </TableHead>
+                <TableHead className="w-28 min-w-28 px-2 text-center sm:w-36 sm:min-w-36">
+                  <span className="sr-only">Ações</span>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
 
-                <TableBody>
-                  {paginatedGroups.map((group) => (
-                    <MembersTableGroupSection
-                      key={group.id}
-                      group={group}
-                      isGroupSelected={selectedGroupIds.has(group.id)}
-                      memberSelectionFingerprint={
-                        groupSelectionFingerprints.get(group.id) ?? ""
-                      }
-                      isMemberKeySelected={isMemberKeySelected}
-                      onToggleGroup={toggleGroup}
-                      onToggleMember={toggleMember}
-                      onSendMemberNotice={handleSendMemberNotice}
-                      onGroupMembersPageChange={handleGroupMembersPageChange}
-                      onGroupDataSynced={handleGroupDataSynced}
-                      showDataRefresh={showDataRefresh}
+            <TableBody>
+              {showFullPageEmpty ? (
+                <TableRow className="hover:bg-background! hover:dark:bg-background! hover:rounded-none!">
+                  <TableCell colSpan={6} className="p-0">
+                    <MembersEmptyState
+                      hasNoGroups={hasNoGroups}
+                      hasNoMembers={hasNoMembers}
+                      isSearchEmpty={false}
+                      onClearSearch={clearSearch}
+                      className="w-full max-w-full border-0"
                     />
-                  ))}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginatedGroups.map((group) => (
+                  <MembersTableGroupSection
+                    key={group.id}
+                    group={group}
+                    isGroupSelected={selectedGroupIds.has(group.id)}
+                    memberSelectionFingerprint={
+                      groupSelectionFingerprints.get(group.id) ?? ""
+                    }
+                    isMemberKeySelected={isMemberKeySelected}
+                    onToggleGroup={toggleGroup}
+                    onToggleMember={toggleMember}
+                    onSendMemberNotice={handleSendMemberNotice}
+                    onGroupMembersPageChange={handleGroupMembersPageChange}
+                    onGroupDataSynced={handleGroupDataSynced}
+                    showDataRefresh={showDataRefresh}
+                  />
+                ))
+              )}
 
-                  {tableEmpty.show && tableEmpty.kind ? (
-                    <TableRow className="hover:bg-background">
-                      <TableCell colSpan={6} className="p-0">
-                        <TableResultsEmptyState
-                          kind={tableEmpty.kind}
-                          resource="members"
-                          isRefreshing={showDataRefresh}
-                          onClearSearch={clearSearch}
-                          onClearFilters={filtersPopover.clear}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ) : null}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        </>
-      )}
+              {tableEmpty.show && tableEmpty.kind && !showFullPageEmpty ? (
+                <TableRow className="hover:bg-background! hover:dark:bg-background! hover:rounded-none!">
+                  <TableCell colSpan={6} className="p-0">
+                    <TableResultsEmptyState
+                      kind={tableEmpty.kind}
+                      resource="members"
+                      isRefreshing={showDataRefresh}
+                      onClearSearch={clearSearch}
+                      onClearFilters={filtersPopover.clear}
+                    />
+                  </TableCell>
+                </TableRow>
+              ) : null}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
 
       {!showFullPageEmpty && selectionSummary.count > 0 ? (
         <MembersBulkSelectionToolbar

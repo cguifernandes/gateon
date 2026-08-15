@@ -45,7 +45,7 @@ export function DashboardStripeBillingTable({
     <Card className="flex h-full min-h-0 flex-1 flex-col gap-0 overflow-hidden py-0">
       <CardHeader className="flex shrink-0 flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
         <div className="min-w-0 flex-1">
-          <CardTitle>Stripe Billing</CardTitle>
+          <CardTitle>Integrações</CardTitle>
           <CardDescription className="max-w-xl text-xs leading-relaxed">
             Métricas por plano monitorado e totais consolidados das integrações
             Stripe conectadas.
