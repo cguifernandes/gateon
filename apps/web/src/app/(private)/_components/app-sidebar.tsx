@@ -34,6 +34,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  type AnimatedIconKey,
+  isNavItemActive,
+  type NavItem,
+  navSections,
+} from "@/lib/navigation/nav-sections";
 import { cn, getUserInitials } from "@/lib/utils";
 import type { PublicUserDto } from "@/lib/zod/auth-schemas";
 
@@ -41,69 +47,6 @@ type AnimatedIconHandle = {
   startAnimation: () => void;
   stopAnimation: () => void;
 };
-
-type AnimatedIconKey =
-  | "dashboard"
-  | "groups"
-  | "alerts"
-  | "settings"
-  | "members"
-  | "plug"
-  | "user";
-
-type NavItem = {
-  href: string;
-  label: string;
-  iconKey: AnimatedIconKey;
-};
-
-type NavSection = {
-  label: string;
-  items: NavItem[];
-};
-
-const navSections: NavSection[] = [
-  {
-    label: "Navegação",
-    items: [
-      {
-        href: "/dashboard",
-        label: "Dashboard",
-        iconKey: "dashboard",
-      },
-      {
-        href: "/groups",
-        label: "Grupos",
-        iconKey: "groups",
-      },
-      {
-        href: "/members",
-        label: "Membros",
-        iconKey: "members",
-      },
-      {
-        href: "/alerts",
-        label: "Alertas",
-        iconKey: "alerts",
-      },
-      {
-        href: "/integrations",
-        label: "Integrações",
-        iconKey: "plug",
-      },
-    ],
-  },
-  {
-    label: "Conta",
-    items: [
-      {
-        href: "/settings",
-        label: "Configurações",
-        iconKey: "settings",
-      },
-    ],
-  },
-];
 
 function getNavIconClassName(isActive: boolean) {
   return cn(
@@ -287,10 +230,6 @@ function SidebarNavItem({ item, isActive, isCollapsed }: SidebarNavItemProps) {
       </SidebarNavLink>
     </SidebarMenuItem>
   );
-}
-
-function isNavItemActive(pathname: string, href: string) {
-  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 type SidebarUserFooterProps = {

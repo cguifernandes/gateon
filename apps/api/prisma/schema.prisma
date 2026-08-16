@@ -43,6 +43,7 @@ model Users {
   stripeTelegramCheckoutSessions StripeTelegramCheckoutSessions[]
   passwordResetTokens            PasswordResetTokens[]
   stripeSubscriptions            StripeSubscriptions?
+  userFeedbacks                  UserFeedback[]
 }
 
 model Accounts {
@@ -608,4 +609,24 @@ model StripeWebhookEvents {
   createdAt     DateTime  @default(now())
 
   @@index([processedAt])
+}
+
+enum FeedbackType {
+  PROBLEMA
+  SUGESTAO
+  ELOGIO
+}
+
+model UserFeedback {
+  id         String       @id @default(cuid())
+  userId     String
+  type       FeedbackType
+  rating     Int
+  message    String
+  sourcePath String
+  createdAt  DateTime     @default(now())
+
+  user Users @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }

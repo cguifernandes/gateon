@@ -8,6 +8,7 @@ import { AppService } from './app.service';
 import { AlertsModule } from './modules/alerts/alerts.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { BotStartSettingsModule } from './modules/bot-start-settings/bot-start-settings.module';
+import { FeedbackModule } from './modules/feedback/feedback.module';
 import { GroupBotSettingsModule } from './modules/group-bot-settings/group-bot-settings.module';
 import { GroupLimitsModule } from './modules/group-limits/group-limits.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
@@ -41,6 +42,7 @@ function readPositiveIntegerEnv(name: string, fallback: number): number {
     AlertsModule,
     StripeBillingModule,
     BillingModule,
+    FeedbackModule,
   ],
   controllers: [AppController],
   providers: [

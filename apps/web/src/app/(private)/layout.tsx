@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { FeedbackWidget } from "@/components/feedback-widget/feedback-widget";
 import { getSessionUser } from "@/lib/server/data/get-session";
 import { readSidebarOpenFromCookies } from "@/lib/ui/sidebar-storage";
 import { DashboardProviders } from "./_components/dashboard-providers";
@@ -30,6 +31,7 @@ export default async function DashboardLayout({
           {children}
         </DashboardShell>
       </DashboardProviders>
+      <FeedbackWidget />
     </div>
   );
 }
