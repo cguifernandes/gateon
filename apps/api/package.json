@@ -6,7 +6,8 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "nest build",
+    "postinstall": "prisma generate",
+    "build": "prisma generate && nest build",
     "dev": "cross-env NODE_OPTIONS=--use-system-ca node -r ./scripts/load-env.cjs ./node_modules/@nestjs/cli/bin/nest.js start --watch",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
