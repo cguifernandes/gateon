@@ -26,6 +26,12 @@ export function resolvePrismaMigrationDatabaseUrl(): string {
   const url =
     process.env.DIRECT_URL?.trim() || process.env.DATABASE_URL?.trim();
   if (!url) {
+    // `generate` only reads the schema, it never opens a connection — a
+    // placeholder lets it run in envs without DB creds (e.g. installing the
+    // npm workspace on Vercel while deploying just the web app).
+    if (process.argv.includes('generate')) {
+      return 'postgresql://user:password@localhost:5432/placeholder';
+    }
     throw new Error('DIRECT_URL or DATABASE_URL is not set');
   }
 
